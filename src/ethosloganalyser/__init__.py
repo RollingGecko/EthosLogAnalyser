@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""EthosLogAnalyser - Flug- & Akku-Analyse für FrSky-Ethos-Logfiles (CSV).
+"""EthosLogAnalyser - flight and battery analysis for FrSky Ethos log files (CSV).
 
-Aufbau:
-  io/        Einlesen der Ethos-CSV-Logs
-  analysis/  Auswertung je Flug und über alle Flüge, Bewertung
-  report/    Textberichte
-  plots/     Diagramme (matplotlib, ohne Oberfläche nutzbar)
-  gui/       Tkinter-Oberfläche
+Layout:
+  io/        reading Ethos CSV logs
+  analysis/  per-flight and cross-flight analysis, assessment
+  report/    text reports
+  plots/     charts (matplotlib, usable without the GUI)
+  gui/       Tkinter user interface
 """
 
 __version__ = "0.2.0"

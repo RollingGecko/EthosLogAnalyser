@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Start mit:  python -m ethosloganalyser   (auch Einstiegspunkt für die PyInstaller-EXE)"""
+"""Run with:  python -m ethosloganalyser   (also the entry point of the PyInstaller EXE)"""
 
 from ethosloganalyser.gui.app import main
 

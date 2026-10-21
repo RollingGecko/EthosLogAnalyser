@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Einzelflug: Zeitverläufe in Ansichten mit je höchstens 4 Diagrammen."""
+"""Single flight: time series in views of at most 4 charts each."""
 
 import numpy as np
 
@@ -12,7 +12,7 @@ FLIGHT_VIEWS = ["Akku & Antrieb", "Empfang", "Empfängerstrom & Steuerung", "Flu
 
 
 def _flight_panels(s, view):
-    """Liste von Diagrammen: dict(title, unit, note, lines=[(label, y, color, kw)], extra)."""
+    """List of charts: dict(title, unit, note, lines=[(label, y, color, kw)], extra)."""
     rx = s.get("rx")
     P = []
     add = lambda title, unit, note, lines, **kw: P.append(dict(title=title, unit=unit, note=note,
@@ -51,7 +51,7 @@ def _flight_panels(s, view):
 
 
 def draw_flight(fig, res, p, path, view=FLIGHT_VIEWS[0]):
-    """Zeichnet die gewählte Ansicht eines Fluges in fig. Gibt die Achsen zurück (für Zoom/Fadenkreuz)."""
+    """Draws the selected view of a flight into fig. Returns the axes (for zoom/crosshair)."""
     _style_mpl()
     fig.clear()
     fig.set_layout_engine("constrained")
@@ -86,7 +86,7 @@ def draw_flight(fig, res, p, path, view=FLIGHT_VIEWS[0]):
                     a.plot([sp["t"] for sp in pts], [sp["peak"] for sp in pts], "v", ms=9, color=color,
                            label=f"Spitze: {cause}", ls="none")
         if pn.get("switches"):
-            groups = []                                   # Schalter innerhalb von 2 s zusammenfassen
+            groups = []                                   # merge switch events within 2 s
             for t_, name, _, _ in s.get("switches") or []:
                 if groups and t_ - groups[-1][0] < 2.0:
                     groups[-1][1].add(name)
@@ -106,7 +106,7 @@ def draw_flight(fig, res, p, path, view=FLIGHT_VIEWS[0]):
             a.axvline(r["Timer_s"], color="tab:red", ls=":", lw=1.2)
         axes[0].text(r["Timer_s"], 0.02, " Timer-Empfehlung", transform=axes[0].get_xaxis_transform(),
                      color="tab:red", fontsize=8, va="bottom", clip_on=True, in_layout=False)
-    # Zusatzwerte für das Fadenkreuz
+    # additional values for the crosshair readout
     extra = [("entnommen", "mAh", s["q"]), ("Leistung", "kW", s["p"] / 1000)]
     if view != FLIGHT_VIEWS[2] and s["gas"] is not None:
         extra.append(("Gas", "%", s["gas"]))
@@ -118,7 +118,7 @@ def draw_flight(fig, res, p, path, view=FLIGHT_VIEWS[0]):
 
 
 def figure_flight(res, p, path, view=FLIGHT_VIEWS[0]):
-    """Einzelflug als eigenständige Figure (für den Export)."""
+    """Single flight as a standalone figure (for export)."""
     from matplotlib.figure import Figure
     fig = Figure(figsize=(12, 8.5), dpi=100)
     draw_flight(fig, res, p, path, view)

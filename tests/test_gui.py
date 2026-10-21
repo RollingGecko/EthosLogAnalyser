@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Rauchtest der Oberfläche: Fenster aufbauen, Beispiel-Logs auswerten, alle Einzelflug-Ansichten zeichnen.
+"""GUI smoke test: build the window, analyse the example logs, draw every single-flight view.
 
-Läuft nur, wenn Tkinter und ein Bildschirm vorhanden sind (in der CI unter Linux per xvfb).
+Runs only where Tkinter and a display are available (in CI on Linux via xvfb).
 """
 
 import os
@@ -11,7 +11,7 @@ import pytest
 
 from helpers import EXAMPLES
 
-# In der CI (Umgebungsvariable REQUIRE_GUI_TEST) muss der Test laufen - dort wäre ein Überspringen ein Fehler.
+# In CI (environment variable REQUIRE_GUI_TEST) the test must run - skipping it there would be an error.
 REQUIRED = bool(os.environ.get("REQUIRE_GUI_TEST"))
 if REQUIRED:
     import tkinter as tk  # noqa: F401
@@ -25,15 +25,15 @@ def _display_available():
     return bool(os.environ.get("DISPLAY"))
 
 
-@pytest.mark.skipif(not REQUIRED and not _display_available(), reason="kein Bildschirm (DISPLAY) vorhanden")
-def test_oberflaeche_wertet_beispiel_logs_aus(monkeypatch, tmp_path):
+@pytest.mark.skipif(not REQUIRED and not _display_available(), reason="no display (DISPLAY) available")
+def test_gui_analyses_example_logs(monkeypatch, tmp_path):
     import matplotlib
     matplotlib.use("TkAgg", force=True)
     from ethosloganalyser import config
     from ethosloganalyser.gui import app
     from ethosloganalyser.plots.flight import FLIGHT_VIEWS
 
-    # Einstellungen nicht im echten Benutzerordner speichern, Meldungsfenster abfangen
+    # do not store settings in the real home folder, capture message boxes
     monkeypatch.setattr(config, "SETTINGS_FILE", str(tmp_path / "settings.json"))
     errors = []
     monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: errors.append(a))
@@ -46,7 +46,7 @@ def test_oberflaeche_wertet_beispiel_logs_aus(monkeypatch, tmp_path):
         h["run"]()
         root.update()
         assert not errors, errors
-        assert "3 Flüge ausgewertet" in h["status"].get()
+        assert "3 Flüge ausgewertet" in h["status"].get()       # status bar text (German UI)
         assert len(h["fbox"]["values"]) == 3
         for view in FLIGHT_VIEWS:
             h["view_var"].set(view)

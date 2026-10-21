@@ -1,5 +1,5 @@
-# Ethos-Skripte
+# Ethos scripts
 
-Platz für Lua-Skripte, die direkt auf dem Ethos-Sender laufen – geplant ist ein Widget zur Akku-Auswahl, das Kennung, Kapazität und Zellchemie des eingesetzten Akkus als virtuelle Sensoren mitloggt. Damit kann der EthosLogAnalyser später mehrere Akkus getrennt auswerten.
+Place for Lua scripts that run directly on the Ethos transmitter. Planned: a battery selection widget that logs ID, capacity and cell chemistry of the installed battery as virtual sensors, so EthosLogAnalyser can later analyse several batteries separately.
 
-Skripte werden auf die SD-Karte des Senders unter `scripts/` kopiert.
+Scripts are copied to `scripts/` on the transmitter's SD card.

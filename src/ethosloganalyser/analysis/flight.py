@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Auswertung eines einzelnen Fluges (eine Logdatei)."""
+"""Analysis of a single flight (one log file)."""
 
 import os
 import numpy as np
@@ -12,7 +12,7 @@ from ..utils import _nanmax, _nanmin, _rolling
 
 
 def analyse_file(path, p: Params):
-    """Wertet eine Logdatei aus. Gibt (dict | None, Meldung) zurück."""
+    """Analyses one log file. Returns (dict | None, message)."""
     try:
         df = read_log(path)
     except Exception as e:
@@ -26,7 +26,7 @@ def analyse_file(path, p: Params):
     if t is None:
         return None, "Zeitspalte nicht erkannt"
 
-    # Ethos loggt jeden Sensor in eigenen Zeilen -> Lücken mit dem letzten Wert auffüllen
+    # Ethos logs each sensor in its own rows -> fill gaps with the last value
     work = pd.DataFrame({"t": t, "u": _to_num(df[cv]).to_numpy(dtype=float),
                          "i": _to_num(df[ci]).to_numpy(dtype=float)}, index=df.index)
     extras = {
@@ -41,7 +41,7 @@ def analyse_file(path, p: Params):
         "rxu": _active_series(df, ["rxbatt", "rx batt", "rxbat"]),
         "roll": _first_series(df, ["roll", "r.angle"]),
         "pitch": _first_series(df, ["pitch", "nick", "p.angle"]),
-        # Knüppelkanäle (Ethos-Quellen, exakte Namen): Quer-, Höhen-, Seitenruder
+        # stick channels (Ethos sources, exact names): aileron, elevator, rudder
         "qr": _exact_series(df, ["QR", "Quer", "Ail", "Aileron", "Querruder"]),
         "hr": _exact_series(df, ["HR", "Ele", "Elevator", "Höhenruder"]),
         "sr": _exact_series(df, ["SR", "Rud", "Rudder", "Seite", "Seitenruder"]),
@@ -63,28 +63,28 @@ def analyse_file(path, p: Params):
     if len(work) < 20:
         return None, "zu wenige Datenpunkte"
 
-    # Nur Zeitraum mit aktivem Motor betrachten
+    # only consider the period with the motor running
     act = np.where(work["i"].to_numpy() > p.active_current_a)[0]
     if len(act) < 10:
         return None, "kein Motorstrom erkannt"
-    # Motorlauf in Blöcke teilen (Pause > 20 s) und den Block mit der größten Ladung nehmen -
-    # ein kurzer Motortest vor dem Start oder nach einem Akkuwechsel zählt so nicht zum Flug.
+    # Split motor running into blocks (gap > 20 s) and take the block with the largest charge -
+    # a short motor test before take-off or after a battery swap is thus not counted as flight.
     ta, ia = work["t"].to_numpy()[act], work["i"].to_numpy()[act]
     cut = np.flatnonzero(np.diff(ta) > 20.0) + 1
     blocks = np.split(np.arange(len(act)), cut)
     blk = max(blocks, key=lambda b: float(np.sum(ia[b])))
     a0, a1 = act[blk[0]], act[blk[-1]]
     pre = work.iloc[max(0, a0 - 15):a0]
-    u_rest_start = float(np.median(pre["u"])) if len(pre) >= 3 else np.nan   # Ruhespannung vor dem Start
+    u_rest_start = float(np.median(pre["u"])) if len(pre) >= 3 else np.nan   # resting voltage before take-off
 
-    # Gemessene Spannung nach dem Abstellen (5-30 s nach dem letzten Motorstrom, ohne Last).
-    # Der Akku erholt sich noch weiter, der Wert ist also eher etwas zu niedrig (vorsichtig).
+    # Measured voltage after motor stop (5-30 s after the last motor current, no load).
+    # The battery keeps recovering, so the value is rather slightly too low (conservative).
     u_rest_after = np.nan
     post = work.iloc[a1 + 1:]
     if len(post):
         tp = post["t"].to_numpy() - float(work["t"].iloc[a1])
         m = (tp >= 5) & (tp <= 30) & (post["i"].to_numpy() < p.active_current_a)
-        if m.sum() >= 3:      # letzte Werte im Fenster: am nächsten an der echten Ruhespannung
+        if m.sum() >= 3:      # last values in the window: closest to the true resting voltage
             u_rest_after = float(np.median(post["u"].to_numpy()[m][-3:]))
 
     win = work.iloc[a0:a1 + 1]
@@ -96,11 +96,11 @@ def analyse_file(path, p: Params):
     if dur < p.min_flight_s:
         return None, f"zu kurz ({dur:.0f} s < {p.min_flight_s:.0f} s)"
 
-    dt = np.clip(np.diff(t, prepend=t[0]), 0, 5.0)         # Lücken im Log nicht mitintegrieren
+    dt = np.clip(np.diff(t, prepend=t[0]), 0, 5.0)         # do not integrate over gaps in the log
     q_mah = np.cumsum(i * dt) / 3.6                        # A*s -> mAh
     e_wh = float(np.sum(u * i * dt) / 3600.0)
 
-    # --- Zeitraster ------------------------------------------------------------
+    # --- time grid ------------------------------------------------------------
     tg = np.arange(t[0], t[-1], STEP)
     if len(tg) < 40:
         return None, "zu wenige Datenpunkte"
@@ -121,12 +121,12 @@ def analyse_file(path, p: Params):
     for key, label in [("qr", "Querruder"), ("hr", "Höhenruder"), ("sr", "Seitenruder")]:
         g_ = grid(key)
         if g_ is not None and np.ptp(g_) > 20:
-            sticks[label] = np.clip(g_ / 1024.0 * 100.0, -100, 100)          # Knüppelweg [%]
+            sticks[label] = np.clip(g_ / 1024.0 * 100.0, -100, 100)          # stick travel [%]
     stick_act = None
-    if sticks:      # Knüppelaktivität: Summe der Knüppelgeschwindigkeiten [%/s] - Maß für Servoarbeit
+    if sticks:      # stick activity: sum of stick speeds [%/s] - a measure of servo work
         stick_act = np.sum([np.abs(np.gradient(_rolling(v, 2), STEP)) for v in sticks.values()], axis=0)
         stick_act = _rolling(stick_act, 3)
-    # Schalterereignisse im Flugzeitraum (Zeit relativ zum Motorstart)
+    # switch events during the flight (time relative to motor start)
     switch_ev = []
     t_win = win["t"].to_numpy()
     for k_, (name, _) in enumerate(switch_cols):
@@ -139,8 +139,8 @@ def analyse_file(path, p: Params):
                 switch_ev.append((float(t_win[j + 1] - tg[0]), name, v[j], v[j + 1]))
     switch_ev.sort()
 
-    # --- Innenwiderstand: U = c0 + c1*I + c2*Q  (Ri = -c1) ------------------------
-    # Strom wird in Ethos mit Zeitversatz zur Spannung geloggt -> besten Versatz suchen.
+    # --- internal resistance: U = c0 + c1*I + c2*Q  (Ri = -c1) ------------------------
+    # Ethos logs current with a time offset to voltage -> search for the best offset.
     ri = u0 = k_v = r2 = lag_best = np.nan
     ri_seg = [np.nan, np.nan, np.nan]
     ocv_g = None
@@ -167,10 +167,10 @@ def analyse_file(path, p: Params):
     if best is not None:
         r2, coef, lag_best, sh = best
         u0, ri, k_v = float(coef[0]), float(-coef[1]), float(coef[2])
-        if not (0 < ri < 1.0):                              # unplausibel (> 1 Ohm Pack)
+        if not (0 < ri < 1.0):                              # implausible (> 1 ohm for the pack)
             ri = u0 = k_v = np.nan
         else:
-            # Ri im Flugverlauf (Anfang / Mitte / Ende nach entnommener Kapazität)
+            # Ri during the flight (start / middle / end by drawn charge)
             if sh > 0:
                 uu, ii, qq = ug[sh:], ig[:-sh], qg_ah[sh:]
             elif sh < 0:
@@ -186,18 +186,18 @@ def analyse_file(path, p: Params):
                     sl, _ = np.polyfit(ii[m], uadj[m], 1)
                     if 0 < -sl < 1.0:
                         ri_seg[s_i] = float(-sl)
-            # Ruhespannung (lastfrei geschätzt) mit zeitlich passendem Strom, ~10 s geglättet
+            # resting voltage (estimated without load) with time-aligned current, smoothed over ~10 s
             i_al = np.interp(tg - sh * STEP, tg, ig)
             ocv_g = _rolling(ug + ri * i_al, 40)
 
-    # Ruhespannung am Ende (aus dem Modell geschätzt)
+    # resting voltage at the end (model estimate)
     if ocv_g is not None:
         u_ocv_end = float(np.mean(ocv_g[-40:]))
     else:
         low = np.where(ig < p.active_current_a)[0]
         u_ocv_end = float(np.median(ug[low[-20:]])) if len(low) >= 5 else np.nan
 
-    # --- Belastung -----------------------------------------------------------------
+    # --- load ---------------------------------------------------------------------
     p_max = float(np.max(_rolling(pg, 4)))
     p_mean = float(e_wh * 3600.0 / max(dur, 1))
     zeit80 = float(np.sum(ig > 0.8 * ig.max()) * STEP)
@@ -205,9 +205,9 @@ def analyse_file(path, p: Params):
     gas_hist = None
     if gasg is not None:
         gas_pct = np.clip((gasg + 1024.0) / 2048.0 * 100.0, 0, 100)
-        gas_hist = np.histogram(gas_pct, bins=np.arange(0, 101, 10))[0] * STEP     # Sekunden je 10-%-Klasse
+        gas_hist = np.histogram(gas_pct, bins=np.arange(0, 101, 10))[0] * STEP     # seconds per 10 % bin
 
-    # --- Antrieb: P_el = exp(a) * rpm^n -----------------------------------------------
+    # --- drive: P_el = exp(a) * rpm^n -------------------------------------------------
     rpm_p90 = rpm_max = p_n = p_a = np.nan
     if rpmg is not None and np.nanmax(rpmg) > 1000:
         rs = _rolling(rpmg, 4, "median")
@@ -220,7 +220,7 @@ def analyse_file(path, p: Params):
             if 1.0 < n_ < 6.0:
                 p_n, p_a = float(n_), float(a_)
 
-    # --- Flugphasen (aus Höhe) -------------------------------------------------------------
+    # --- flight phases (from altitude) -----------------------------------------------------
     e_up = e_cr = e_dn = t_up = t_cr = t_dn = wh100 = alt_max = np.nan
     alt_rel = None
     if altg is not None and np.ptp(altg) > 5:
@@ -237,7 +237,7 @@ def analyse_file(path, p: Params):
         wh100 = e_up / climb * 100.0 if climb > 20 else np.nan
         alt_max = float(alt_rel.max())
 
-    # --- G-Kräfte und Drehrate ---------------------------------------------------------------
+    # --- g-forces and rotation rate --------------------------------------------------------
     g_max = g_p95 = rate_p95 = np.nan
     gg = None
     if axg is not None and ayg is not None and azg is not None:
@@ -247,10 +247,10 @@ def analyse_file(path, p: Params):
     comps = [np.abs(np.gradient(_rolling(np.degrees(np.unwrap(np.radians(a))), 3), STEP))
              for a in (rollg, pitchg) if a is not None]
     if comps:
-        rateg = np.sqrt(np.sum([c ** 2 for c in comps], axis=0))      # Drehrate Roll+Nick [°/s]
+        rateg = np.sqrt(np.sum([c ** 2 for c in comps], axis=0))      # rotation rate roll+pitch [°/s]
         rate_p95 = float(np.percentile(rateg, 95))
 
-    # --- Funk / Bordnetz (nur im Zeitraum mit aktivem Motor) ---------------------------------------
+    # --- radio / onboard power (only while the motor is running) ----------------------------------
     def win_vals(keys, how, need_pos=False):
         vals = []
         for _, s in _numeric_cols(df, keys):
@@ -260,7 +260,7 @@ def analyse_file(path, p: Params):
             vals.append(float(sv.min() if how == "min" else sv.max()))
         return _nanmin(vals) if how == "min" else _nanmax(vals)
 
-    # Zeilen der Originaldatei im Flugzeitraum (work wurde neu nummeriert)
+    # rows of the original file within the flight (work has been renumbered)
     t_all = np.asarray(_time_seconds(df), dtype=float)
     _orig_idx = np.flatnonzero((t_all >= t[0]) & (t_all <= t[-1]))
 

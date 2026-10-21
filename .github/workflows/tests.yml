@@ -11,17 +11,17 @@ jobs:
     name: Tests (${{ matrix.os }}, Python ${{ matrix.python }})
     runs-on: ${{ matrix.os }}
     env:
-      REQUIRE_GUI_TEST: "1"      # Oberflächentest darf in der CI nicht übersprungen werden
+      REQUIRE_GUI_TEST: "1"      # the GUI test must not be skipped in CI
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
-            python: "3.9"      # älteste unterstützte Version, pandas 2.x
+            python: "3.9"      # oldest supported version, pandas 2.x
           - os: ubuntu-latest
-            python: "3.12"     # aktuelle Version, pandas 3.x
+            python: "3.12"     # current version, pandas 3.x
           - os: windows-latest
-            python: "3.12"     # Zielplattform der EXE
+            python: "3.12"     # target platform of the EXE
     steps:
       - uses: actions/checkout@v4
 
@@ -30,23 +30,23 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: pip
 
-      - name: Paket und Testwerkzeuge installieren
+      - name: Install package and test tools
         run: python -m pip install -e ".[test]"
 
-      - name: Virtuellen Bildschirm für den Oberflächentest bereitstellen
+      - name: Provide a virtual display for the GUI test
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y xvfb
 
-      - name: Tests (Linux, mit virtuellem Bildschirm)
+      - name: Run tests (Linux, virtual display)
         if: runner.os == 'Linux'
         run: xvfb-run -a python -m pytest -v
 
-      - name: Tests (Windows)
+      - name: Run tests (Windows)
         if: runner.os == 'Windows'
         run: python -m pytest -v
 
   exe:
-    name: Windows-EXE bauen
+    name: Build Windows EXE
     needs: test
     runs-on: windows-latest
     steps:
@@ -57,11 +57,11 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: EXE bauen
+      - name: Build EXE
         run: scripts\build_exe.bat
         shell: cmd
 
-      - name: Prüfen, ob die EXE erzeugt wurde
+      - name: Check that the EXE was created
         run: if (!(Test-Path dist\EthosLogAnalyser.exe)) { exit 1 }
         shell: pwsh
 

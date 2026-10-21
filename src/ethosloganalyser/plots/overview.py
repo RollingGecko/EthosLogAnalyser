@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Übersichtsdiagramme über alle Flüge (Reiter Akku, Belastung, Antrieb, Funk)."""
+"""Overview charts across all flights (tabs battery, load, drive, radio)."""
 
 import numpy as np
 

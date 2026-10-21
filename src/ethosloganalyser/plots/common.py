@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Gemeinsame Diagramm-Gestaltung und Hilfsfunktionen."""
+"""Shared chart styling and helper functions."""
 
 import numpy as np
 
@@ -33,21 +33,21 @@ def _empty_fig(text):
 
 
 def _note(ax, text):
-    """Kurze Erklärung unter dem Diagrammtitel: was man sieht und was gut ist."""
+    """Short explanation below the chart title: what is shown and what is good."""
     if text:
         ax.text(0, 1.012, text, transform=ax.transAxes, fontsize=7.5, color="#555555", va="bottom", ha="left")
         ax.set_title(ax.get_title(loc="left"), loc="left", pad=14)
 
 
 def _bottom_labels_only(ax):
-    """x-Beschriftung nur in der untersten Zeile - sonst ragt sie in den Titel darunter."""
+    """x label only in the bottom row - otherwise it overlaps the title below."""
     for row in ax[:-1]:
         for a in row:
             a.set_xlabel("")
 
 
 def _legend(*axes, loc="best", ncol=1):
-    """Eine gemeinsame Legende für Diagramme mit zweiter y-Achse."""
+    """One shared legend for charts with a secondary y axis."""
     h, l = [], []
     for a in axes:
         hh, ll = a.get_legend_handles_labels()

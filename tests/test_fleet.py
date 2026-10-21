@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Auswertung über alle Flüge: Nummerierung, Zellen, Ladezustand, Timer, Bewertung."""
+"""Analysis across all flights: numbering, cell count, state of charge, timer, assessment."""
 
 import numpy as np
 import pandas as pd
@@ -10,17 +10,17 @@ from ethosloganalyser.config import Params, soc_pct
 from ethosloganalyser.utils import _ranges
 
 
-def test_drei_fluege_chronologisch():
+def test_three_flights_in_chronological_order():
     df = example_result().df
     assert list(df["Flug"]) == [1, 2, 3]
     assert df["datum"].is_monotonic_increasing
 
 
-def test_zellenzahl_automatisch():
+def test_cell_count_detected_automatically():
     assert example_result().meta["cells"] == 13
 
 
-def test_ladezustand_und_timer_berechnet():
+def test_state_of_charge_and_timer_are_computed():
     res = example_result()
     df = res.df
     assert df["SoC_ende_pct"].notna().all()
@@ -29,19 +29,19 @@ def test_ladezustand_und_timer_berechnet():
     assert (df["Timer_s"] > 0).all()
 
 
-def test_zu_kleine_nennkapazitaet_meldet_unplausiblen_ladezustand():
+def test_too_small_nominal_capacity_flags_implausible_state_of_charge():
     res = example_result(nominal_mah=3000.0)
     flags = res.meta["flags"]
     assert flags.get("Ladezustand unplausibel") == {1, 2, 3}
     assert "Tiefentladung" in flags
 
 
-def test_ausreisser_erst_ab_sechs_fluegen():
+def test_no_outlier_detection_below_six_flights():
     texts = [txt for _, txt in example_result().meta["warnings"]]
     assert not any("auffälliger Wert" in txt for txt in texts)
 
 
-def test_ausreisser_beim_innenwiderstand_wird_erkannt():
+def test_internal_resistance_outlier_is_detected():
     n = 10
     df = pd.DataFrame({
         "Flug": np.arange(1, n + 1), "datum": pd.date_range("2026-05-01", periods=n),
@@ -58,13 +58,13 @@ def test_ausreisser_beim_innenwiderstand_wird_erkannt():
     assert flags.get("Innenwiderstand") == {6}
 
 
-def test_soc_kennlinie():
+def test_state_of_charge_curves():
     assert soc_pct(4.20, "LiPo") == 100
     assert soc_pct(3.27, "LiPo") == 0
     assert soc_pct(4.35, "LiHV") == 100
     assert 40 < soc_pct(3.84, "LiPo") < 60
 
 
-def test_flugnummern_als_bereiche():
+def test_flight_numbers_as_ranges():
     assert _ranges([1, 2, 3, 5, 7, 8]) == "1-3, 5, 7-8"
     assert _ranges([4]) == "4"

@@ -6,12 +6,12 @@ __pycache__/
 venv/
 .pytest_cache/
 
-# PyInstaller (nur im Projektstamm)
+# PyInstaller (project root only)
 /build/
 /dist/
 *.spec
 
-# Editoren / OS
+# Editors / OS
 .vscode/
 .idea/
 Thumbs.db
