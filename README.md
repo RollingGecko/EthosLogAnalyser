@@ -1,49 +1,61 @@
 # EthosLogAnalyser
 
+[![Tests](https://github.com/RollingGecko/EthosLogAnalyser/actions/workflows/tests.yml/badge.svg)](https://github.com/RollingGecko/EthosLogAnalyser/actions/workflows/tests.yml)
+
 Desktop-App (Python/Tkinter) zur Auswertung von **FrSky-Ethos-Fluglogs** (CSV) – mit Schwerpunkt auf Akkuzustand, Antrieb und Funk/Bordnetz. Entstanden für einen Elektro-Jet (Viper-Jet), funktioniert aber mit jedem Ethos-Log, das Spannung und Strom des Flugakkus enthält.
 
 ## Was die App auswertet
 
-- **Akku:** Innenwiderstand (gesamt und im Flugverlauf), Spannung bei Referenzlast, geschätzte Kapazität, Restkapazität (SoH), Alterungstrend und Lebensdauer-Prognose, Timer-Empfehlung. Ladezustand am Ende per Ladungszählung mit Gegenprobe über die Ruhespannung.
-- **Belastung & Flugprofil:** C-Rate, Leistung, Gas-Histogramm, Flugphasen (Steigflug/Reise/Sinkflug), Energie je Phase, G-Kräfte.
-- **Antrieb:** Kennlinie Drehzahl → Leistung (Hinweis auf Verschleiß/Fremdkörper), Plausibilität Strommessung gegen ESC-Zähler.
+- **Akku:** Innenwiderstand, Spannung bei Referenzlast, geschätzte Kapazität, Restkapazität (SoH), Alterungstrend und Lebensdauer-Prognose, Timer-Empfehlung. Ladezustand am Ende per Ladungszählung mit Gegenprobe über die Ruhespannung.
+- **Belastung & Flugprofil:** C-Rate, Leistung, Gas-Histogramm, Flugphasen, Energie je Phase, G-Kräfte.
+- **Antrieb:** Kennlinie Drehzahl → Leistung, Plausibilität Strommessung gegen ESC-Zähler.
 - **Funk & Bordnetz:** RSSI, VFR, Empfänger- und Senderakku, Empfängerstrom-Spitzen mit Zuordnung zu Schalter, Manöver, Start/Landung oder „ohne erkennbaren Anlass“.
-- **Einzelflug:** Zeitverläufe mit Zoom, Verschieben und Fadenkreuz, Detailbericht mit Vergleich zum Median aller Flüge.
-- **Auffälligkeiten:** Grenzwert-Warnungen und Ausreißer-Erkennung über alle Flüge.
+- **Einzelflug:** Zeitverläufe mit Zoom und Fadenkreuz, Detailbericht mit Vergleich zum Median aller Flüge.
 
-## Installation
+## Schnellstart
 
-Python 3.9 oder neuer (Tkinter ist enthalten):
-
-```bash
-pip install -r requirements.txt
-python EthosLogAnalyser.py
-```
-
-### EXE unter Windows bauen
-
-```bash
+```bat
+git clone https://github.com/RollingGecko/EthosLogAnalyser.git
+cd EthosLogAnalyser
 python -m venv .venv
 .venv\Scripts\activate
-pip install -r requirements.txt pyinstaller
-pyinstaller --onefile --windowed EthosLogAnalyser.py
+pip install -e .
+ethosloganalyser
 ```
 
-Die EXE liegt danach in `dist/`.
+Zum Ausprobieren liegen in `examples/logs/` drei echte Fluglogs. Die Windows-EXE baut `scripts\build_exe.bat`; GitHub baut sie zusätzlich bei jedem Push (Actions → Artifacts).
 
-## Benutzung
+## Dokumentation
 
-1. Im Reiter **Daten & Einstellungen** den Ordner mit den Ethos-CSV-Logs wählen (Unterordner werden mit durchsucht).
-2. Zellchemie, Zellenzahl (0 = automatisch) und Nennkapazität eintragen.
-3. **Auswerten** klicken. Logs kürzer als die Mindest-Flugdauer (Standard 2 min) werden übersprungen.
+- [Benutzung](docs/benutzung.md) – Installation, Einstellungen, Reiter, Export
+- [Methodik](docs/methodik.md) – wie Innenwiderstand, Ladezustand, Kapazität, Timer und Spitzen berechnet werden
+- [Ethos-Logformat](docs/ethos-logformat.md) – welche Spalten die App erwartet
 
-Zum Ausprobieren liegen im Ordner `beispiel-logs/` drei echte Fluglogs.
+## Projektstruktur
 
-## Grenzen
+```
+src/ethosloganalyser/
+  config.py       Zellchemie, Parameter, gespeicherte Einstellungen
+  io/             Einlesen der Ethos-CSV-Logs
+  analysis/       Einzelflug, Empfängerstrom-Spitzen, Gesamtauswertung, Bewertung
+  report/         Textberichte
+  plots/          Diagramme (ohne Oberfläche nutzbar)
+  gui/            Tkinter-Oberfläche
+tests/            pytest-Tests
+docs/             Dokumentation
+examples/logs/    Beispiel-Logs
+ethos/            Lua-Skripte für den Sender
+scripts/          Build der Windows-EXE
+```
 
-- Ohne Temperaturdaten: Der Innenwiderstand hängt stark von der Akku-Temperatur ab.
-- Keine Einzelzellspannungen: schwache Zellen sind nicht erkennbar.
-- Ladezustand und Timer hängen von der richtigen Nennkapazität ab.
+## Entwicklung
+
+```bat
+pip install -e ".[test]"
+python -m pytest
+```
+
+Die Tests laufen bei jedem Push und Pull Request automatisch unter Linux und Windows.
 
 ## Lizenz
 

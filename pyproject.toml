@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ethosloganalyser"
+dynamic = ["version"]
+description = "Flug- und Akku-Analyse für FrSky-Ethos-Logfiles (CSV)"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "RollingGecko" }]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "pandas>=2.0",
+    "matplotlib>=3.6",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+build = ["pyinstaller"]
+
+[project.gui-scripts]
+ethosloganalyser = "ethosloganalyser.gui.app:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "ethosloganalyser.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::RuntimeWarning"]
