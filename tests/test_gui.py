@@ -33,8 +33,10 @@ def test_gui_analyses_example_logs(monkeypatch, tmp_path):
     from ethosloganalyser.gui import app
     from ethosloganalyser.plots.flight import FLIGHT_VIEWS
 
-    # do not store settings in the real home folder, capture message boxes
-    monkeypatch.setattr(config, "SETTINGS_FILE", str(tmp_path / "settings.json"))
+    # do not store settings in the real home folder, start in German, capture message boxes
+    settings = tmp_path / "settings.json"
+    settings.write_text('{"language": "de"}', encoding="utf-8")
+    monkeypatch.setattr(config, "SETTINGS_FILE", str(settings))
     errors = []
     monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: errors.append(a))
     monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: errors.append(a))
@@ -54,5 +56,29 @@ def test_gui_analyses_example_logs(monkeypatch, tmp_path):
             root.update()
         h["set_xlim"](10, 70)
         root.update()
+        _check_language_switch(root, settings)
     finally:
         root.destroy()
+
+
+def _check_language_switch(root, settings):
+    """Switching the language rebuilds the window in the new language and keeps the result and selection."""
+    import json
+    from ethosloganalyser.i18n import get_language
+
+    h = root._akku
+    flight, view = h["flight_var"].get(), h["view_var"].get()
+    h["nb"].select(h["tabs"]["flight"])
+    for code, status_text, heading in [("en", "3 flights analysed", "OVERVIEW"),
+                                       ("es", "3 vuelos analizados", "VISTA GENERAL"),
+                                       ("de", "3 Flüge ausgewertet", "ÜBERSICHT")]:
+        h["set_language"](code)
+        root.update()
+        h = root._akku                                    # widgets were rebuilt
+        assert get_language() == code
+        assert status_text in h["status"].get()
+        assert h["summary"].get("1.0", "2.0").strip() == heading
+        assert h["flight_var"].get().split("|")[0] == flight.split("|")[0]     # same flight selected
+        assert h["view_var"].get() == view
+        assert h["nb"].index("current") == h["nb"].index(h["tabs"]["flight"])
+        assert json.loads(settings.read_text(encoding="utf-8"))["language"] == code    # remembered

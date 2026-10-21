@@ -7,24 +7,26 @@ import pandas as pd
 
 from ..analysis.rx_spikes import rx_spike_analysis
 from ..config import Params, SPIKE_CAUSES, STEP
+from ..i18n import Msg
 from ..io.ethos_log import CURR_KEYS, VOLT_KEYS, _active_series, _exact_series, _file_datetime, _find_col, _first_series, _numeric_cols, _switch_columns, _time_seconds, _to_num, read_log
 from ..utils import _nanmax, _nanmin, _rolling
 
 
 def analyse_file(path, p: Params):
-    """Analyses one log file. Returns (dict | None, message)."""
+    """Analyses one log file. Returns (dict, "ok") or (None, Msg with the reason why the file was skipped)."""
     try:
         df = read_log(path)
     except Exception as e:
-        return None, f"Lesefehler: {e}"
+        return None, Msg("Lesefehler: {err}", err=str(e))
 
     cv = _find_col(df.columns, VOLT_KEYS, p.col_voltage)
     ci = _find_col(df.columns, CURR_KEYS, p.col_current)
     if cv is None or ci is None:
-        return None, f"Spalten nicht gefunden (Spannung={cv}, Strom={ci}). Verfügbar: {list(df.columns)}"
+        return None, Msg("Spalten nicht gefunden (Spannung={cv}, Strom={ci}). Verfügbar: {cols}",
+                          cv=cv, ci=ci, cols=list(df.columns))
     t = _time_seconds(df)
     if t is None:
-        return None, "Zeitspalte nicht erkannt"
+        return None, Msg("Zeitspalte nicht erkannt")
 
     # Ethos logs each sensor in its own rows -> fill gaps with the last value
     work = pd.DataFrame({"t": t, "u": _to_num(df[cv]).to_numpy(dtype=float),
@@ -54,19 +56,19 @@ def analyse_file(path, p: Params):
             work[k] = sr.to_numpy(dtype=float)
     work = work[np.isfinite(work["t"])].sort_values("t")
     if work["u"].notna().sum() < 20 or work["i"].notna().sum() < 20:
-        return None, "Spannung/Strom kaum vorhanden (Sensor nicht verbunden?)"
+        return None, Msg("Spannung/Strom kaum vorhanden (Sensor nicht verbunden?)")
     if work["u"].abs().max() < 1.0 and work["i"].abs().max() < 0.5:
-        return None, f"nur Nullwerte in {cv}/{ci} (Bodenlog ohne Akku-Telemetrie)"
+        return None, Msg("nur Nullwerte in {cv}/{ci} (Bodenlog ohne Akku-Telemetrie)", cv=cv, ci=ci)
     fillc = [c for c in work.columns if c != "t"]
     work[fillc] = work[fillc].ffill(limit=20)
     work = work.dropna(subset=["u", "i"]).reset_index(drop=True)
     if len(work) < 20:
-        return None, "zu wenige Datenpunkte"
+        return None, Msg("zu wenige Datenpunkte")
 
     # only consider the period with the motor running
     act = np.where(work["i"].to_numpy() > p.active_current_a)[0]
     if len(act) < 10:
-        return None, "kein Motorstrom erkannt"
+        return None, Msg("kein Motorstrom erkannt")
     # Split motor running into blocks (gap > 20 s) and take the block with the largest charge -
     # a short motor test before take-off or after a battery swap is thus not counted as flight.
     ta, ia = work["t"].to_numpy()[act], work["i"].to_numpy()[act]
@@ -94,7 +96,7 @@ def analyse_file(path, p: Params):
     i = win["i"].to_numpy()
     dur = float(t[-1] - t[0])
     if dur < p.min_flight_s:
-        return None, f"zu kurz ({dur:.0f} s < {p.min_flight_s:.0f} s)"
+        return None, Msg("zu kurz ({dur:.0f} s < {min:.0f} s)", dur=dur, min=p.min_flight_s)
 
     dt = np.clip(np.diff(t, prepend=t[0]), 0, 5.0)         # do not integrate over gaps in the log
     q_mah = np.cumsum(i * dt) / 3.6                        # A*s -> mAh
@@ -103,7 +105,7 @@ def analyse_file(path, p: Params):
     # --- time grid ------------------------------------------------------------
     tg = np.arange(t[0], t[-1], STEP)
     if len(tg) < 40:
-        return None, "zu wenige Datenpunkte"
+        return None, Msg("zu wenige Datenpunkte")
 
     def grid(col):
         if col in win.columns and win[col].notna().sum() > 5:
@@ -118,10 +120,10 @@ def analyse_file(path, p: Params):
     rssig, vfrg, rxig, rxug = grid("rssi"), grid("vfr"), grid("rxi"), grid("rxu")
     rollg, pitchg = grid("roll"), grid("pitch")
     sticks = {}
-    for key, label in [("qr", "Querruder"), ("hr", "Höhenruder"), ("sr", "Seitenruder")]:
+    for key, code in [("qr", "aileron"), ("hr", "elevator"), ("sr", "rudder")]:
         g_ = grid(key)
         if g_ is not None and np.ptp(g_) > 20:
-            sticks[label] = np.clip(g_ / 1024.0 * 100.0, -100, 100)          # stick travel [%]
+            sticks[code] = np.clip(g_ / 1024.0 * 100.0, -100, 100)          # stick travel [%]
     stick_act = None
     if sticks:      # stick activity: sum of stick speeds [%/s] - a measure of servo work
         stick_act = np.sum([np.abs(np.gradient(_rolling(v, 2), STEP)) for v in sticks.values()], axis=0)
@@ -311,16 +313,16 @@ def analyse_file(path, p: Params):
         RSSI_min=rssi_min, VFR_min=vfr_min, RxBatt_min_V=rxb_min, RxStrom_max_A=rxc_max, TxBat_min_V=txb_min,
         RxStrom_mittel_A=round(rx["mean"], 2) if rx else np.nan,
         RxSpitzen_n=len(rx["spikes"]) if rx else np.nan,
-        RxSp_Schalter=cnt["Schalter"] if rx else np.nan,
-        RxSp_Manoever=cnt["Manöver"] if rx else np.nan,
-        RxSp_StartLandung=cnt["Start/Landung"] if rx else np.nan,
-        RxSp_ohne=cnt["ohne erkennbaren Anlass"] if rx else np.nan,
-        RxSp_unbekannt=cnt["keine Lagedaten"] if rx else np.nan,
-        Rx_r_Drehrate=round(rx["corr"]["Drehrate"], 2) if rx and "Drehrate" in rx["corr"] else np.nan,
-        Rx_r_Knueppel=round(rx["corr"]["Knüppelaktivität"], 2) if rx and "Knüppelaktivität" in rx["corr"] else np.nan,
+        RxSp_Schalter=cnt["switch"] if rx else np.nan,
+        RxSp_Manoever=cnt["manoeuvre"] if rx else np.nan,
+        RxSp_StartLandung=cnt["takeoff_landing"] if rx else np.nan,
+        RxSp_ohne=cnt["no_cause"] if rx else np.nan,
+        RxSp_unbekannt=cnt["no_attitude"] if rx else np.nan,
+        Rx_r_Drehrate=round(rx["corr"]["rate"], 2) if rx and "rate" in rx["corr"] else np.nan,
+        Rx_r_Knueppel=round(rx["corr"]["stick"], 2) if rx and "stick" in rx["corr"] else np.nan,
         Knueppel_p95=round(float(np.percentile(stick_act, 95)), 0) if stick_act is not None else np.nan,
         Schalter_n=len(switch_ev),
-        Rx_r_G=round(rx["corr"]["G-Last"], 2) if rx and "G-Last" in rx["corr"] else np.nan,
+        Rx_r_G=round(rx["corr"]["g"], 2) if rx and "g" in rx["corr"] else np.nan,
     )
     row["_series"] = dict(
         t=tg - tg[0], u=ug, i=ig, p=pg, q=qg_mah, gas=gas_pct, rpm=rpmg, alt=alt_rel, ocv=ocv_g,

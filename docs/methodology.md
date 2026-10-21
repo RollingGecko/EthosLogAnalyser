@@ -12,7 +12,7 @@ Ethos writes each sensor in its own rows; gaps are filled with the last value (a
 
 ## Drawn charge and energy
 
-Charge = sum of current × time step (gaps longer than 5 s are not integrated). As a check it is compared with the ESC consumption counter; a deviation beyond ±5 % raises a “Sensorabweichung” (sensor deviation) warning.
+Charge = sum of current × time step (gaps longer than 5 s are not integrated). As a check it is compared with the ESC consumption counter; a deviation beyond ±5 % raises a “Sensor deviation” warning.
 
 ## Internal resistance
 
@@ -27,7 +27,7 @@ Rᵢ is additionally determined separately for the first, middle and last third 
 ## State of charge at the end
 
 1. **Coulomb counting** (used): state of charge at take-off from the resting voltage, minus drawn charge / capacity. Capacity is the nominal capacity or – if none is entered – the estimated capacity.
-2. **Resting voltage** (cross-check): resting voltage at the end mapped through the curve of the cell chemistry. If both differ by more than 15 percentage points, the flight is flagged “Ladezustand unplausibel” (implausible state of charge).
+2. **Resting voltage** (cross-check): resting voltage at the end mapped through the curve of the cell chemistry. If both differ by more than 15 percentage points, the flight is flagged “Implausible state of charge”.
 
 The curves (resting voltage → state of charge) live in `config.py` and are approximations.
 
@@ -48,14 +48,14 @@ Electrical power over RPM is fitted as a power law P = a · nᵇ. The power dema
 
 ## Receiver current spikes (`analysis/rx_spikes.py`)
 
-Threshold = maximum of baseline + 4 · robust spread, 1.5 × baseline and baseline + 0.3 A. Spikes less than 1 s apart are merged. Each spike gets a cause, in this order (labels as shown in the app):
+Threshold = maximum of baseline + 4 · robust spread, 1.5 × baseline and baseline + 0.3 A. Spikes less than 1 s apart are merged. Each spike gets a cause, in this order (English label, internal code in brackets):
 
-1. **Schalter** (switch) – a switch was flipped from 3 s before to 1 s after the spike started.
-2. **Manöver** (manoeuvre) – fast stick movement, high rotation rate (roll/pitch) or high g-load.
-3. **Start/Landung** (take-off/landing) – first 30 s, last 45 s or below 15 m altitude.
-4. **Ohne erkennbaren Anlass** (no apparent cause) – none of the above; hints at binding or faulty servos.
+1. **Switch** (`switch`) – a switch was flipped from 3 s before to 1 s after the spike started.
+2. **Manoeuvre** (`manoeuvre`) – fast stick movement, high rotation rate (roll/pitch) or high g-load.
+3. **Take-off/landing** (`takeoff_landing`) – first 30 s, last 45 s or below 15 m altitude.
+4. **No apparent cause** (`no_cause`) – none of the above; hints at binding or faulty servos.
 
-Without attitude data (sticks, rotation rate, g-load) the cause is “keine Lagedaten” (no attitude data).
+Without attitude data (sticks, rotation rate, g-load) the cause is “no attitude data” (`no_attitude`).
 
 ## Anomalies (`analysis/evaluate.py`)
 

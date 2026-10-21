@@ -9,7 +9,7 @@ Layout:
   gui/       Tkinter user interface
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 from .config import Params, CHEM          # noqa: F401
 from .analysis.flight import analyse_file  # noqa: F401

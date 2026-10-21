@@ -70,7 +70,7 @@ def test_too_short_flight_is_skipped():
     d = tmpdir()
     path = write_ethos_csv(d, "Short-2026-05-01-12-00-00.csv", t, 48 - 0.05 * i, i)
     row, msg = ela.analyse_file(str(path), ela.Params())
-    assert row is None and msg.startswith("zu kurz")
+    assert row is None and str(msg).startswith("zu kurz")
 
 
 def test_ground_log_without_battery_values_is_skipped():
@@ -79,4 +79,4 @@ def test_ground_log_without_battery_values_is_skipped():
     d = tmpdir()
     path = write_ethos_csv(d, "Ground-2026-05-01-12-00-00.csv", t, z, z)
     row, msg = ela.analyse_file(str(path), ela.Params())
-    assert row is None and "Nullwerte" in msg
+    assert row is None and "Nullwerte" in str(msg)

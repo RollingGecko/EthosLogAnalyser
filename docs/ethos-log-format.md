@@ -33,9 +33,9 @@ For sticks, throttle and switches to appear in the log, they must be selected as
 
 ## Skipped logs
 
-The tab “Daten & Einstellungen” lists the reason for every skipped file (messages in German), e.g.:
+The tab “Data & settings” lists the reason for every skipped file in the selected language, e.g.:
 
-- `zu kurz` – motor run shorter than the minimum flight duration
-- `nur Nullwerte` – ground log without battery telemetry
-- `kein Motorstrom erkannt` – current never above the “motor running” threshold
-- `Spalten nicht gefunden` – voltage/current not in the log or named differently
+- `too short` – motor run shorter than the minimum flight duration
+- `only zero values` – ground log without battery telemetry
+- `no motor current detected` – current never above the “motor running” threshold
+- `Columns not found` – voltage/current not in the log or named differently

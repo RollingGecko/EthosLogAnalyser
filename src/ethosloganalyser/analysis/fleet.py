@@ -69,7 +69,7 @@ def analyse_folder(folder, p: Params, progress=None):
     below = lambda v: np.isfinite(v) & (~np.isfinite(u_st) | (v < u_st - 0.03))
     ok_me, ok_ge = below(u_me), below(u_ge)
     df["U_ende_Zelle_V"] = np.where(ok_me, u_me, np.where(ok_ge, u_ge, np.nan)).round(3)
-    df["U_ende_Quelle"] = np.where(ok_me, "gemessen", np.where(ok_ge, "geschätzt", "–"))
+    df["U_ende_Quelle"] = np.where(ok_me, "measured", np.where(ok_ge, "estimated", ""))   # codes, see VOLTAGE_SOURCE_LABELS
 
     # state of charge from resting voltage (approximate curve) and capacity estimate
     df["SoC_start_pct"] = np.round(soc_pct(df["U_start_Zelle_V"].to_numpy(dtype=float), p.chem), 0)
@@ -93,7 +93,7 @@ def analyse_folder(folder, p: Params, progress=None):
     cap_est = float(kv.iloc[-3:].median()) if len(kv) else np.nan
     cap_ref = p.nominal_mah if p.nominal_mah > 0 else cap_est
     meta.update(cap_est=cap_est, cap_ref=cap_ref,
-                cap_src="Nennkapazität" if p.nominal_mah > 0 else "geschätzte Kapazität")
+                cap_src="nominal" if p.nominal_mah > 0 else "estimated")           # code, see CAP_SOURCE_LABELS
 
     # State of charge at the end: coulomb counting (start SoC - drawn/capacity) is robust against
     # voltage recovery, battery swaps and sensor glitches at the end of the log. Voltage is the cross-check.
@@ -166,7 +166,8 @@ def analyse_folder(folder, p: Params, progress=None):
 
     warnings, flags = evaluate(df, p, meta)
     meta["warnings"], meta["flags"] = warnings, flags
+    # flag codes per flight (user-facing labels: evaluate.FLAG_LABELS)
     df["Auffaellig"] = [
-        ", ".join(name for name, fl in flags.items() if int(r["Flug"]) in fl) for _, r in df.iterrows()]
+        ", ".join(code for code, fl in flags.items() if int(r["Flug"]) in fl) for _, r in df.iterrows()]
     meta["corr"] = usage_correlations(df)
     return Result(df, skipped, len(files), series, meta)

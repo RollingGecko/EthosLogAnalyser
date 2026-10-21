@@ -32,12 +32,12 @@ def test_state_of_charge_and_timer_are_computed():
 def test_too_small_nominal_capacity_flags_implausible_state_of_charge():
     res = example_result(nominal_mah=3000.0)
     flags = res.meta["flags"]
-    assert flags.get("Ladezustand unplausibel") == {1, 2, 3}
-    assert "Tiefentladung" in flags
+    assert flags.get("soc_implausible") == {1, 2, 3}
+    assert "deep_discharge" in flags
 
 
 def test_no_outlier_detection_below_six_flights():
-    texts = [txt for _, txt in example_result().meta["warnings"]]
+    texts = [str(txt) for _, txt in example_result().meta["warnings"]]       # German (source language)
     assert not any("auffälliger Wert" in txt for txt in texts)
 
 
@@ -52,10 +52,10 @@ def test_internal_resistance_outlier_is_detected():
                 "RxBatt_min_V", "RxStrom_max_A"]:
         df[col] = np.nan
     df["U_min_Zelle_V"] = 3.5
-    df["U_ende_Quelle"] = "–"
-    meta = dict(cap_src="Nennkapazität", cap_ref=5000.0)
+    df["U_ende_Quelle"] = ""
+    meta = dict(cap_src="nominal", cap_ref=5000.0)
     warns, flags = evaluate(df, Params(), meta)
-    assert flags.get("Innenwiderstand") == {6}
+    assert flags.get("ri") == {6}
 
 
 def test_state_of_charge_curves():

@@ -5,6 +5,8 @@ import os
 import numpy as np
 from dataclasses import dataclass
 
+from .i18n import N_, tr
+
 
 CHEM = {
     "LiPo": dict(
@@ -26,15 +28,45 @@ CHEM = {
 SOC_TOL_PCT = 15.0      # allowed deviation of state of charge, voltage <-> coulomb counting [percentage points]
 
 
-# colours and (user-facing) labels of the causes of receiver current spikes
-SPIKE_CAUSES = [("Schalter", "tab:green"), ("Manöver", "tab:orange"), ("Start/Landung", "tab:blue"),
-                ("ohne erkennbaren Anlass", "black"), ("keine Lagedaten", "grey")]
+# causes of receiver current spikes: language-neutral code and colour; user-facing labels in SPIKE_LABELS
+SPIKE_CAUSES = [("switch", "tab:green"), ("manoeuvre", "tab:orange"), ("takeoff_landing", "tab:blue"),
+                ("no_cause", "black"), ("no_attitude", "grey")]
+
+
+SPIKE_LABELS = {
+    "switch": N_("Schalter"),
+    "manoeuvre": N_("Manöver"),
+    "takeoff_landing": N_("Start/Landung"),
+    "no_cause": N_("ohne erkennbaren Anlass"),
+    "no_attitude": N_("keine Lagedaten"),
+}
 
 
 SPIKE_COLS = ["RxSp_Schalter", "RxSp_Manoever", "RxSp_StartLandung", "RxSp_ohne", "RxSp_unbekannt"]
 
 
 SPIKE_COLOR = dict(SPIKE_CAUSES)
+
+
+# signals that are correlated with the receiver current (keys of rx["corr"])
+CORR_LABELS = {"stick": N_("Knüppelaktivität"), "rate": N_("Drehrate"), "g": N_("G-Last"), "gas": N_("Gas")}
+
+
+# stick channels (keys of series["sticks"])
+STICK_LABELS = {"aileron": N_("Querruder"), "elevator": N_("Höhenruder"), "rudder": N_("Seitenruder")}
+
+
+# where the resting voltage at the end of a flight comes from (column U_ende_Quelle)
+VOLTAGE_SOURCE_LABELS = {"measured": N_("gemessen"), "estimated": N_("geschätzt"), "": "–"}
+
+
+# which capacity the state of charge is based on (meta["cap_src"])
+CAP_SOURCE_LABELS = {"nominal": N_("Nennkapazität"), "estimated": N_("geschätzte Kapazität")}
+
+
+def label(table, code):
+    """User-facing label of a code from one of the label tables, in the current language."""
+    return tr(table[code]) if table.get(code) else str(code)
 
 
 def soc_pct(v_cell, chem):
