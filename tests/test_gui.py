@@ -11,7 +11,12 @@ import pytest
 
 from helpers import EXAMPLES
 
-tk = pytest.importorskip("tkinter")
+# In der CI (Umgebungsvariable REQUIRE_GUI_TEST) muss der Test laufen - dort wäre ein Überspringen ein Fehler.
+REQUIRED = bool(os.environ.get("REQUIRE_GUI_TEST"))
+if REQUIRED:
+    import tkinter as tk  # noqa: F401
+else:
+    tk = pytest.importorskip("tkinter")
 
 
 def _display_available():
@@ -20,7 +25,7 @@ def _display_available():
     return bool(os.environ.get("DISPLAY"))
 
 
-@pytest.mark.skipif(not _display_available(), reason="kein Bildschirm (DISPLAY) vorhanden")
+@pytest.mark.skipif(not REQUIRED and not _display_available(), reason="kein Bildschirm (DISPLAY) vorhanden")
 def test_oberflaeche_wertet_beispiel_logs_aus(monkeypatch, tmp_path):
     import matplotlib
     matplotlib.use("TkAgg", force=True)

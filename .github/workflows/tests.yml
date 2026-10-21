@@ -10,6 +10,8 @@ jobs:
   test:
     name: Tests (${{ matrix.os }}, Python ${{ matrix.python }})
     runs-on: ${{ matrix.os }}
+    env:
+      REQUIRE_GUI_TEST: "1"      # Oberflächentest darf in der CI nicht übersprungen werden
     strategy:
       fail-fast: false
       matrix:
