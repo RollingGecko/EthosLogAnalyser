@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/RollingGecko/EthosLogAnalyser/actions/workflows/tests.yml/badge.svg)](https://github.com/RollingGecko/EthosLogAnalyser/actions/workflows/tests.yml)
 
-Desktop app (Python/Tkinter) for analysing **FrSky Ethos flight logs** (CSV), focusing on battery condition, drive and radio/onboard power. Built for an electric jet (Viper-Jet), but works with any Ethos log that contains flight battery voltage and current. The user interface is in German.
+Desktop app (Python/Tkinter) for analysing **FrSky Ethos flight logs** (CSV), focusing on battery condition, drive and radio/onboard power. Built for an electric jet (Viper-Jet), but works with any Ethos log that contains flight battery voltage and current. The user interface is available in **German, English and Spanish**; the language can be switched in the app and is remembered.
 
 ## What it analyses
 
@@ -30,12 +30,15 @@ Three real flight logs to try are in `examples/logs/`. `scripts\build_exe.bat` b
 - [Usage](docs/usage.md) – installation, settings, tabs, export
 - [Methodology](docs/methodology.md) – how internal resistance, state of charge, capacity, timer and spikes are computed
 - [Ethos log format](docs/ethos-log-format.md) – which columns the app expects
+- [Translations](docs/translations.md) – how the user interface is translated and how to add or improve a language
 
 ## Project layout
 
 ```
 src/ethosloganalyser/
   config.py       cell chemistry, parameters, saved settings
+  i18n.py         translation of all user-facing texts
+  locales/        translation catalogs (en, es)
   io/             reading Ethos CSV logs
   analysis/       single flight, receiver current spikes, cross-flight analysis, assessment
   report/         text reports
@@ -55,7 +58,7 @@ pip install -e ".[test]"
 python -m pytest
 ```
 
-Tests run automatically on every push and pull request under Linux and Windows. Documentation, code comments, docstrings, test names and commit messages are in English; the user interface stays German.
+Tests run automatically on every push and pull request under Linux and Windows. Documentation, code comments, docstrings, test names and commit messages are in English. User-facing texts are written in German in the code and translated via `locales/` (see [Translations](docs/translations.md)).
 
 ## License
 

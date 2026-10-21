@@ -3,6 +3,7 @@
 
 import numpy as np
 
+from ..i18n import tr
 from ..utils import _trend
 
 
@@ -64,26 +65,33 @@ def _axis_color(a, color, label, side="left"):
 
 def _plot_trend(ax, df, col, color, title, flags=None, flag_label=None, hlines=(), label=None, trend=True, marker="o",
                 note=None):
+    """Values of one column per flight with optional trend line.
+
+    title, label, note and hline texts must already be translated; flag_label is a flag code
+    (see analysis.evaluate.FLAG_LABELS) whose flights are circled in red.
+    """
     x = df["Flug"].to_numpy(dtype=float)
     y = df[col].to_numpy(dtype=float)
     good = np.isfinite(y)
     if not good.any():
-        ax.text(0.5, 0.5, "keine Daten", transform=ax.transAxes, ha="center", va="center", color="grey")
+        ax.text(0.5, 0.5, tr("keine Daten"), transform=ax.transAxes, ha="center", va="center", color="grey")
     else:
         ax.plot(x[good], y[good], marker, ms=5, color=color, label=label, ls="none")
         if trend:
-            tr = _trend(x, y)
-            if tr:
-                ax.plot(x, tr[0] * x + tr[1], "-", color=color, alpha=0.5, lw=1.5)
+            trd = _trend(x, y)
+            if trd:
+                ax.plot(x, trd[0] * x + trd[1], "-", color=color, alpha=0.5, lw=1.5)
         if flags and flag_label in flags:
             sel = np.isin(x, list(flags[flag_label])) & good
             ax.plot(x[sel], y[sel], "o", ms=12, mfc="none", mec="red", mew=1.5)
     for val, txt, c in hlines:
         ax.axhline(val, color=c, ls="--", lw=1)
         ax.text(0.01, val, txt, transform=ax.get_yaxis_transform(), fontsize=8, color=c, va="bottom")
-    ax.set_title(title, loc="left")
-    ax.set_xlabel("Flug Nr.", fontsize=8)
+    if not ax.get_title(loc="left"):        # several series in one chart: keep the title and its note spacing
+        ax.set_title(title, loc="left")
+    ax.set_xlabel(tr("Flug Nr."), fontsize=8)
     _note(ax, note)
 
 
-FLAG_NOTE = " Rot umkreist: auffälliger Flug."
+def flag_note():
+    return tr(" Rot umkreist: auffälliger Flug.")

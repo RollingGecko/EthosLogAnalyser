@@ -30,16 +30,16 @@ def test_spikes_are_found_and_assigned_a_cause():
     switches = [(299.0, "LS1", 0.0, 1.0)]                 # switch flipped shortly before the spike at 300 s
     res = rx_spike_analysis(t, rx, g=g, stick=stick, switches=switches)
     assert len(res["spikes"]) == 4
-    assert _cause(res, 10) == "Start/Landung"
-    assert _cause(res, 100) == "ohne erkennbaren Anlass"
-    assert _cause(res, 200) == "Manöver"
-    assert _cause(res, 300) == "Schalter"
+    assert _cause(res, 10) == "takeoff_landing"
+    assert _cause(res, 100) == "no_cause"
+    assert _cause(res, 200) == "manoeuvre"
+    assert _cause(res, 300) == "switch"
 
 
 def test_without_attitude_data_no_verdict():
     t, rx = _signal([150])
     res = rx_spike_analysis(t, rx)
-    assert _cause(res, 150) == "keine Lagedaten"
+    assert _cause(res, 150) == "no_attitude"
 
 
 def test_quiet_signal_has_no_spikes():

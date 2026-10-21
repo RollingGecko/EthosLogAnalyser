@@ -30,12 +30,14 @@ def rx_spike_analysis(t, rx, gas=None, alt=None, rate=None, g=None, roll=None, p
                       stick=None, switches=()):
     """Detects current spikes of the receiver and assigns each one a cause.
 
-    The cause labels are user-facing German strings:
-      "Schalter"       (switch)    - a switch was flipped from 3 s before to 1 s after the spike started
-                                     (typically landing gear, flaps, brakes)
-      "Manöver"        (manoeuvre) - fast stick movement, high rotation rate (roll/pitch) or high g-load (+-1 s)
-      "Start/Landung"  (take-off/landing) - first 30 s, last 45 s or below 15 m altitude
-      "ohne erkennbaren Anlass" (no apparent cause) - none of the above; hints at a binding or faulty servo
+    Each spike gets a language-neutral cause code (user-facing labels: config.SPIKE_LABELS):
+      "switch"          - a switch was flipped from 3 s before to 1 s after the spike started
+                          (typically landing gear, flaps, brakes)
+      "manoeuvre"       - fast stick movement, high rotation rate (roll/pitch) or high g-load (+-1 s)
+      "takeoff_landing" - first 30 s, last 45 s or below 15 m altitude
+      "no_cause"        - none of the above although attitude data exists; hints at a binding or faulty servo
+      "no_attitude"     - none of the above and no attitude/stick data in the log
+    The keys of the returned "corr" dict are codes as well (config.CORR_LABELS).
     """
     if rx is None or not np.any(np.isfinite(rx)) or np.nanmax(rx) <= 0:
         return None
@@ -70,20 +72,20 @@ def rx_spike_analysis(t, rx, gas=None, alt=None, rate=None, g=None, roll=None, p
         sw = [ev for ev in switches if t[s0] - 3.0 <= ev[0] <= t[s0] + 1.0]
         if sw:
             sp["schalter"] = ", ".join(sorted({ev[1] for ev in sw}))
-            sp["anlass"] = "Schalter"
+            sp["anlass"] = "switch"
         elif ((np.isfinite(sp["stick"]) and sp["stick"] >= st_hi) or (np.isfinite(sp["rate"]) and sp["rate"] >= rate_hi)
               or (np.isfinite(sp["g"]) and sp["g"] >= g_hi)):
-            sp["anlass"] = "Manöver"
+            sp["anlass"] = "manoeuvre"
         elif t[k] - t[0] < 30 or t[-1] - t[k] < 45 or (np.isfinite(sp["alt"]) and sp["alt"] < 15):
-            sp["anlass"] = "Start/Landung"
+            sp["anlass"] = "takeoff_landing"
         elif have_att:
-            sp["anlass"] = "ohne erkennbaren Anlass"
+            sp["anlass"] = "no_cause"
         else:
-            sp["anlass"] = "keine Lagedaten"
+            sp["anlass"] = "no_attitude"
         spikes.append(sp)
 
     corr = {}
-    for label, arr in [("Knüppelaktivität", stick), ("Drehrate", rate), ("G-Last", g), ("Gas", gas)]:
+    for label, arr in [("stick", stick), ("rate", rate), ("g", g), ("gas", gas)]:
         if arr is not None:
             r = _corr_lag(rs, arr, int(1.0 / STEP))
             if np.isfinite(r):
