@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Textberichte und Diagramme lassen sich ohne Oberfläche erzeugen."""
+"""Text reports and charts can be produced without the GUI."""
 
 import io
 
@@ -16,7 +16,7 @@ def _render(fig):
     assert buf.tell() > 1000
 
 
-def test_zusammenfassung_hat_alle_abschnitte():
+def test_summary_contains_all_sections():
     lines = summary_lines(example_result(), Params())
     heads = [txt for tag, txt in lines if tag == "h"]
     for h in ["ÜBERSICHT", "AKKU ÜBER ALLE FLÜGE", "ALTERUNG UND RESTKAPAZITÄT", "TIMER-EMPFEHLUNG",
@@ -25,7 +25,7 @@ def test_zusammenfassung_hat_alle_abschnitte():
     assert all(tag in {"h", "ok", "warn", "bad", "info"} for tag, _ in lines)
 
 
-def test_einzelflug_bericht_fuer_jeden_flug():
+def test_detail_report_for_every_flight():
     res = example_result()
     for path in res.df["pfad"]:
         lines = flight_detail_lines(res, Params(), path)
@@ -33,13 +33,13 @@ def test_einzelflug_bericht_fuer_jeden_flug():
         assert any("Innenwiderstand" in txt for _, txt in lines)
 
 
-def test_uebersichtsdiagramme():
+def test_overview_charts_render():
     res = example_result()
     for fn in (figure_akku, figure_belastung, figure_antrieb, figure_funk):
         _render(fn(res, Params()))
 
 
-def test_einzelflug_ansichten():
+def test_single_flight_views_render():
     res = example_result()
     path = res.df["pfad"].iloc[-1]
     for view in FLIGHT_VIEWS:

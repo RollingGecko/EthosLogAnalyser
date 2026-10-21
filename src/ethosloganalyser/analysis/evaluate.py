@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Bewertung über alle Flüge: Grenzwert-Warnungen, Ausreißer, Nutzungs-Korrelationen."""
+"""Assessment across all flights: limit warnings, outliers, usage correlations."""
 
 import numpy as np
 
@@ -24,13 +24,13 @@ TREND_METRICS = {"Ri_Zelle_mOhm", "U_ref_Zelle_V", "Kap_gesch_mAh", "P_ref_W"}
 
 
 def evaluate(df, p, meta):
-    """Gibt (Liste[(Stufe, Text)], {Metrikname: Set(Flugnummern)}) zurück."""
+    """Returns (list[(level, text)], {metric name: set(flight numbers)})."""
     ch = CHEM[p.chem]
     warns, flags = [], {}
     n = len(df)
     fmt = lambda r: f"Flug {int(r['Flug'])} ({r['datum']:%d.%m.%Y})"
 
-    # absolute Grenzwerte - gleichartige Warnungen werden zu einer Zeile zusammengefasst
+    # absolute limits - warnings of the same kind are merged into one line
     def group(mask, label, tag, text):
         if mask.any():
             nums = df.loc[mask, "Flug"].astype(int).tolist()
@@ -69,7 +69,7 @@ def evaluate(df, p, meta):
           "mindestens 3 Stromspitzen ohne Manöver, Start oder Landung. Servos auf Schwergängigkeit, "
           "Anschlag (Brummen in Endlage) und Defekte prüfen; Zeitpunkte siehe Einzelflug.")
 
-    # statistische Ausreißer (robuster z-Wert, bei Alterungsgrößen relativ zum Trend), erst ab 6 Flügen
+    # statistical outliers (robust z-score, relative to the trend for ageing metrics), from 6 flights on
     if n >= 6:
         fl = df["Flug"].to_numpy(dtype=float)
         for col, direction, label in ANOM_METRICS:
@@ -100,7 +100,7 @@ def evaluate(df, p, meta):
 
 
 def usage_correlations(df):
-    """Korreliert die Ri-Abweichung vom Trend mit Nutzungsfaktoren (nur Hinweise, keine Kausalität)."""
+    """Correlates the deviation of Ri from its trend with usage factors (hints only, not causality)."""
     out = []
     if len(df) < 8:
         return out

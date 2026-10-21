@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Hauptfenster der App (Tkinter)."""
+"""Main window of the app (Tkinter)."""
 
 import os
 import numpy as np
@@ -44,7 +44,7 @@ def run_gui():
     from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
     from matplotlib.figure import Figure
 
-    try:                                         # scharfe Darstellung unter Windows
+    try:                                         # sharp rendering on Windows
         import ctypes
         ctypes.windll.shcore.SetProcessDpiAwareness(1)
     except Exception:
@@ -74,7 +74,7 @@ def run_gui():
         d["folder"] = folder_var.get()
         save_settings(d)
 
-    # ---------------- Statuszeile ----------------
+    # ---------------- status bar ----------------
     status = tk.StringVar(value="Noch nicht ausgewertet – Ordner und Akku im Reiter „Daten & Einstellungen“ festlegen.")
     ttk.Label(root, textvariable=status, style="Status.TLabel").pack(fill="x")
 
@@ -108,7 +108,7 @@ def run_gui():
             t_.insert("end", line + "\n", tag)
         t_.configure(state="disabled")
 
-    # ---------------- Reiter: Daten & Einstellungen ----------------
+    # ---------------- tab: data & settings ----------------
     st_tab = ttk.Frame(tabs["settings"], padding=14)
     st_tab.pack(fill="both", expand=True)
     st_tab.columnconfigure(0, weight=1)
@@ -167,14 +167,14 @@ def run_gui():
     sk_sb.pack(side="right", fill="y")
     skip_tree.pack(fill="both", expand=True)
 
-    # ---------------- Reiter: Zusammenfassung ----------------
+    # ---------------- tab: summary ----------------
     txt = make_text(tabs["summary"])
     sb = ttk.Scrollbar(tabs["summary"], orient="vertical", command=txt.yview)
     txt.configure(yscrollcommand=sb.set)
     sb.pack(side="right", fill="y")
     txt.pack(side="left", fill="both", expand=True, padx=(6, 0), pady=6)
 
-    # ---------------- Reiter: Einzelflug ----------------
+    # ---------------- tab: single flight ----------------
     ft = tabs["flight"]
     bar = ttk.Frame(ft, padding=(6, 6, 6, 2))
     bar.pack(fill="x")
@@ -225,7 +225,7 @@ def run_gui():
     flight_canvas.get_tk_widget().pack(fill="both", expand=True)
     fs = {"axes": [], "cross": [], "drag": None, "details": True}
 
-    # ---------------- Reiter: Tabelle ----------------
+    # ---------------- tab: table ----------------
     cols = [c[0] for c in TABLE_COLS]
     tree = ttk.Treeview(tabs["table"], columns=cols, show="headings")
     for key, head, w in TABLE_COLS:
@@ -238,7 +238,7 @@ def run_gui():
     xsb.pack(side="bottom", fill="x")
     tree.pack(fill="both", expand=True)
 
-    # ---------------- Funktionen ----------------
+    # ---------------- functions ----------------
     def choose():
         d = filedialog.askdirectory(title="Ordner mit Ethos-Logfiles wählen", initialdir=folder_var.get() or None)
         if d:
@@ -267,7 +267,7 @@ def run_gui():
     def flight_label(r):
         return f"{int(r['Flug'])} | {r['datum']:%d.%m.%Y %H:%M} | {_mmss(r['dauer_s'])} | {r['entnommen_mAh']:.0f} mAh"
 
-    # --- Einzelflug zeichnen, zoomen, Fadenkreuz ---
+    # --- single flight: drawing, zoom, crosshair ---
     def current_path():
         res = state["res"]
         if res is None or res.df.empty or not flight_var.get():
@@ -328,12 +328,12 @@ def run_gui():
         flight_canvas.draw_idle()
 
     def autoscale_y():
-        """y-Achsen an den sichtbaren Ausschnitt anpassen."""
+        """Fit the y axes to the visible time window."""
         lo, hi = fs["axes"][0].get_xlim()
         for a in fs["axes"]:
             ys = []
             for ln in a.get_lines():
-                if ln.get_gid() != "data":          # Hilfslinien (Schwellen, Markierungen) nicht berücksichtigen
+                if ln.get_gid() != "data":          # ignore helper lines (thresholds, markers)
                     continue
                 x = np.asarray(ln.get_xdata(), dtype=float)
                 if len(x) < 2:
@@ -443,7 +443,7 @@ def run_gui():
 
     flight_box.bind("<<ComboboxSelected>>", select_flight)
 
-    # --- Auswertung ---
+    # --- analysis ---
     def run():
         folder = folder_var.get()
         if not folder or not os.path.isdir(folder):
@@ -464,7 +464,7 @@ def run_gui():
 
         try:
             res = analyse_folder(folder, p, cb)
-        except Exception as e:                       # unerwarteter Fehler: verständlich melden
+        except Exception as e:                       # unexpected error: report it understandably
             messagebox.showerror("Fehler bei der Auswertung", f"{type(e).__name__}: {e}")
             status.set("Fehler bei der Auswertung.")
             return
@@ -540,10 +540,10 @@ def run_gui():
     root.protocol("WM_DELETE_WINDOW", on_close)
     nb.select(tabs["settings"])
     root._akku = dict(fbox=flight_box, run=run, folder_var=folder_var, params=V, status=status, nb=nb, tabs=tabs, flight_var=flight_var, view_var=view_var, select_flight=select_flight,
-                      redraw=redraw_flight, set_xlim=set_xlim, goto_spike=goto_spike, spike_var=spike_var)  # für Tests
+                      redraw=redraw_flight, set_xlim=set_xlim, goto_spike=goto_spike, spike_var=spike_var)  # for tests
     return root
 
 
 def main():
-    """Startet die Oberfläche."""
+    """Starts the user interface."""
     run_gui().mainloop()

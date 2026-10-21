@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Farben und ttk-Stile der Oberfläche."""
+"""Colours and ttk styles of the user interface."""
 
 ACCENT = "#1f5fa8"
 
@@ -21,7 +21,7 @@ def _setup_style(root):
     st.configure("TLabelframe.Label", background=BG, foreground=ACCENT, font=(fam, 10, "bold"))
     st.configure("Status.TLabel", background="#e3e9f2", foreground="#1f3b73", padding=(10, 4), font=(fam, 9))
     st.configure("Readout.TLabel", background="#ffffff", foreground="#222", padding=(8, 3), font=(fam, 9))
-    # Reiter: klar abgegrenzt, aktiver Reiter farbig und fett
+    # tabs: clearly separated, active tab coloured and bold
     st.configure("TNotebook", background=BG, borderwidth=0, tabmargins=(8, 6, 8, 0))
     st.configure("TNotebook.Tab", padding=(16, 7), background="#dde3ec", foreground="#3a4656",
                  bordercolor="#b7c2d1", lightcolor="#dde3ec", font=(fam, 10))

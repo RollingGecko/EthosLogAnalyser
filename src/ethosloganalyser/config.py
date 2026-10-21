@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Grundeinstellungen: Zellchemie-Kennlinien, Auswerteparameter, Schwellwerte und gespeicherte Einstellungen."""
+"""Basic configuration: cell chemistry curves, analysis parameters, thresholds and saved settings."""
 
 import os
 import numpy as np
@@ -23,10 +23,10 @@ CHEM = {
 }
 
 
-SOC_TOL_PCT = 15.0      # erlaubte Abweichung Ladezustand Spannung <-> Ladungszählung [Prozentpunkte]
+SOC_TOL_PCT = 15.0      # allowed deviation of state of charge, voltage <-> coulomb counting [percentage points]
 
 
-# Farben und Bezeichnungen der Anlässe für Empfängerstrom-Spitzen
+# colours and (user-facing) labels of the causes of receiver current spikes
 SPIKE_CAUSES = [("Schalter", "tab:green"), ("Manöver", "tab:orange"), ("Start/Landung", "tab:blue"),
                 ("ohne erkennbaren Anlass", "black"), ("keine Lagedaten", "grey")]
 
@@ -44,17 +44,17 @@ def soc_pct(v_cell, chem):
 
 @dataclass
 class Params:
-    cells: int = 0                 # Zellenzahl; 0 = automatisch aus Startspannung
+    cells: int = 0                 # cell count; 0 = automatic from start voltage
     chem: str = "LiPo"             # LiPo / LiHV / Li-Ion
-    nominal_mah: float = 0.0       # Nennkapazität (0 = unbekannt)
-    min_flight_s: float = 120.0    # Mindest-Flugdauer (Motor aktiv)
-    active_current_a: float = 1.0  # Strom, ab dem der Motor als "aktiv" gilt
-    reserve_pct: float = 20.0      # gewünschte Restkapazität bei Landung (für Timer)
-    col_voltage: str = ""          # optional: Spaltenname (Teilstring), leer = automatisch
+    nominal_mah: float = 0.0       # nominal capacity (0 = unknown)
+    min_flight_s: float = 120.0    # minimum flight duration (motor running)
+    active_current_a: float = 1.0  # current above which the motor counts as "running"
+    reserve_pct: float = 20.0      # desired remaining charge at landing (for the timer)
+    col_voltage: str = ""          # optional: column name (substring), empty = automatic
     col_current: str = ""
 
 
-STEP = 0.25   # Raster der Zeitreihen in s
+STEP = 0.25   # time series grid in s
 
 
 SETTINGS_FILE = os.path.join(os.path.expanduser("~"), ".akku_analyse.json")

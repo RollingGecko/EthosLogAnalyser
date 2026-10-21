@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Auswertung eines ganzen Log-Ordners (Querschnitt über alle Flüge)."""
+"""Analysis of a whole log folder (cross-section over all flights)."""
 
 import os
 import glob
@@ -17,11 +17,11 @@ class Result:
 
 
 def _timer_s(series, q_limit):
-    """Zeit, zu der die entnommene Kapazität q_limit [mAh] erreicht wird (bei Bedarf extrapoliert)."""
+    """Time at which the drawn charge reaches q_limit [mAh] (extrapolated if needed)."""
     t, q = series["t"], np.maximum.accumulate(series["q"])
     if q[-1] >= q_limit:
         return float(np.interp(q_limit, q, t))
-    tail = series["i"][-240:]                          # letzte 60 s
+    tail = series["i"][-240:]                          # last 60 s
     i_mean = max(float(np.mean(tail)), 1.0)
     return float(t[-1] + (q_limit - q[-1]) / (i_mean / 3.6))
 
@@ -47,7 +47,7 @@ def analyse_folder(folder, p: Params, progress=None):
     df.insert(0, "Flug", np.arange(1, len(df) + 1))
     ch = CHEM[p.chem]
 
-    # Zellenzahl: vorgegeben oder aus der höchsten Startspannung geschätzt
+    # cell count: as configured, or estimated from the highest start voltage
     ustart = df["U_ruhe_start_V"].fillna(df["U_start_V"])
     cells = p.cells if p.cells > 0 else int(np.ceil(ustart.max() / (ch["full"] + 0.05)))
     meta["cells"] = cells
@@ -61,8 +61,8 @@ def analyse_folder(folder, p: Params, progress=None):
                      ("Ri_Ende_mOhm", "Ri_End_Zelle_mOhm")]:
         df[dst] = (df[src] / cells).round(2)
 
-    # Ruhespannung am Ende: gemessen nach dem Abstellen bevorzugt, sonst Modellschätzung.
-    # Ein Wert über der Startspannung ist physikalisch unmöglich (z. B. Akkuwechsel im selben Log) -> verwerfen.
+    # Resting voltage at the end: measured after motor stop preferred, otherwise model estimate.
+    # A value above the start voltage is physically impossible (e.g. battery swap in the same log) -> discard.
     u_st = df["U_start_Zelle_V"].to_numpy(dtype=float)
     u_me = df["U_ende_mess_Zelle_V"].to_numpy(dtype=float)
     u_ge = df["U_ende_gesch_Zelle_V"].to_numpy(dtype=float)
@@ -71,32 +71,32 @@ def analyse_folder(folder, p: Params, progress=None):
     df["U_ende_Zelle_V"] = np.where(ok_me, u_me, np.where(ok_ge, u_ge, np.nan)).round(3)
     df["U_ende_Quelle"] = np.where(ok_me, "gemessen", np.where(ok_ge, "geschätzt", "–"))
 
-    # Ladezustand aus Ruhespannung (Näherungskennlinie) und Kapazitätsschätzung
+    # state of charge from resting voltage (approximate curve) and capacity estimate
     df["SoC_start_pct"] = np.round(soc_pct(df["U_start_Zelle_V"].to_numpy(dtype=float), p.chem), 0)
     df["SoC_ende_U_pct"] = np.round(soc_pct(df["U_ende_Zelle_V"].to_numpy(dtype=float), p.chem), 0)
     dsoc_u = (df["SoC_start_pct"] - df["SoC_ende_U_pct"]).to_numpy(dtype=float)
     ent = df["entnommen_mAh"].to_numpy(dtype=float)
     kap = np.where(dsoc_u >= 40, np.round(ent / (np.where(dsoc_u > 0, dsoc_u, np.nan) / 100.0), 0), np.nan)
     kf = kap[np.isfinite(kap)]
-    if len(kf) >= 3:                                    # grobe Ausreißer (Faktor 1,6) verwerfen
+    if len(kf) >= 3:                                    # discard gross outliers (factor 1.6)
         med = np.median(kf)
         kap = np.where((kap > med / 1.6) & (kap < med * 1.6), kap, np.nan)
     df["Kap_gesch_mAh"] = kap
 
-    # Sensor-Plausibilität und Pausen
+    # sensor plausibility and breaks between flights
     esc = df["ESC_mAh"].to_numpy(dtype=float)
     df["Sensor_Abw_pct"] = np.where(esc > 100, np.round((ent - esc) / np.where(esc > 0, esc, np.nan) * 100, 1), np.nan)
     df["Pause_h"] = df["datum"].diff().dt.total_seconds() / 3600.0
 
-    # Kapazitätsbezug: aktuelle Schätzung (letzte 3 gültige Flüge) bzw. Nennkapazität
+    # capacity reference: current estimate (last 3 valid flights) or nominal capacity
     kv = df["Kap_gesch_mAh"].dropna()
     cap_est = float(kv.iloc[-3:].median()) if len(kv) else np.nan
     cap_ref = p.nominal_mah if p.nominal_mah > 0 else cap_est
     meta.update(cap_est=cap_est, cap_ref=cap_ref,
                 cap_src="Nennkapazität" if p.nominal_mah > 0 else "geschätzte Kapazität")
 
-    # Ladezustand am Ende: Ladungszählung (Start-SoC - entnommen/Kapazität) ist robust gegen
-    # Erholung, Akkuwechsel und Sensorfehler am Logende. Die Spannung dient als Gegenprobe.
+    # State of charge at the end: coulomb counting (start SoC - drawn/capacity) is robust against
+    # voltage recovery, battery swaps and sensor glitches at the end of the log. Voltage is the cross-check.
     if np.isfinite(cap_ref) and cap_ref > 0:
         soc0 = df["SoC_start_pct"].fillna(100.0).to_numpy(dtype=float)
         df["SoC_ende_Q_pct"] = np.round(soc0 - ent / cap_ref * 100.0, 0)
@@ -108,11 +108,11 @@ def analyse_folder(folder, p: Params, progress=None):
     df["dSoC_pct"] = df["SoC_start_pct"] - df["SoC_ende_pct"]
     abw = df["SoC_Abw_pct"].to_numpy(dtype=float)
     df["SoC_plausibel"] = np.where(np.isfinite(abw), np.abs(abw) <= SOC_TOL_PCT, np.isfinite(su))
-    # Spannungsreserve nur, wenn die Endspannung zur entnommenen Ladung passt
+    # voltage reserve only if the end voltage matches the drawn charge
     df["Reserve_Zelle_V"] = np.where(df["SoC_plausibel"], (df["U_ende_Zelle_V"] - ch["rest_min"]).round(3), np.nan)
 
-    # Zellchemie-Prüfung: Mit welcher Kennlinie passen Ruhespannung und Ladungszählung zusammen?
-    # (nur mit eingetragener Nennkapazität aussagekräftig, sonst wäre die Prüfung zirkulär)
+    # Cell chemistry check: with which curve do resting voltage and coulomb counting agree?
+    # (only meaningful with a nominal capacity entered, otherwise the check would be circular)
     meta["chem_fit"] = {}
     if p.nominal_mah > 0:
         u_end_all = df["U_ende_Zelle_V"].to_numpy(dtype=float)
@@ -124,7 +124,7 @@ def analyse_folder(folder, p: Params, progress=None):
             if len(dd) >= 3:
                 meta["chem_fit"][chem_] = float(np.median(dd))
 
-    # Referenzbedingungen für fairen Vergleich über alle Flüge
+    # reference conditions for a fair comparison across all flights
     iref = max(5.0, round(float(df["I_mittel_A"].median()) / 5) * 5)
     qref = max(100.0, round(0.5 * float(df["entnommen_mAh"].median()) / 100) * 100)
     meta.update(iref=iref, qref=qref)
@@ -148,7 +148,7 @@ def analyse_folder(folder, p: Params, progress=None):
     else:
         df["Vollzyklen_kum"] = np.nan
 
-    # Timer: Zeit bis zur Reserve (Restkapazität = reserve_pct), je Flug aus seinem eigenen Profil
+    # timer: time until the reserve (remaining charge = reserve_pct), per flight from its own profile
     cap_timer = cap_est if np.isfinite(cap_est) else (p.nominal_mah if p.nominal_mah > 0 else np.nan)
     if p.nominal_mah > 0:
         cap_timer = p.nominal_mah if not np.isfinite(cap_est) else min(cap_est, p.nominal_mah)

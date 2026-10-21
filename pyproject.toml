@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ethosloganalyser"
 dynamic = ["version"]
-description = "Flug- und Akku-Analyse für FrSky-Ethos-Logfiles (CSV)"
+description = "Flight and battery analysis for FrSky Ethos log files (CSV)"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [{ name = "RollingGecko" }]

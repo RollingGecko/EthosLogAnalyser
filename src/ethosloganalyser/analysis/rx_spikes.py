@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Empfängerstrom: Spitzen erkennen und einem Anlass zuordnen."""
+"""Receiver current: detect spikes and assign each one a cause."""
 
 import numpy as np
 
@@ -8,7 +8,7 @@ from ..utils import _rolling
 
 
 def _corr_lag(a, b, max_shift):
-    """Größte Korrelation (Betrag) zwischen a und b bei Versatz bis +-max_shift Rasterpunkte."""
+    """Largest correlation (absolute value) between a and b for offsets up to +-max_shift grid points."""
     best = np.nan
     for sh in range(-max_shift, max_shift + 1):
         if sh > 0:
@@ -28,13 +28,14 @@ def _corr_lag(a, b, max_shift):
 
 def rx_spike_analysis(t, rx, gas=None, alt=None, rate=None, g=None, roll=None, pitch=None,
                       stick=None, switches=()):
-    """Erkennt Stromspitzen des Empfängers und ordnet jede einem Anlass zu.
+    """Detects current spikes of the receiver and assigns each one a cause.
 
-    Anlass:  Schalter       - ein Schalter wurde 3 s vor bis 1 s nach Beginn der Spitze umgelegt
-                              (typisch Fahrwerk, Klappen, Bremsen)
-             Manöver        - schnelle Knüppelbewegung, hohe Drehrate (Roll/Nick) oder hohe G-Last (+-1 s)
-             Start/Landung  - erste 30 s, letzte 45 s oder unter 15 m Höhe
-             ohne erkennbaren Anlass - nichts davon; Hinweis auf schwergängiges/defektes Servo
+    The cause labels are user-facing German strings:
+      "Schalter"       (switch)    - a switch was flipped from 3 s before to 1 s after the spike started
+                                     (typically landing gear, flaps, brakes)
+      "Manöver"        (manoeuvre) - fast stick movement, high rotation rate (roll/pitch) or high g-load (+-1 s)
+      "Start/Landung"  (take-off/landing) - first 30 s, last 45 s or below 15 m altitude
+      "ohne erkennbaren Anlass" (no apparent cause) - none of the above; hints at a binding or faulty servo
     """
     if rx is None or not np.any(np.isfinite(rx)) or np.nanmax(rx) <= 0:
         return None
@@ -46,7 +47,7 @@ def rx_spike_analysis(t, rx, gas=None, alt=None, rate=None, g=None, roll=None, p
     d = np.diff(np.r_[0, above.astype(int), 0])
     starts, ends = np.flatnonzero(d == 1), np.flatnonzero(d == -1)
     segs = []
-    for s0, s1 in zip(starts, ends):                      # Spitzen < 1 s auseinander zusammenfassen
+    for s0, s1 in zip(starts, ends):                      # merge spikes less than 1 s apart
         if segs and s0 - segs[-1][1] < int(1.0 / STEP):
             segs[-1][1] = s1
         else:
@@ -62,7 +63,7 @@ def rx_spike_analysis(t, rx, gas=None, alt=None, rate=None, g=None, roll=None, p
     spikes = []
     for s0, s1 in segs:
         k = s0 + int(np.argmax(rs[s0:s1]))
-        lo, hi = max(0, min(s0, k - 4)), min(n, k + 5)    # Beginn der Spitze bis +1 s nach dem Maximum
+        lo, hi = max(0, min(s0, k - 4)), min(n, k + 5)    # from the start of the spike to 1 s after its peak
         sp = dict(t=float(t[k]), t0=float(t[s0]), peak=float(rs[k]), dauer=float((s1 - s0) * STEP),
                   rate=win_max(rate, lo, hi), g=win_max(g, lo, hi), stick=win_max(stick, lo, hi),
                   roll=pick(roll, k), pitch=pick(pitch, k), gas=pick(gas, k), alt=pick(alt, k), schalter="")

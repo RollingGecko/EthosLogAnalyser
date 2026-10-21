@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Textberichte: Zusammenfassung über alle Flüge und Einzelflug-Details."""
+"""Text reports (user-facing, German): summary across all flights and single-flight details."""
 
 import numpy as np
 import pandas as pd
@@ -9,7 +9,7 @@ from ..utils import _f, _mmss, _trend, _window_change
 
 
 def soc_lines(r, meta):
-    """Zeilen zum Ladezustand eines Fluges (Zusammenfassung und Einzelflug)."""
+    """Lines about the state of charge of one flight (summary and single flight)."""
     L = []
     q = r["SoC_ende_Q_pct"]
     if np.isfinite(q):
@@ -50,7 +50,7 @@ def summary_lines(res, p):
     L.append(("info", f"Gesamt entnommen: {df['entnommen_mAh'].sum() / 1000:.1f} Ah"
                       + (f"  (≈ {df['Vollzyklen_kum'].iloc[-1]:.1f} Vollzyklen)" if np.isfinite(df['Vollzyklen_kum'].iloc[-1]) else "")))
 
-    # ---------------- Akku ----------------
+    # ---------------- battery ----------------
     L.append(("h", "AKKU ÜBER ALLE FLÜGE"))
     L.append(("info", "Details zu jedem einzelnen Flug (auch zum letzten) stehen im Reiter Einzelflug."))
     med = lambda c: float(df[c].median()) if df[c].notna().any() else np.nan
@@ -74,7 +74,7 @@ def summary_lines(res, p):
     elif p.nominal_mah <= 0:
         L.append(("warn", "Nennkapazität nicht eingetragen: Ladezustand und Timer beruhen nur auf der Spannungskennlinie."))
 
-    # ---------------- Alterung ----------------
+    # ---------------- ageing ----------------
     L.append(("h", "ALTERUNG UND RESTKAPAZITÄT"))
     if n < 4:
         L.append(("warn", "Für Trend, Restkapazität (SoH) und Lebensdauer-Prognose werden mindestens 4 Flüge "
@@ -135,7 +135,7 @@ def summary_lines(res, p):
     else:
         L.append(("warn", "Nicht bestimmbar (Kapazität unbekannt: Nennkapazität eintragen oder Flüge mit ≥ 40 % Entladetiefe)."))
 
-    # ---------------- Antrieb ----------------
+    # ---------------- drive ----------------
     L.append(("h", "ANTRIEB UND SENSOREN"))
     pw = _window_change(df, "P_ref_W", k)
     if pw:
@@ -153,7 +153,7 @@ def summary_lines(res, p):
         L.append(("ok" if abs(med) <= 3 else "warn",
                   f"Strommessung vs. ESC-Zähler: Median {med:+.1f} % Abweichung"))
 
-    # ---------------- Funk ----------------
+    # ---------------- radio ----------------
     L.append(("h", "FUNK UND BORDNETZ (schlechtester Wert über alle Flüge)"))
     parts = []
     for col, lab, unit in [("RSSI_min", "RSSI", ""), ("VFR_min", "VFR", " %"), ("RxBatt_min_V", "Empfängerakku", " V"),
@@ -167,7 +167,7 @@ def summary_lines(res, p):
     if df["RxSpitzen_n"].notna().any():
         L.extend(rx_summary_lines(df))
 
-    # ---------------- Warnungen ----------------
+    # ---------------- warnings ----------------
     L.append(("h", "WARNUNGEN UND AUFFÄLLIGKEITEN"))
     if meta["warnings"]:
         for tag, text in meta["warnings"][:60]:
@@ -224,7 +224,7 @@ def rx_summary_lines(df):
 
 
 def flight_detail_lines(res, p, path):
-    """Alle Detailwerte eines Fluges mit Vergleich zum Median aller Flüge."""
+    """All detail values of one flight compared with the median of all flights."""
     df, meta = res.df, res.meta
     r = df[df["pfad"] == path].iloc[0]
     s = res.series[path]
@@ -239,7 +239,7 @@ def flight_detail_lines(res, p, path):
     L = [("h", f"Flug {no} – {r['datum']:%d.%m.%Y %H:%M} – {_mmss(r['dauer_s'])} – {r['entnommen_mAh']:.0f} mAh – "
                f"{r['datei']}")]
 
-    # Warnungen zu diesem Flug zuerst
+    # warnings for this flight first
     own = [name for name, fl in meta["flags"].items() if no in fl]
     if own:
         L.append(("h", "AUFFÄLLIGKEITEN IN DIESEM FLUG"))

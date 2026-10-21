@@ -2,17 +2,17 @@
 
 [![Tests](https://github.com/RollingGecko/EthosLogAnalyser/actions/workflows/tests.yml/badge.svg)](https://github.com/RollingGecko/EthosLogAnalyser/actions/workflows/tests.yml)
 
-Desktop-App (Python/Tkinter) zur Auswertung von **FrSky-Ethos-Fluglogs** (CSV) – mit Schwerpunkt auf Akkuzustand, Antrieb und Funk/Bordnetz. Entstanden für einen Elektro-Jet (Viper-Jet), funktioniert aber mit jedem Ethos-Log, das Spannung und Strom des Flugakkus enthält.
+Desktop app (Python/Tkinter) for analysing **FrSky Ethos flight logs** (CSV), focusing on battery condition, drive and radio/onboard power. Built for an electric jet (Viper-Jet), but works with any Ethos log that contains flight battery voltage and current. The user interface is in German.
 
-## Was die App auswertet
+## What it analyses
 
-- **Akku:** Innenwiderstand, Spannung bei Referenzlast, geschätzte Kapazität, Restkapazität (SoH), Alterungstrend und Lebensdauer-Prognose, Timer-Empfehlung. Ladezustand am Ende per Ladungszählung mit Gegenprobe über die Ruhespannung.
-- **Belastung & Flugprofil:** C-Rate, Leistung, Gas-Histogramm, Flugphasen, Energie je Phase, G-Kräfte.
-- **Antrieb:** Kennlinie Drehzahl → Leistung, Plausibilität Strommessung gegen ESC-Zähler.
-- **Funk & Bordnetz:** RSSI, VFR, Empfänger- und Senderakku, Empfängerstrom-Spitzen mit Zuordnung zu Schalter, Manöver, Start/Landung oder „ohne erkennbaren Anlass“.
-- **Einzelflug:** Zeitverläufe mit Zoom und Fadenkreuz, Detailbericht mit Vergleich zum Median aller Flüge.
+- **Battery:** internal resistance, voltage at reference load, estimated capacity, state of health (SoH), ageing trend and remaining life forecast, timer recommendation. State of charge at landing by coulomb counting, cross-checked against the resting voltage.
+- **Load & flight profile:** C-rate, power, throttle histogram, flight phases, energy per phase, g-forces.
+- **Drive:** power vs. RPM curve, current sensor plausibility against the ESC counter.
+- **Radio & onboard power:** RSSI, VFR, receiver and transmitter battery, receiver current spikes classified by cause (switch, manoeuvre, take-off/landing or no apparent cause).
+- **Single flight:** time series with zoom and crosshair, detail report compared with the median of all flights.
 
-## Schnellstart
+## Quick start
 
 ```bat
 git clone https://github.com/RollingGecko/EthosLogAnalyser.git
@@ -23,40 +23,40 @@ pip install -e .
 ethosloganalyser
 ```
 
-Zum Ausprobieren liegen in `examples/logs/` drei echte Fluglogs. Die Windows-EXE baut `scripts\build_exe.bat`; GitHub baut sie zusätzlich bei jedem Push (Actions → Artifacts).
+Three real flight logs to try are in `examples/logs/`. `scripts\build_exe.bat` builds the Windows EXE; GitHub also builds it on every push (Actions → Artifacts).
 
-## Dokumentation
+## Documentation
 
-- [Benutzung](docs/benutzung.md) – Installation, Einstellungen, Reiter, Export
-- [Methodik](docs/methodik.md) – wie Innenwiderstand, Ladezustand, Kapazität, Timer und Spitzen berechnet werden
-- [Ethos-Logformat](docs/ethos-logformat.md) – welche Spalten die App erwartet
+- [Usage](docs/usage.md) – installation, settings, tabs, export
+- [Methodology](docs/methodology.md) – how internal resistance, state of charge, capacity, timer and spikes are computed
+- [Ethos log format](docs/ethos-log-format.md) – which columns the app expects
 
-## Projektstruktur
+## Project layout
 
 ```
 src/ethosloganalyser/
-  config.py       Zellchemie, Parameter, gespeicherte Einstellungen
-  io/             Einlesen der Ethos-CSV-Logs
-  analysis/       Einzelflug, Empfängerstrom-Spitzen, Gesamtauswertung, Bewertung
-  report/         Textberichte
-  plots/          Diagramme (ohne Oberfläche nutzbar)
-  gui/            Tkinter-Oberfläche
-tests/            pytest-Tests
-docs/             Dokumentation
-examples/logs/    Beispiel-Logs
-ethos/            Lua-Skripte für den Sender
-scripts/          Build der Windows-EXE
+  config.py       cell chemistry, parameters, saved settings
+  io/             reading Ethos CSV logs
+  analysis/       single flight, receiver current spikes, cross-flight analysis, assessment
+  report/         text reports
+  plots/          charts (usable without the GUI)
+  gui/            Tkinter user interface
+tests/            pytest tests
+docs/             documentation
+examples/logs/    example logs
+ethos/            Lua scripts for the transmitter
+scripts/          Windows EXE build
 ```
 
-## Entwicklung
+## Development
 
 ```bat
 pip install -e ".[test]"
 python -m pytest
 ```
 
-Die Tests laufen bei jedem Push und Pull Request automatisch unter Linux und Windows.
+Tests run automatically on every push and pull request under Linux and Windows. Documentation, code comments, docstrings, test names and commit messages are in English; the user interface stays German.
 
-## Lizenz
+## License
 
-MIT – siehe [LICENSE](LICENSE).
+MIT – see [LICENSE](LICENSE).

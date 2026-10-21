@@ -1,15 +1,15 @@
-# Änderungen
+# Changelog
 
 ## 0.2.0
 
-- Code als Python-Paket `ethosloganalyser` aufgeteilt: `io` (Einlesen), `analysis` (Auswertung), `report` (Texte), `plots` (Diagramme), `gui` (Oberfläche). Die Auswertung ist unverändert – geprüft an 73 Logdateien (35 Flüge) mit identischen Tabellen, Texten und Diagrammen.
-- Installation über `pyproject.toml`; Start mit `ethosloganalyser` oder `python -m ethosloganalyser`.
-- Automatische Tests (pytest) für Einlesen, Einzelflug, Empfängerstrom-Spitzen, Gesamtauswertung, Berichte, Diagramme und Oberfläche; laufen bei jedem Push auf GitHub unter Linux und Windows.
-- GitHub baut bei jedem Push die Windows-EXE (`scripts/build_exe.bat`).
-- Dokumentation in `docs/`: Benutzung, Methodik, Ethos-Logformat.
-- Behoben: Dezimalkomma in Logwerten wurde mit pandas 3 nicht mehr umgewandelt.
-- Behoben: Logs ohne Datumsspalte, die über Mitternacht laufen, führten mit pandas 3 zu einem Absturz.
+- Split the code into the Python package `ethosloganalyser`: `io` (reading), `analysis` (analysis), `report` (texts), `plots` (charts), `gui` (user interface). The analysis is unchanged – verified on 73 log files (35 flights) with identical tables, texts and charts.
+- Installation via `pyproject.toml`; start with `ethosloganalyser` or `python -m ethosloganalyser`.
+- Automated tests (pytest) for reading, single-flight analysis, receiver current spikes, cross-flight analysis, reports, charts and the GUI; they run on every push on GitHub under Linux and Windows.
+- GitHub builds the Windows EXE on every push (`scripts/build_exe.bat`).
+- Documentation in `docs/`: usage, methodology, Ethos log format. Documentation, code comments and docstrings are in English; the user interface stays German.
+- Fixed: decimal commas in log values were no longer converted with pandas 3.
+- Fixed: logs without a date column that run past midnight crashed with pandas 3.
 
 ## 0.1.0
 
-- Erste Version (`EthosLogAnalyser.py`).
+- First version (`EthosLogAnalyser.py`).

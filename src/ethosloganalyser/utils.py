@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Kleine Hilfsfunktionen für Zahlen, Glättung, Trends und Formatierung."""
+"""Small helpers for numbers, smoothing, trends and formatting."""
 
 import numpy as np
 import pandas as pd
@@ -21,7 +21,7 @@ def _rolling(a, n, how="mean"):
 
 
 def _f(v, fmt="{:.0f}", na="–"):
-    """Zahl formatieren, NaN/None als Strich."""
+    """Format a number, NaN/None as a dash."""
     try:
         return fmt.format(v) if v is not None and np.isfinite(v) else na
     except (TypeError, ValueError):

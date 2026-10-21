@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Einlesen von FrSky-Ethos-Logs: Encoding, Spaltenerkennung, Zeitachse, Schalterkanäle."""
+"""Reading FrSky Ethos logs: encoding, column detection, time axis, switch channels."""
 
 import os
 import re
@@ -14,7 +14,7 @@ VOLT_KEYS = ["vfas", "ecu", "pack", "voltage", "volt", "(v)"]
 CURR_KEYS = ["current", "curr", "amp", "(a)"]
 
 
-EXCLUDE = ("rx", "tx", "adc", "empf", "esc rpm", "consumption", "rssi", "vfr")   # Empfänger-/Sender-/Funkwerte
+EXCLUDE = ("rx", "tx", "adc", "empf", "esc rpm", "consumption", "rssi", "vfr")   # receiver / transmitter / radio values
 
 
 def _find_col(columns, keys, override=""):
@@ -33,13 +33,13 @@ def _find_col(columns, keys, override=""):
 
 
 def _to_num(s):
-    if not pd.api.types.is_numeric_dtype(s):          # Text (object oder pandas-3-Stringtyp): Dezimalkomma
+    if not pd.api.types.is_numeric_dtype(s):          # text (object or pandas 3 string dtype): decimal comma
         s = s.astype(str).str.replace(",", ".", regex=False)
     return pd.to_numeric(s, errors="coerce")
 
 
 def _numeric_cols(df, keys, exclude=()):
-    """Alle Spalten, deren Name einen der Schlüssel enthält und die Werte haben."""
+    """All columns whose name contains one of the keys and that hold values."""
     out = []
     for c in df.columns:
         l = str(c).lower()
@@ -56,7 +56,7 @@ def _first_series(df, keys, exclude=()):
 
 
 def _active_series(df, keys, exclude=()):
-    """Erste Spalte mit positiven Werten (z. B. RSSI des tatsächlich genutzten Empfängers)."""
+    """First column with positive values (e.g. RSSI of the receiver actually in use)."""
     r = _numeric_cols(df, keys, exclude)
     for _, s in r:
         if s.max() > 0:
@@ -65,7 +65,7 @@ def _active_series(df, keys, exclude=()):
 
 
 def _exact_series(df, names):
-    """Spalte mit exakt einem der Namen (ohne Groß-/Kleinschreibung), z. B. Knüppelkanäle 'QR', 'HR'."""
+    """Column with exactly one of the names (case-insensitive), e.g. stick channels 'QR', 'HR'."""
     want = {n.lower() for n in names}
     for c in df.columns:
         if str(c).strip().lower() in want:
@@ -79,7 +79,7 @@ SWITCH_SKIP = ("rx", "vfr", "rssi", "pot", "drehg", "r9m", "adc", "unnamed", "da
 
 
 def _switch_columns(df):
-    """Schalter/Taster: Spalten nur mit Werten aus {-1, 0, 1}, die sich im Log mindestens einmal ändern."""
+    """Switches/buttons: columns with values only from {-1, 0, 1} that change at least once in the log."""
     out = []
     for c in df.columns:
         l = str(c).strip().lower()
@@ -96,7 +96,7 @@ def _switch_columns(df):
 
 
 def _time_seconds(df):
-    """Liefert Zeit in Sekunden ab Start (float-Array) oder None."""
+    """Returns time in seconds since the start (float array) or None."""
     cols = {str(c).lower().strip(): c for c in df.columns}
     tcol = next((cols[k] for k in cols if k in ("time", "zeit", "t")), None)
     dcol = next((cols[k] for k in cols if k in ("date", "datum")), None)
@@ -106,7 +106,7 @@ def _time_seconds(df):
         return None
     raw = df[tcol]
     num = _to_num(raw)
-    if num.notna().mean() > 0.9:                      # numerische Zeit
+    if num.notna().mean() > 0.9:                      # numeric time
         t = num.to_numpy(dtype=float)
         if np.nanmax(t) - np.nanmin(t) > 20000 and "ms" in str(tcol).lower():
             t = t / 1000.0
@@ -117,8 +117,8 @@ def _time_seconds(df):
     dt = pd.to_datetime(txt, errors="coerce", format="mixed")
     if dt.notna().mean() < 0.9:
         return None
-    sec = np.array((dt - dt.iloc[0]).dt.total_seconds(), dtype=float)   # beschreibbare Kopie (pandas 3)
-    jumps = np.where(np.diff(sec) < -43200)[0]        # Mitternachts-Überlauf bei reiner Uhrzeit
+    sec = np.array((dt - dt.iloc[0]).dt.total_seconds(), dtype=float)   # writable copy (pandas 3)
+    jumps = np.where(np.diff(sec) < -43200)[0]        # midnight wrap-around when only the time of day is logged
     for j in jumps:
         sec[j + 1:] += 86400
     return sec
@@ -142,7 +142,7 @@ def _file_datetime(path):
 
 
 def _clean_name(c):
-    """Ethos mischt in Spaltennamen UTF-8 und Codepage-Zeichen ('Â°', 'au›en') - lesbar machen."""
+    """Ethos mixes UTF-8 and code page characters in column names ('Â°', 'au›en') - make them readable."""
     c = str(c).strip()
     for a, b in (("Â°", "°"), ("›", "ß"), ("Ã¤", "ä"), ("Ã¶", "ö"), ("Ã¼", "ü"), ("ÃŸ", "ß")):
         c = c.replace(a, b)
@@ -151,7 +151,7 @@ def _clean_name(c):
 
 def read_log(path):
     last = None
-    for enc in ("utf-8-sig", "cp1252", "latin-1"):      # Ethos schreibt oft cp1252 (Umlaute, °)
+    for enc in ("utf-8-sig", "cp1252", "latin-1"):      # Ethos often writes cp1252 (umlauts, °)
         try:
             df = pd.read_csv(path, sep=None, engine="python", encoding=enc)
             df.columns = [_clean_name(c) for c in df.columns]
