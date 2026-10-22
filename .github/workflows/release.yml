@@ -1,0 +1,115 @@
+name: Release
+
+# Publishes a GitHub release with the Windows EXE when a version tag
+# vX.Y.Z is pushed (see docs/releasing.md).
+#
+# Dry run (everything except publishing):
+# - manually via "Run workflow" (workflow_dispatch) on any branch,
+# - automatically on pull requests that touch the release pipeline,
+#   the version or the changelog.
+# A dry run uploads the renamed EXE and the release notes as the
+# artifact "release-preview" instead of creating a release.
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - .github/workflows/build.yml
+      - scripts/release_check.py
+      - scripts/build_exe.bat
+      - src/ethosloganalyser/__init__.py
+      - CHANGELOG.md
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Check version and changelog
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check tag, __version__ and CHANGELOG.md
+        id: check
+        env:
+          IS_TAG: ${{ github.ref_type == 'tag' }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [ "$IS_TAG" = "true" ]; then
+            python scripts/release_check.py --tag "$TAG" --notes-out release-notes.md
+          else
+            python scripts/release_check.py --notes-out release-notes.md
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+          retention-days: 7
+
+  build:
+    name: CI
+    needs: check
+    uses: ./.github/workflows/build.yml
+
+  release:
+    name: ${{ github.event_name == 'push' && 'Publish release' || 'Release dry run' }}
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: EthosLogAnalyser-exe
+          path: dist
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+          path: .
+
+      - name: Name the EXE after the version
+        run: |
+          mv dist/EthosLogAnalyser.exe "dist/EthosLogAnalyser-v${VERSION}.exe"
+          ls -l dist
+          echo "--- Release notes ---"
+          cat release-notes.md
+
+      - name: Publish GitHub release
+        if: github.event_name == 'push' && github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" "dist/EthosLogAnalyser-v${VERSION}.exe" \
+            --repo "${{ github.repository }}" \
+            --title "EthosLogAnalyser v${VERSION}" \
+            --notes-file release-notes.md \
+            --verify-tag
+
+      - name: Upload release preview (dry run)
+        if: github.event_name != 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-preview
+          path: |
+            dist/EthosLogAnalyser-v${{ env.VERSION }}.exe
+            release-notes.md
+          retention-days: 7

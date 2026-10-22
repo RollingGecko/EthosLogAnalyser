@@ -8,6 +8,7 @@
 - Tests check that every user-facing text is translated in every catalog, that no translation is unused and that the placeholders match.
 - Single flight tab: the view buttons have a row of their own, so the toolbar also fits with longer labels.
 - Fixed: in charts with several series (e.g. internal resistance, receiver current) the explanation line overlapped the chart title.
+- Releases: pushing a version tag `vX.Y.Z` runs the tests, builds the Windows EXE and publishes it as `EthosLogAnalyser-vX.Y.Z.exe` on GitHub Releases with this changelog section as release notes. The release is refused if tag, version and changelog do not match. See `docs/releasing.md`.
 
 ## 0.2.0
 
