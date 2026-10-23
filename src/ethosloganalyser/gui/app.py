@@ -10,6 +10,7 @@ import os
 import numpy as np
 
 from ..analysis.evaluate import FLAG_LABELS
+from ..buildinfo import about_lines, window_title
 from ..analysis.quality import QUALITY_LABELS
 from ..analysis.fleet import analyse_folder, parse_date
 from ..config import CHEM, SPIKE_LABELS, VOLTAGE_SOURCE_LABELS, Params, label, load_settings, save_settings
@@ -135,7 +136,7 @@ def run_gui():
         """Builds the complete window content in the current language."""
         if ui["frame"] is not None:
             ui["frame"].destroy()
-        root.title(tr("EthosLogAnalyser – Flug- und Akku-Analyse (FrSky Ethos Logs)"))
+        root.title(window_title())
         main = ttk.Frame(root)
         main.pack(fill="both", expand=True)
         ui["frame"] = main
@@ -242,6 +243,13 @@ def run_gui():
         lf.grid(row=2, column=1, sticky="nwe", padx=(6, 0), pady=10)
         ttk.Button(lf, text=tr("Tabelle als CSV speichern …"), command=lambda: export_csv()).pack(side="left", padx=(0, 8))
         ttk.Button(lf, text=tr("Bericht + alle Diagramme speichern …"), command=lambda: export_all()).pack(side="left")
+
+        # about: version, and a clear marker on test builds from a pull request (see buildinfo.py)
+        lf = ttk.LabelFrame(st_tab, text=tr("Über"), padding=10)
+        lf.grid(row=4, column=0, columnspan=2, sticky="we", pady=(10, 0))
+        for kind, text in about_lines():
+            ttk.Label(lf, text=text, wraplength=900, foreground={"test": "#b00020", "info": "#666"}.get(kind),
+                      font=(fam, 10, "bold") if kind != "info" else None).pack(anchor="w")
 
         lf = ttk.LabelFrame(st_tab, text=tr("Übersprungene Dateien"), padding=6)
         lf.grid(row=3, column=0, columnspan=2, sticky="nsew")

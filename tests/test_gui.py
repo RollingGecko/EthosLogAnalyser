@@ -43,6 +43,9 @@ def test_gui_analyses_example_logs(monkeypatch, tmp_path):
 
     root = app.run_gui()
     try:
+        from ethosloganalyser import __version__
+        from ethosloganalyser.buildinfo import window_title
+        assert root.title() == window_title() and __version__ in root.title()     # version (and test marker)
         h = root._akku
         h["folder_var"].set(str(EXAMPLES))
         h["run"]()

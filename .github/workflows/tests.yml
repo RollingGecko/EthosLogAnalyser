@@ -1,5 +1,10 @@
 name: Tests
 
+# Runs on every push to main, every pull request and on demand for any branch
+# ("Run workflow"). Builds a test EXE that can be downloaded and checked
+# before merging (see docs/acceptance-testing.md). Nothing here creates a tag
+# or a release: only release.yml does that, for a pushed tag vX.Y.Z.
+
 on:
   push:
     branches: [main]
@@ -15,3 +20,60 @@ jobs:
     # Test matrix and EXE build live in build.yml so that release.yml
     # runs exactly the same checks.
     uses: ./.github/workflows/build.yml
+    with:
+      test_build: true
+      pr_number: ${{ github.event.pull_request.number && format('{0}', github.event.pull_request.number) || '' }}
+      sha: ${{ github.event.pull_request.head.sha || github.sha }}
+
+  release-metadata:
+    name: Check version and changelog
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check __version__ and CHANGELOG.md
+        run: python scripts/release_check.py
+
+  link:
+    name: Link the test EXE in the pull request
+    needs: build
+    # Only for pull requests from this repository: pull requests from forks get
+    # a read-only token, and their build summary already shows the link.
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Create or update the comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          NAME: ${{ needs.build.outputs.artifact-name }}
+          URL: ${{ needs.build.outputs.artifact-url }}
+          VERSION: ${{ needs.build.outputs.version }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          marker='<!-- test-exe -->'
+          body="$marker
+          ### Test EXE for acceptance testing
+
+          **Download:** [$NAME]($URL) – a zip with the EXE (sign-in to GitHub needed, kept 30 days).
+
+          - Built from commit ${SHA:0:7} of this pull request (merged with the current \`main\`), [CI run]($RUN).
+          - The app shows version **$VERSION** and **TEST VERSION** in the window title and under *Data & settings → About*.
+          - This is not a release. Releases are only published from a version tag \`vX.Y.Z\` (see docs/releasing.md).
+
+          How to test: docs/acceptance-testing.md"
+          id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+                 --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id" | head -n 1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$id" -f body="$body" > /dev/null
+          else
+            gh api -X POST "repos/$REPO/issues/$PR/comments" -f body="$body" > /dev/null
+          fi

@@ -12,6 +12,9 @@
 - Hint when the capacity values form two separate groups (several batteries in the period).
 - New period filter (*Data & settings → Period from/to*) to analyse e.g. only the flights of one battery.
 - The battery charts draw the robust trend line (dashed mean level if the trend is not significant or uncertain) and the 80 % line relative to the nominal capacity.
+- The window title and the new *About* box (*Data & settings*) show the version. Test builds made by GitHub Actions for a pull request or branch show a build tag such as `0.3.0+pr12.abc1234` and *TEST VERSION*; released versions do not.
+- Every pull request gets a test EXE for acceptance testing, linked in a pull-request comment and in the run summary (see docs/acceptance-testing.md). Test builds never create a tag or a release.
+- docs/releasing.md: the tag is no longer created via *Draft a new release* (that publishes a conflicting release); GitHub Desktop is described as the way without command line.
 
 ## 0.3.0
 
