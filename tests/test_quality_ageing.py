@@ -9,7 +9,7 @@ import pytest
 
 from helpers import tmpdir, write_ethos_csv
 import ethosloganalyser as ela
-from ethosloganalyser.analysis.ageing import ageing_model, battery_mix, forecast
+from ethosloganalyser.analysis.ageing import ageing_model, battery_mix, check_consistency, depth_effect, forecast
 from ethosloganalyser.analysis.fleet import in_period, parse_date
 from ethosloganalyser.analysis.quality import detect_data_errors, rest_voltage_invalid
 from ethosloganalyser.config import CHEM, Params
@@ -52,11 +52,23 @@ def test_internal_resistance_far_from_the_median_is_implausible():
 
 # ---------------------------------------------------------------- ageing model
 
-def _series(values, depth=None):
-    df = pd.DataFrame({"Flug": np.arange(1, len(values) + 1, dtype=float), "y": values})
+def _series(values, depth=None, per_day=1):
+    """Flights 1..n; per_day flights share one day (same battery age)."""
+    n = len(values)
+    df = pd.DataFrame({"Flug": np.arange(1, n + 1, dtype=float), "y": values,
+                       "day": np.arange(n) // per_day})
     if depth is not None:
         df["d"] = depth
     return df
+
+
+def _depth_series(rng, n_days=12, per_day=3, ageing=-8.0, bias=-40.0, depth_drift=1.0, noise=40.0):
+    """Capacity estimates with ageing per flight, a depth-of-discharge bias and depth rising over time."""
+    n = n_days * per_day
+    x = np.arange(1, n + 1, dtype=float)
+    depth = 55 + depth_drift * (x - 1) * 25 / n + rng.uniform(-8, 8, n)     # later flights deeper
+    y = 8800 + ageing * (x - 1) + bias * (depth - 65) + rng.normal(0, noise, n)
+    return _series(y, depth, per_day)
 
 
 def test_start_current_and_trend_come_from_one_robust_line():
@@ -64,12 +76,12 @@ def test_start_current_and_trend_come_from_one_robust_line():
     x = np.arange(1, 61)
     y = 9000 - 5.0 * (x - 1) + rng.normal(0, 60, len(x))
     y[:3] = [9800, 9700, 9750]           # single high start flights must not set the start value
-    y[30] = 5500                         # a gross outlier is ignored
+    y[30] = 5500                         # a gross outlier is down-weighted to almost nothing
     m = ageing_model(_series(y), "y", "capacity")
-    assert m["status"] == "ok" and m["trend"] == "down"
+    assert m["status"] == "ok" and m["trend"] == "down" and m["reliable"]
     assert abs(m["start"] - 9000) < 120 and abs(m["current"] - (9000 - 5 * 59)) < 80
     assert m["current"] == pytest.approx(m["start"] + m["slope"] * (m["last"] - m["first"]))
-    assert 31 in m["outliers"]
+    assert 31 in m["outliers"] and m["weights"][31] < 0.05
     f = forecast(m, 0.8 * 9000, "down")
     assert f["status"] == "ok"
     assert f["lo"] < f["flights"] < f["hi"]
@@ -110,13 +122,88 @@ def test_threshold_already_reached():
 
 def test_capacity_is_corrected_for_the_depth_of_discharge():
     rng = np.random.default_rng(4)
-    n = 40
+    n = 42
     depth = rng.uniform(45, 90, n)
     y = 8800 - 25.0 * (depth - 65) + rng.normal(0, 40, n)      # no ageing, only the bias of the estimate
-    m = ageing_model(_series(y, depth), "y", "capacity", depth_col="d")
-    assert m["depth_coef"] == pytest.approx(-25, abs=4)
-    assert m["trend"] == "none"
+    m = ageing_model(_series(y, depth, per_day=3), "y", "capacity", depth_col="d", session_col="day")
+    assert m["depth_method"] == "day"
+    assert m["depth_coef"] == pytest.approx(-25, abs=5)
+    assert m["trend"] == "none" and not m["reliable"]
+    assert m["start"] == m["current"] == m["level"]          # no confirmed change: one level, no slope shown
     assert np.nanstd(m["normed"]) < 0.3 * np.std(y)
+
+
+def test_falling_capacity_stays_falling_when_later_flights_go_deeper():
+    """Depth rises with time and the capacity falls: the depth correction must not swallow the ageing."""
+    for seed in range(5):
+        rng = np.random.default_rng(10 + seed)
+        df = _depth_series(rng)
+        m = ageing_model(df, "y", "capacity", depth_col="d", session_col="day")
+        assert np.corrcoef(df["d"], df["Flug"])[0, 1] > 0.6
+        assert m["depth_coef"] == pytest.approx(-40, abs=12)
+        assert m["trend"] == "down" and m["reliable"], seed
+        assert m["slope"] == pytest.approx(-8, abs=3)
+        assert m["current"] < m["start"]
+
+
+def test_depth_effect_comes_only_from_flights_of_the_same_day():
+    # ageing and rising depth, but no depth bias at all: a joint fit over time could mistake the ageing for a
+    # depth effect, the within-day estimate must not
+    rng = np.random.default_rng(5)
+    df = _depth_series(rng, ageing=-10.0, bias=0.0)
+    eff = depth_effect(df["y"], df["d"], df["day"])
+    assert abs(eff["coef"]) < 2.5 * eff["se"]
+    m = ageing_model(df, "y", "capacity", depth_col="d", session_col="day")
+    assert m["depth_coef"] == 0.0 and m["trend"] == "down"
+    assert m["slope"] == pytest.approx(-10, abs=3)
+
+
+def test_one_flight_per_day_with_drifting_depth_is_uncertain():
+    rng = np.random.default_rng(6)
+    df = _depth_series(rng, n_days=30, per_day=1)
+    m = ageing_model(df, "y", "capacity", depth_col="d", session_col="day")
+    assert m["depth_method"] == "none" and "depth_confounded" in m["uncertain"]
+    assert not m["reliable"]
+    assert forecast(m, 7200, "down")["status"] == "uncertain"
+
+
+def test_rising_capacity_is_never_shown_as_a_trend():
+    x = np.arange(1, 31)
+    rng = np.random.default_rng(7)
+    m = ageing_model(_series(8500 + 12.0 * x + rng.normal(0, 30, len(x))), "y", "capacity")
+    assert m["trend"] == "up"
+    assert "capacity_rising" in m["uncertain"] and not m["reliable"]
+    assert m["start"] == m["current"] == m["level"]
+    assert forecast(m, 0.8 * 9000, "down")["status"] == "uncertain"
+
+
+def test_capacity_and_reference_voltage_must_agree():
+    x = np.arange(1, 31)
+    rng = np.random.default_rng(8)
+    cap = ageing_model(_series(8800 + rng.normal(0, 120, len(x))), "y", "capacity")
+    u_down = ageing_model(_series(3.63 - 0.0006 * x + rng.normal(0, 0.002, len(x))), "y", "u_ref")
+    assert cap["trend"] == "none" and u_down["trend"] == "down"
+    check_consistency(cap, u_down)
+    assert "contradicts_u_ref" in cap["uncertain"] and cap["u_ref_trend"] == "down"
+    # both falling: consistent, the capacity line is shown
+    cap2 = ageing_model(_series(8800 - 10.0 * x + rng.normal(0, 30, len(x))), "y", "capacity")
+    check_consistency(cap2, u_down)
+    assert cap2["reliable"] and not cap2["uncertain"]
+
+
+def test_low_values_at_the_end_that_follow_the_trend_are_kept():
+    rng = np.random.default_rng(9)
+    x = np.arange(1, 34, dtype=float)
+    y = 8800 - 8.0 * x + rng.normal(0, 60, len(x))
+    y[-2:] = 8800 - 8.0 * x[-2:] - 120                # the last two flights are low, but still along the trend
+    m = ageing_model(_series(y), "y", "capacity")
+    assert all(m["weights"][f] > 0.5 for f in (32, 33))
+    assert not set(m["outliers"]) & {32, 33}
+    assert m["trend"] == "down" and m["reliable"]
+    # even values far below the line are only down-weighted, never dropped
+    y[-2:] -= 600
+    m = ageing_model(_series(y), "y", "capacity")
+    assert all(m["weights"][f] > 0 for f in (32, 33))
 
 
 def test_two_battery_groups_are_recognised_but_not_noise():
@@ -146,17 +233,17 @@ def test_period_is_inclusive_and_open_ended():
 
 # ---------------------------------------------------------------- whole folder
 
-def _flight(unplugged=False, stuck=False, glide=False):
-    """Synthetic 13S Li-Ion flight of about 4 min with 40 s of log after landing."""
+def _flight(unplugged=False, stuck=False, glide=False, short=False, drop=0.09):
+    """Synthetic 13S Li-Ion flight of about 4 min with 40 s of log after landing (short: about 2 min)."""
     t = np.arange(0, 300, 0.25)
-    fly = (t >= 10) & (t < 250)
+    fly = (t >= 10) & (t < (140 if short else 250))
     i = np.where(fly, 40 + 60 * (np.sin(t / 7) > 0.3), 0.0)
     if stuck:
         i = np.where(fly, 100.0, 0.0)
     if glide:                                                        # last 20 s of the flight at low power
         i = np.where((t >= 230) & (t < 250), 5.0, i)
     q = np.cumsum(i * 0.25) / 3600                                   # Ah
-    u = 13 * (4.15 - 0.09 * q) - 0.06 * i
+    u = 13 * (4.15 - drop * q) - 0.06 * i
     if unplugged:                                                    # battery unplugged 3 s after landing
         u = np.where(t > 253, 9.0, u)
     return t, u, i
@@ -215,3 +302,19 @@ def test_rest_voltage_between_flight_minimum_and_end_of_flight_voltage_is_caught
     assert r["U_min_Zelle_V"] < 3.55 < r["U_last_Zelle_V"]
     assert res.meta["quality"] == {"rest_voltage_invalid": {2}}
     assert r["U_ende_Quelle"] == "estimated"
+
+
+def test_short_flights_are_kept_out_of_capacity_and_internal_resistance_trends():
+    d = tmpdir()
+    days = ["2026-05-%02d" % k for k in range(1, 13)]
+    for k, day in enumerate(days):
+        t, u, i = _flight(short=(k == len(days) - 1), drop=0.16)      # normal flights about 70 % deep
+        write_ethos_csv(d, f"Viper-Jet-{day}-12-00-00.csv", t, u, i, start=f"{day} 12:00:00")
+    p = Params(chem="Li-Ion", nominal_mah=9000)
+    res = ela.analyse_folder(d, p)
+    last = int(res.df["Flug"].max())
+    assert res.meta["short_flights"] == {last}
+    assert np.isnan(res.df.iloc[-1]["Kap_gesch_mAh"])
+    assert last not in res.meta["ageing"]["ri"]["weights"]
+    text = "\n".join(line for _, line in summary_lines(res, p))
+    assert f"Kurzflüge unter 40 % Entladetiefe zählen nicht für Kapazität und Innenwiderstand: Flug {last}" in text

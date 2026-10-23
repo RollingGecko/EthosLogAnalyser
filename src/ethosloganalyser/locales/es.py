@@ -619,8 +619,6 @@ CATALOG = {
         "ERRORES DE MEDICIÓN EN ESTE VUELO (no usados en tendencias ni avisos)",
     "  gegenüber dem Anfangswert dieses Zeitraums (≈ {start:.0f} mAh bei Flug {first:.0f}): {pct:+.1f} %":
         "  respecto al valor inicial de este periodo (≈ {start:.0f} mAh en el vuelo {first:.0f}): {pct:+.1f} %",
-    "  Kapazität einheitlich auf {depth:.0f} % Entladetiefe bezogen (die Schätzung hängt von der Entladetiefe ab: {coef:+.0f} mAh je Prozentpunkt).":
-        "  Capacidad referida de forma uniforme a una profundidad de descarga del {depth:.0f} % (la estimación depende de la profundidad de descarga: {coef:+.0f} mAh por punto porcentual).",
     "  Prognose: 80 % SoH in ca. {n:.0f} weiteren Flügen (90 %-Bereich {lo:.0f}–{hi:.0f})":
         "  Pronóstico: 80 % SoH en aprox. {n:.0f} vuelos más (intervalo del 90 %: {lo:.0f}–{hi:.0f})",
     "  Prognose: +50 % Ri (Faustregel Lebensende) in ca. {n:.0f} weiteren Flügen (90 %-Bereich {lo:.0f}–{hi:.0f})":
@@ -635,6 +633,36 @@ CATALOG = {
         "  Ya se ha alcanzado +50 % de Ri.",
     "  Keine Ri-Prognose: {reason}.":
         "  Sin pronóstico de Ri: {reason}.",
-    " Linie gestrichelt: kein gesicherter Trend.":
-        " Línea discontinua: sin tendencia fiable.",
+    "  Trend nicht belastbar: ohne Entladetiefen-Korrektur {raw:+.0f} mAh je 100 Flüge, mit Korrektur {corr:+.0f} mAh je 100 Flüge – die Richtung hängt allein an der Korrektur, weil später tiefer geflogen wurde.":
+        "  Tendencia no fiable: sin corrección de la profundidad de descarga {raw:+.0f} mAh por cada 100 vuelos, con corrección {corr:+.0f} mAh por cada 100 vuelos; la dirección depende solo de la corrección, porque los vuelos posteriores fueron más profundos.",
+    " Linie gestrichelt: kein gesicherter Trend (Mittelwert).":
+        " Línea discontinua: sin tendencia confirmada (valor medio).",
+    "Trend unsicher, siehe Bericht.":
+        "Tendencia incierta, ver informe.",
+    "steigend":
+        "ascendente",
+    "fallend":
+        "descendente",
+    "ohne gesicherten Trend":
+        "sin tendencia confirmada",
+    "die Trendaussage ist unsicher (siehe oben)":
+        "la tendencia es incierta (ver arriba)",
+    "rechnerisch {verdict}, aber unsicher":
+        "calculado {verdict}, pero incierto",
+    "  Unsicher: Die Kapazität scheint zu steigen – bei einem Akku unplausibel (Streuung der Schätzung, Temperatur, Jahreszeit). Angezeigt wird der Mittelwert ohne Trend.":
+        "  Incierto: la capacidad parece aumentar, lo que no es plausible en una batería (dispersión de la estimación, temperatura, estación del año). Se muestra el valor medio sin tendencia.",
+    "  Kapazität einheitlich auf {depth:.0f} % Entladetiefe bezogen. Die Schätzung hängt von der Entladetiefe ab: {coef:+.0f} ± {se:.0f} mAh je Prozentpunkt, ermittelt nur aus Flügen am selben Tag ({days} Tage), damit der Alterungstrend nicht mitgeschätzt wird.":
+        "  Capacidad referida uniformemente a {depth:.0f} % de profundidad de descarga. La estimación depende de la profundidad de descarga: {coef:+.0f} ± {se:.0f} mAh por punto porcentual, determinado solo a partir de vuelos del mismo día ({days} días), para que la tendencia de envejecimiento no se estime junto con ella.",
+    "Innenwiderstand je Zelle: ≈ {r:.2f} mΩ, keine gesicherte Änderung (Mittelwert)":
+        "Resistencia interna por celda: ≈ {r:.2f} mΩ, sin cambio confirmado (valor medio)",
+    "  Kurzflüge unter {pct:.0f} % Entladetiefe zählen nicht für Kapazität und Innenwiderstand: Flug {flights}":
+        "  Los vuelos cortos por debajo del {pct:.0f} % de profundidad de descarga no cuentan para la capacidad ni la resistencia interna: vuelo {flights}",
+    "Spannung bei {iref:.0f} A / {qref:.0f} mAh: ≈ {u:.3f} V/Zelle, keine gesicherte Änderung (Mittelwert)":
+        "Tensión a {iref:.0f} A / {qref:.0f} mAh: ≈ {u:.3f} V/celda, sin cambio confirmado (valor medio)",
+    "  Unsicher: Kapazität und Spannung bei Referenzlast zeigen nicht in dieselbe Richtung (Kapazität: {cap}, Spannung: {uref}). Kapazität ohne Trend angezeigt, keine Prognose.":
+        "  Incierto: la capacidad y la tensión a carga de referencia no apuntan en la misma dirección (capacidad: {cap}, tensión: {uref}). Capacidad mostrada sin tendencia, sin pronóstico.",
+    "  gegenüber dem Anfang dieses Zeitraums: keine gesicherte Änderung (Wert = Mittelwert über den Zeitraum)":
+        "  respecto al inicio de este periodo: sin cambio confirmado (valor = media del periodo)",
+    "  Unsicher: Die Entladetiefe ändert sich über den Zeitraum (r = {r:.2f}). Ohne mehrere Flüge am selben Tag lässt sich ihr Einfluss nicht vom Alterungstrend trennen.":
+        "  Incierto: la profundidad de descarga cambia a lo largo del periodo (r = {r:.2f}). Sin varios vuelos el mismo día, su efecto no puede separarse de la tendencia de envejecimiento.",
 }

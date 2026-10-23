@@ -75,8 +75,8 @@ def _plot_trend(ax, df, col, color, title, flags=None, flag_label=None, hlines=(
 
     title, label, note and hline texts must already be translated; flag_label is a flag code
     (see analysis.evaluate.FLAG_LABELS) whose flights are circled in red. model is an ageing model
-    (analysis.ageing.ageing_model): its line is drawn instead of a plain least-squares trend - solid if the
-    trend is significant, dashed if not.
+    (analysis.ageing.ageing_model): its shown line is drawn instead of a plain least-squares trend - solid if
+    the trend is significant and plausible, otherwise the dashed mean level.
     """
     x = df["Flug"].to_numpy(dtype=float)
     y = df[col].to_numpy(dtype=float)
@@ -87,8 +87,8 @@ def _plot_trend(ax, df, col, color, title, flags=None, flag_label=None, hlines=(
         ax.plot(x[good], y[good], marker, ms=5, color=color, label=label, ls="none")
         if trend and model is not None and model.get("status") == "ok":
             xs = np.array([model["first"], model["last"]])
-            ys = model["current"] + model["slope"] * (xs - model["last"])
-            ax.plot(xs, ys, "-" if model["trend"] != "none" else "--", color=color, alpha=0.6, lw=1.8)
+            ys = np.array([model["start"], model["current"]])
+            ax.plot(xs, ys, "-" if model.get("reliable") else "--", color=color, alpha=0.6, lw=1.8)
         elif trend:
             trd = _trend(x, y)
             if trd:
@@ -110,4 +110,4 @@ def flag_note():
 
 
 def trend_note():
-    return tr(" Linie gestrichelt: kein gesicherter Trend.")
+    return tr(" Linie gestrichelt: kein gesicherter Trend (Mittelwert).")

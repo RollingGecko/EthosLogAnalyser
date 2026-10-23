@@ -12,9 +12,9 @@ from ..analysis.evaluate import FLAG_LABELS, SEVERE_FLAGS, USAGE_LABELS
 from ..analysis.quality import QUALITY_LABELS, quality_messages
 from ..config import (CAP_SOURCE_LABELS, CHEM, CORR_LABELS, SOC_TOL_PCT, SPIKE_CAUSES, SPIKE_COLS, SPIKE_LABELS,
                       VOLTAGE_SOURCE_LABELS, label)
-from ..i18n import fmt_date, fmt_datetime, tr
-from ..analysis.fleet import parse_date
-from ..utils import _f, _mmss, _window_change
+from ..i18n import N_, fmt_date, fmt_datetime, tr
+from ..analysis.fleet import MIN_DEPTH_PCT, parse_date
+from ..utils import _f, _mmss, _ranges, _window_change
 
 
 def soc_lines(r, meta):
@@ -194,6 +194,10 @@ def summary_lines(res, p):
     return L
 
 
+# trend directions (ageing model codes) for the consistency hint
+_TREND_WORDS = {"up": N_("steigend"), "down": N_("fallend"), "none": N_("ohne gesicherten Trend")}
+
+
 def _reason(f):
     """Why there is no forecast (see ageing.forecast)."""
     s = f["status"]
@@ -204,19 +208,43 @@ def _reason(f):
     if s == "improving":
         return tr("der Wert verbessert sich über den Zeitraum – kein Alterungssignal (z. B. Temperatur, Jahreszeit "
                   "oder Einfliegen)")
+    if s == "uncertain":
+        return tr("die Trendaussage ist unsicher (siehe oben)")
     return tr("zu wenige Flüge mit gültigen Werten für einen Trend (mindestens {min} über {span} Flüge)",
               min=MIN_TREND_VALUES, span=MIN_TREND_SPAN)
 
 
 def _trend_line(m, unit, fmt):
-    """Trend of an ageing model per 100 flights with its 90 % range."""
+    """Fitted trend of an ageing model per 100 flights with its 90 % range."""
     if not m["trend_possible"]:
         return tr("  Trend: zu wenige Flüge für einen Trend (mindestens {min} über {span} Flüge)",
                   min=MIN_TREND_VALUES, span=MIN_TREND_SPAN)
     verdict = {"down": tr("gesichert fallend"), "up": tr("gesichert steigend")}.get(m["trend"], tr("kein gesicherter Trend"))
+    if m["trend"] != "none" and not m["reliable"]:
+        verdict = tr("rechnerisch {verdict}, aber unsicher", verdict=verdict)
     return tr("  Trend: {slope} {unit} je 100 Flüge (90 %-Bereich {lo} bis {hi}) – {verdict}",
               slope=fmt.format(m["slope"] * 100), lo=fmt.format(m["slope_lo"] * 100), hi=fmt.format(m["slope_hi"] * 100),
               unit=unit, verdict=verdict)
+
+
+def _uncertain_lines(m, skip=()):
+    """Explanation per uncertainty code of an ageing model (see ageing.UNCERTAIN_CODES)."""
+    L = []
+    for code in m.get("uncertain", []):
+        if code in skip:
+            continue
+        if code == "capacity_rising":
+            L.append(("warn", tr("  Unsicher: Die Kapazität scheint zu steigen – bei einem Akku unplausibel (Streuung der "
+                                 "Schätzung, Temperatur, Jahreszeit). Angezeigt wird der Mittelwert ohne Trend.")))
+        elif code == "contradicts_u_ref":
+            L.append(("warn", tr("  Unsicher: Kapazität und Spannung bei Referenzlast zeigen nicht in dieselbe Richtung "
+                                 "(Kapazität: {cap}, Spannung: {uref}). Kapazität ohne Trend angezeigt, keine Prognose.",
+                                 cap=tr(_TREND_WORDS[m["trend"]]), uref=tr(_TREND_WORDS[m.get("u_ref_trend", "none")]))))
+        elif code == "depth_confounded":
+            L.append(("warn", tr("  Unsicher: Die Entladetiefe ändert sich über den Zeitraum (r = {r:.2f}). Ohne mehrere "
+                                 "Flüge am selben Tag lässt sich ihr Einfluss nicht vom Alterungstrend trennen.",
+                                 r=m["depth_corr"])))
+    return L
 
 
 def ageing_lines(res, p):
@@ -251,14 +279,29 @@ def ageing_lines(res, p):
         if shaky:
             line += tr("  - unzuverlässig, solange die Zellchemie nicht passt (siehe oben)")
         L.append(("warn" if shaky else tag, line))
-        if p.nominal_mah > 0:
+        if p.nominal_mah > 0 and cm["reliable"]:
             L.append(("info", tr("  gegenüber dem Anfangswert dieses Zeitraums (≈ {start:.0f} mAh bei Flug {first:.0f}): "
                                  "{pct:+.1f} %", start=start, first=cm["first"], pct=(cur / start - 1) * 100)))
-        L.append(("info", _trend_line(cm, "mAh", "{:+.0f}")))
+        elif p.nominal_mah > 0:
+            L.append(("info", tr("  gegenüber dem Anfang dieses Zeitraums: keine gesicherte Änderung (Wert = Mittelwert "
+                                 "über den Zeitraum)")))
+        sens, skip = cm.get("sensitivity", {}), ()
+        if cm["uncertain"] and "none" in sens and "day" in sens and cm["depth_coef"] \
+                and np.sign(sens["none"]["slope"]) != np.sign(sens["day"]["slope"]):
+            L.append(("info", tr("  Trend nicht belastbar: ohne Entladetiefen-Korrektur {raw:+.0f} mAh je 100 Flüge, mit "
+                                 "Korrektur {corr:+.0f} mAh je 100 Flüge – die Richtung hängt allein an der Korrektur, "
+                                 "weil später tiefer geflogen wurde.",
+                                 raw=sens["none"]["slope"] * 100, corr=sens["day"]["slope"] * 100)))
+            skip = ("capacity_rising",)
+        else:
+            L.append(("info", _trend_line(cm, "mAh", "{:+.0f}")))
+        L.extend(_uncertain_lines(cm, skip))
         if cm["depth_coef"]:
-            L.append(("info", tr("  Kapazität einheitlich auf {depth:.0f} % Entladetiefe bezogen (die Schätzung hängt von "
-                                 "der Entladetiefe ab: {coef:+.0f} mAh je Prozentpunkt).",
-                                 depth=cm["depth_ref"], coef=cm["depth_coef"])))
+            L.append(("info", tr("  Kapazität einheitlich auf {depth:.0f} % Entladetiefe bezogen. Die Schätzung hängt von "
+                                 "der Entladetiefe ab: {coef:+.0f} ± {se:.0f} mAh je Prozentpunkt, ermittelt nur aus Flügen "
+                                 "am selben Tag ({days} Tage), damit der Alterungstrend nicht mitgeschätzt wird.",
+                                 depth=cm["depth_ref"], coef=cm["depth_coef"], se=cm["depth_se"],
+                                 days=cm.get("depth_days", 0))))
         f = forecast(cm, 0.8 * ref, "down")
         if f["status"] == "ok":
             life.append(f)
@@ -278,8 +321,15 @@ def ageing_lines(res, p):
         r0, r1 = rm["start"], rm["current"]
         pct = (r1 / r0 - 1) * 100
         tag = "ok" if pct < 20 else ("warn" if pct < 50 else "bad")
-        L.append((tag, tr("Innenwiderstand je Zelle: {r0:.2f} → {r1:.2f} mΩ ({pct:+.0f} %)", r0=r0, r1=r1, pct=pct)))
+        if rm["reliable"]:
+            L.append((tag, tr("Innenwiderstand je Zelle: {r0:.2f} → {r1:.2f} mΩ ({pct:+.0f} %)", r0=r0, r1=r1, pct=pct)))
+        else:
+            L.append(("ok", tr("Innenwiderstand je Zelle: ≈ {r:.2f} mΩ, keine gesicherte Änderung (Mittelwert)", r=r1)))
         L.append(("info", _trend_line(rm, "mΩ", "{:+.2f}")))
+        short = sorted(meta.get("short_flights", ()))
+        if short:
+            L.append(("info", tr("  Kurzflüge unter {pct:.0f} % Entladetiefe zählen nicht für Kapazität und "
+                                 "Innenwiderstand: Flug {flights}", pct=MIN_DEPTH_PCT, flights=_ranges(short))))
         f = forecast(rm, 1.5 * r0, "up")
         if f["status"] == "ok":
             life.append(f)
@@ -292,9 +342,13 @@ def ageing_lines(res, p):
 
     um = ag.get("u_ref", {})
     if um.get("status") == "ok":
-        L.append(("info", tr("Spannung bei {iref:.0f} A / {qref:.0f} mAh: {u0:.3f} → {u1:.3f} V/Zelle ({mv:+.0f} mV)",
-                             iref=meta["iref"], qref=meta["qref"], u0=um["start"], u1=um["current"],
-                             mv=(um["current"] - um["start"]) * 1000)))
+        if um["reliable"]:
+            L.append(("info", tr("Spannung bei {iref:.0f} A / {qref:.0f} mAh: {u0:.3f} → {u1:.3f} V/Zelle ({mv:+.0f} mV)",
+                                 iref=meta["iref"], qref=meta["qref"], u0=um["start"], u1=um["current"],
+                                 mv=(um["current"] - um["start"]) * 1000)))
+        else:
+            L.append(("info", tr("Spannung bei {iref:.0f} A / {qref:.0f} mAh: ≈ {u:.3f} V/Zelle, keine gesicherte "
+                                 "Änderung (Mittelwert)", iref=meta["iref"], qref=meta["qref"], u=um["current"])))
         in_mv = dict(um, slope=um["slope"] * 1000, slope_lo=um["slope_lo"] * 1000, slope_hi=um["slope_hi"] * 1000)
         L.append(("info", _trend_line(in_mv, "mV", "{:+.0f}")))
 

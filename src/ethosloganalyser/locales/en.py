@@ -605,8 +605,6 @@ CATALOG = {
         "MEASUREMENT ERRORS IN THIS FLIGHT (not used in trends and warnings)",
     "  gegenüber dem Anfangswert dieses Zeitraums (≈ {start:.0f} mAh bei Flug {first:.0f}): {pct:+.1f} %":
         "  compared with the initial value of this period (≈ {start:.0f} mAh at flight {first:.0f}): {pct:+.1f} %",
-    "  Kapazität einheitlich auf {depth:.0f} % Entladetiefe bezogen (die Schätzung hängt von der Entladetiefe ab: {coef:+.0f} mAh je Prozentpunkt).":
-        "  Capacity uniformly referred to {depth:.0f} % depth of discharge (the estimate depends on the depth of discharge: {coef:+.0f} mAh per percentage point).",
     "  Prognose: 80 % SoH in ca. {n:.0f} weiteren Flügen (90 %-Bereich {lo:.0f}–{hi:.0f})":
         "  Forecast: 80 % SoH in approx. {n:.0f} more flights (90 % range {lo:.0f}–{hi:.0f})",
     "  Prognose: +50 % Ri (Faustregel Lebensende) in ca. {n:.0f} weiteren Flügen (90 %-Bereich {lo:.0f}–{hi:.0f})":
@@ -621,6 +619,36 @@ CATALOG = {
         "  +50 % Ri has already been reached.",
     "  Keine Ri-Prognose: {reason}.":
         "  No Ri forecast: {reason}.",
-    " Linie gestrichelt: kein gesicherter Trend.":
-        " Dashed line: no reliable trend.",
+    "  Trend nicht belastbar: ohne Entladetiefen-Korrektur {raw:+.0f} mAh je 100 Flüge, mit Korrektur {corr:+.0f} mAh je 100 Flüge – die Richtung hängt allein an der Korrektur, weil später tiefer geflogen wurde.":
+        "  Trend not reliable: without depth-of-discharge correction {raw:+.0f} mAh per 100 flights, with correction {corr:+.0f} mAh per 100 flights – the direction depends only on the correction, because later flights went deeper.",
+    " Linie gestrichelt: kein gesicherter Trend (Mittelwert).":
+        " Dashed line: no reliable trend (mean value).",
+    "Trend unsicher, siehe Bericht.":
+        "Trend uncertain, see report.",
+    "steigend":
+        "rising",
+    "fallend":
+        "falling",
+    "ohne gesicherten Trend":
+        "no reliable trend",
+    "die Trendaussage ist unsicher (siehe oben)":
+        "the trend is uncertain (see above)",
+    "rechnerisch {verdict}, aber unsicher":
+        "computed {verdict}, but uncertain",
+    "  Unsicher: Die Kapazität scheint zu steigen – bei einem Akku unplausibel (Streuung der Schätzung, Temperatur, Jahreszeit). Angezeigt wird der Mittelwert ohne Trend.":
+        "  Uncertain: the capacity appears to rise – implausible for a battery (scatter of the estimate, temperature, season). The mean value without trend is shown.",
+    "  Kapazität einheitlich auf {depth:.0f} % Entladetiefe bezogen. Die Schätzung hängt von der Entladetiefe ab: {coef:+.0f} ± {se:.0f} mAh je Prozentpunkt, ermittelt nur aus Flügen am selben Tag ({days} Tage), damit der Alterungstrend nicht mitgeschätzt wird.":
+        "  Capacity uniformly referred to {depth:.0f} % depth of discharge. The estimate depends on the depth of discharge: {coef:+.0f} ± {se:.0f} mAh per percentage point, determined only from flights on the same day ({days} days), so that the ageing trend is not estimated along with it.",
+    "Innenwiderstand je Zelle: ≈ {r:.2f} mΩ, keine gesicherte Änderung (Mittelwert)":
+        "Internal resistance per cell: ≈ {r:.2f} mΩ, no confirmed change (mean value)",
+    "  Kurzflüge unter {pct:.0f} % Entladetiefe zählen nicht für Kapazität und Innenwiderstand: Flug {flights}":
+        "  Short flights below {pct:.0f} % depth of discharge are not used for capacity and internal resistance: flight {flights}",
+    "Spannung bei {iref:.0f} A / {qref:.0f} mAh: ≈ {u:.3f} V/Zelle, keine gesicherte Änderung (Mittelwert)":
+        "Voltage at {iref:.0f} A / {qref:.0f} mAh: ≈ {u:.3f} V/cell, no confirmed change (mean value)",
+    "  Unsicher: Kapazität und Spannung bei Referenzlast zeigen nicht in dieselbe Richtung (Kapazität: {cap}, Spannung: {uref}). Kapazität ohne Trend angezeigt, keine Prognose.":
+        "  Uncertain: capacity and voltage at reference load do not point in the same direction (capacity: {cap}, voltage: {uref}). Capacity shown without trend, no forecast.",
+    "  gegenüber dem Anfang dieses Zeitraums: keine gesicherte Änderung (Wert = Mittelwert über den Zeitraum)":
+        "  compared with the start of this period: no confirmed change (value = mean over the period)",
+    "  Unsicher: Die Entladetiefe ändert sich über den Zeitraum (r = {r:.2f}). Ohne mehrere Flüge am selben Tag lässt sich ihr Einfluss nicht vom Alterungstrend trennen.":
+        "  Uncertain: the depth of discharge changes over the period (r = {r:.2f}). Without several flights on the same day its effect cannot be separated from the ageing trend.",
 }

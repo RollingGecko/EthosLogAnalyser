@@ -26,6 +26,8 @@ def figure_akku(res, p):
     note = tr("Aus entnommener Ladung und Spannungsabfall. Fallender Trend = Alterung.")
     if cm.get("status") == "ok" and cm["depth_coef"]:
         note += " " + tr("Auf {depth:.0f} % Entladetiefe bezogen.", depth=cm["depth_ref"])
+    if cm.get("status") == "ok" and cm.get("uncertain"):
+        note += " " + tr("Trend unsicher, siehe Bericht.")
     ag = meta.get("ageing", {})
     _plot_trend(ax[0][0], df, cap_col, "tab:green", tr("Geschätzte Gesamtkapazität [mAh]"), fl, "capacity", h,
                 note=note + flag_note(), model=cm or None)

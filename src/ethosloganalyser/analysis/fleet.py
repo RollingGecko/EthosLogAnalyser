@@ -8,12 +8,16 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 
-from ..analysis.ageing import ageing_model, battery_mix
+from ..analysis.ageing import ageing_model, battery_mix, check_consistency
 from ..analysis.evaluate import evaluate, usage_correlations
 from ..analysis.flight import analyse_file
 from ..analysis.quality import BATTERY_INVALID, detect_data_errors, rest_voltage_invalid
 from ..config import CHEM, Params, SOC_TOL_PCT, soc_pct
 from ..io.ethos_log import _file_datetime
+
+
+# minimum depth of discharge [%] for the capacity estimate and the internal-resistance trend
+MIN_DEPTH_PCT = 40.0
 
 
 class Result:
@@ -125,7 +129,7 @@ def analyse_folder(folder, p: Params, progress=None):
     df["dSoC_U_pct"] = dsoc_u
     # drawn charge of flights with a stuck current sensor is meaningless
     ent = np.where(batt_bad, np.nan, df["entnommen_mAh"].to_numpy(dtype=float))
-    kap = np.where(dsoc_u >= 40, np.round(ent / (np.where(dsoc_u > 0, dsoc_u, np.nan) / 100.0), 0), np.nan)
+    kap = np.where(dsoc_u >= MIN_DEPTH_PCT, np.round(ent / (np.where(dsoc_u > 0, dsoc_u, np.nan) / 100.0), 0), np.nan)
     kf = kap[np.isfinite(kap)]
     if len(kf) >= 3:                                    # discard gross outliers (factor 1.6)
         med = np.median(kf)
@@ -138,10 +142,28 @@ def analyse_folder(folder, p: Params, progress=None):
     df["Pause_h"] = df["datum"].diff().dt.total_seconds() / 3600.0
 
     # capacity: one robust model for start value, current value and trend (see ageing.py), reported at the
-    # median depth of discharge because the estimate depends on it
-    ageing = {"capacity": ageing_model(df, "Kap_gesch_mAh", "capacity", depth_col="dSoC_U_pct")}
+    # median depth of discharge because the estimate depends on it; the depth effect is estimated from flights
+    # of the same day only, so it cannot take the ageing trend with it
+    days = df.assign(_day=df["datum"].dt.strftime("%Y-%m-%d"))
+    ageing = {"capacity": ageing_model(days, "Kap_gesch_mAh", "capacity", depth_col="dSoC_U_pct",
+                                       session_col="_day")}
     cm = ageing["capacity"]
     df["Kap_norm_mAh"] = np.round(cm["normed"], 0) if cm["status"] == "ok" else df["Kap_gesch_mAh"]
+
+    # reference conditions for a fair comparison across all flights (from flights with valid battery values)
+    valid = df[df["Akku_gueltig"]] if df["Akku_gueltig"].any() else df
+    iref = max(5.0, round(float(valid["I_mittel_A"].median()) / 5) * 5)
+    qref = max(100.0, round(0.5 * float(valid["entnommen_mAh"].median()) / 100) * 100)
+    meta.update(iref=iref, qref=qref)
+    ok = (df["entnommen_mAh"] >= qref) & df["U0_V"].notna()
+    df["U_ref_Zelle_V"] = np.where(
+        ok, (df["U0_V"] - df["Ri_mOhm"] / 1000.0 * iref + df["k_V_je_Ah"] * qref / 1000.0) / cells, np.nan)
+    df["U_ref_Zelle_V"] = df["U_ref_Zelle_V"].round(3)
+
+    # voltage at reference load: same robust model; it is the cross-check of the capacity trend - both must
+    # point in the same direction, otherwise the capacity statement is uncertain (shown without trend)
+    ageing["u_ref"] = ageing_model(df, "U_ref_Zelle_V", "u_ref")
+    check_consistency(cm, ageing["u_ref"])
 
     # capacity reference: current estimate (capacity model, else last 3 valid flights) or nominal capacity
     kv = df["Kap_gesch_mAh"].dropna()
@@ -179,25 +201,21 @@ def analyse_folder(folder, p: Params, progress=None):
             if len(dd) >= 3:
                 meta["chem_fit"][chem_] = float(np.median(dd))
 
-    # reference conditions for a fair comparison across all flights (from flights with valid battery values)
-    valid = df[df["Akku_gueltig"]] if df["Akku_gueltig"].any() else df
-    iref = max(5.0, round(float(valid["I_mittel_A"].median()) / 5) * 5)
-    qref = max(100.0, round(0.5 * float(valid["entnommen_mAh"].median()) / 100) * 100)
-    meta.update(iref=iref, qref=qref)
-    ok = (df["entnommen_mAh"] >= qref) & df["U0_V"].notna()
-    df["U_ref_Zelle_V"] = np.where(
-        ok, (df["U0_V"] - df["Ri_mOhm"] / 1000.0 * iref + df["k_V_je_Ah"] * qref / 1000.0) / cells, np.nan)
-    df["U_ref_Zelle_V"] = df["U_ref_Zelle_V"].round(3)
-
-    # internal resistance and voltage at reference load: same robust model as the capacity
-    ageing["ri"] = ageing_model(df, "Ri_Zelle_mOhm", "ri")
-    ageing["u_ref"] = ageing_model(df, "U_ref_Zelle_V", "u_ref")
+    # internal resistance: same robust model as the capacity.
+    # Short flights (depth of discharge below MIN_DEPTH_PCT) are not used for capacity and internal resistance:
+    # their resistance fit covers only the flat top of the discharge curve. Depth from the resting voltage,
+    # otherwise from the drawn charge.
+    depth = np.where(np.isfinite(dsoc_u), dsoc_u,
+                     ent / cap_ref * 100.0 if np.isfinite(cap_ref) and cap_ref > 0 else np.nan)
+    short = np.isfinite(depth) & (depth < MIN_DEPTH_PCT) & df["Akku_gueltig"].to_numpy()
+    meta["short_flights"] = set(int(v) for v in df.loc[short, "Flug"])
+    ageing["ri"] = ageing_model(df, "Ri_Zelle_mOhm", "ri", use=~short)
     meta["ageing"] = ageing
-    # several batteries in the period? (capacity values around the trend form two groups) - hint only
+    # several batteries in the period? (capacity values around the fitted trend form two groups) - hint only
     meta["battery_mix"] = None
     if cm["status"] == "ok":
         x = df["Flug"].to_numpy(dtype=float)
-        meta["battery_mix"] = battery_mix(cm["normed"] - (cm["current"] + cm["slope"] * (x - cm["last"])))
+        meta["battery_mix"] = battery_mix(cm["normed"] - (cm["fit_current"] + cm["slope"] * (x - cm["last"])))
 
     rpm_ref = np.nan
     if df["rpm_p90"].notna().any():
