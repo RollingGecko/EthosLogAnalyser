@@ -11,8 +11,6 @@ CATALOG = {
     "flug{no}_{view}.png": "vuelo{no}_{view}.png",
 
     # ---------------- window, tabs, settings ----------------
-    "EthosLogAnalyser – Flug- und Akku-Analyse (FrSky Ethos Logs)":
-        "EthosLogAnalyser – análisis de vuelo y batería (logs de FrSky Ethos)",
     "Noch nicht ausgewertet – Ordner und Akku im Reiter „Daten & Einstellungen“ festlegen.":
         "Aún sin analizar – elija la carpeta y la batería en la pestaña «Datos y ajustes».",
     "Daten & Einstellungen": "Datos y ajustes",
@@ -665,4 +663,16 @@ CATALOG = {
         "  respecto al inicio de este periodo: sin cambio confirmado (valor = media del periodo)",
     "  Unsicher: Die Entladetiefe ändert sich über den Zeitraum (r = {r:.2f}). Ohne mehrere Flüge am selben Tag lässt sich ihr Einfluss nicht vom Alterungstrend trennen.":
         "  Incierto: la profundidad de descarga cambia a lo largo del periodo (r = {r:.2f}). Sin varios vuelos el mismo día, su efecto no puede separarse de la tendencia de envejecimiento.",
+    "EthosLogAnalyser {version} – Flug- und Akku-Analyse (FrSky Ethos Logs)":
+        "EthosLogAnalyser {version} – análisis de vuelos y baterías (logs de FrSky Ethos)",
+    "TESTVERSION {version} – EthosLogAnalyser – nicht für den normalen Gebrauch":
+        "VERSIÓN DE PRUEBA {version} – EthosLogAnalyser – no para el uso normal",
+    "EthosLogAnalyser, Version {version}":
+        "EthosLogAnalyser, versión {version}",
+    "Testversion ({tag}) aus der automatischen Prüfung eines Pull-Requests bzw. Branches – zum Abnahmetest, kein Release.":
+        "Versión de prueba ({tag}) de la comprobación automática de un pull request o una rama: para pruebas de aceptación, no es una versión publicada.",
+    "Quellcode, Releases und Anleitung: github.com/RollingGecko/EthosLogAnalyser":
+        "Código fuente, versiones y documentación: github.com/RollingGecko/EthosLogAnalyser",
+    "Über":
+        "Acerca de",
 }

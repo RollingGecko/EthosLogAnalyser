@@ -1,11 +1,42 @@
 name: Build
 
 # Reusable workflow: runs the test matrix and builds the Windows EXE.
-# Called by tests.yml (every push/PR) and release.yml (release tags).
-# The EXE is uploaded as the artifact "EthosLogAnalyser-exe".
+# Called by tests.yml (every push/PR, as a test build) and release.yml
+# (release tags and release dry runs).
+#
+# - Test build (test_build: true): the EXE carries a build tag such as
+#   0.3.0+pr12.abc1234 and says "TEST VERSION" in the window title and the
+#   About box (see scripts/set_build_tag.py). It is uploaded as the artifact
+#   EthosLogAnalyser-<version>-pr<nr>-<sha7>.
+# - Release build (default): plain version, uploaded as the artifact
+#   "EthosLogAnalyser-exe" for release.yml. This workflow never publishes
+#   anything itself.
 
 on:
   workflow_call:
+    inputs:
+      test_build:
+        description: Mark the EXE as a test build (build tag, "TEST VERSION").
+        type: boolean
+        default: false
+      pr_number:
+        description: Pull request number for the build tag (empty for a branch build).
+        type: string
+        default: ""
+      sha:
+        description: Commit for the build tag (default github.sha).
+        type: string
+        default: ""
+    outputs:
+      artifact-name:
+        description: Name of the uploaded EXE artifact.
+        value: ${{ jobs.exe.outputs.artifact-name }}
+      artifact-url:
+        description: Download page of the uploaded EXE artifact.
+        value: ${{ jobs.exe.outputs.artifact-url }}
+      version:
+        description: Version shown by the EXE (with build tag for test builds).
+        value: ${{ jobs.exe.outputs.version }}
 
 permissions:
   contents: read
@@ -53,6 +84,10 @@ jobs:
     name: Build Windows EXE
     needs: test
     runs-on: windows-latest
+    outputs:
+      artifact-name: ${{ steps.name.outputs.artifact }}
+      artifact-url: ${{ steps.upload.outputs.artifact-url }}
+      version: ${{ steps.name.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -60,6 +95,16 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+
+      - name: Mark as test build
+        id: tag
+        if: inputs.test_build
+        env:
+          PR: ${{ inputs.pr_number }}
+          REF: ${{ github.head_ref || github.ref_name }}
+          SHA: ${{ inputs.sha || github.sha }}
+        run: python scripts/set_build_tag.py --sha "$env:SHA" --pr "$env:PR" --ref "$env:REF" --github-output "$env:GITHUB_OUTPUT"
+        shell: pwsh
 
       - name: Build EXE
         run: scripts\build_exe.bat
@@ -69,8 +114,42 @@ jobs:
         run: if (!(Test-Path dist\EthosLogAnalyser.exe)) { exit 1 }
         shell: pwsh
 
+      - name: Name the EXE
+        id: name
+        env:
+          TEST_EXE: ${{ steps.tag.outputs.exe }}
+          TEST_ARTIFACT: ${{ steps.tag.outputs.artifact }}
+          TEST_VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          if ($env:TEST_EXE) {
+            Rename-Item dist\EthosLogAnalyser.exe $env:TEST_EXE
+            "artifact=$env:TEST_ARTIFACT" >> $env:GITHUB_OUTPUT
+            "version=$env:TEST_VERSION" >> $env:GITHUB_OUTPUT
+          } else {
+            $version = python -c "import sys; sys.path.insert(0, 'scripts'); import release_check as r; print(r.read_version(r.INIT_FILE.read_text(encoding='utf-8')))"
+            "artifact=EthosLogAnalyser-exe" >> $env:GITHUB_OUTPUT
+            "version=$version" >> $env:GITHUB_OUTPUT
+          }
+          Get-ChildItem dist\*.exe
+        shell: pwsh
+
       - uses: actions/upload-artifact@v4
+        id: upload
         with:
-          name: EthosLogAnalyser-exe
-          path: dist/EthosLogAnalyser.exe
+          name: ${{ steps.name.outputs.artifact }}
+          path: dist/*.exe
+          if-no-files-found: error
           retention-days: 30
+
+      - name: Summary
+        if: inputs.test_build
+        env:
+          URL: ${{ steps.upload.outputs.artifact-url }}
+          NAME: ${{ steps.name.outputs.artifact }}
+          VERSION: ${{ steps.name.outputs.version }}
+        run: |
+          "### Test EXE for acceptance testing" >> $env:GITHUB_STEP_SUMMARY
+          "" >> $env:GITHUB_STEP_SUMMARY
+          "Download: [$env:NAME]($env:URL) (zip with the EXE, kept 30 days, sign-in to GitHub needed)." >> $env:GITHUB_STEP_SUMMARY
+          "The app shows version **$env:VERSION** and *TEST VERSION* in the window title and under *Data & settings → About*. This is not a release." >> $env:GITHUB_STEP_SUMMARY
+        shell: pwsh

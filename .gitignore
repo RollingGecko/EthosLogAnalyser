@@ -16,3 +16,6 @@ venv/
 .idea/
 Thumbs.db
 .DS_Store
+
+# CI test-build marker (scripts/set_build_tag.py)
+/src/ethosloganalyser/_build_tag.py

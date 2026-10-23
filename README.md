@@ -35,6 +35,7 @@ Three real flight logs to try are in `examples/logs/`. `scripts\build_exe.bat` b
 - [Methodology](docs/methodology.md) – how internal resistance, state of charge, capacity, timer and spikes are computed
 - [Ethos log format](docs/ethos-log-format.md) – which columns the app expects
 - [Translations](docs/translations.md) – how the user interface is translated and how to add or improve a language
+- [Acceptance testing a pull request](docs/acceptance-testing.md) – test EXE of a pull request before merging
 - [Releasing](docs/releasing.md) – how a new version is published
 
 ## Project layout

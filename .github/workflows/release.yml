@@ -1,27 +1,19 @@
 name: Release
 
 # Publishes a GitHub release with the Windows EXE when a version tag
-# vX.Y.Z is pushed (see docs/releasing.md).
+# vX.Y.Z is pushed (see docs/releasing.md). This is the only workflow that
+# can create a release.
 #
-# Dry run (everything except publishing):
-# - manually via "Run workflow" (workflow_dispatch) on any branch,
-# - automatically on pull requests that touch the release pipeline,
-#   the version or the changelog.
-# A dry run uploads the renamed EXE and the release notes as the
-# artifact "release-preview" instead of creating a release.
+# Dry run (everything except publishing): manually via "Run workflow"
+# (workflow_dispatch) on any branch. It uploads the renamed EXE and the
+# release notes as the artifact "release-preview" instead of creating a
+# release. Pull requests do not run this workflow: tests.yml checks version
+# and changelog and builds the test EXE there, so nothing is built twice.
 
 on:
   push:
     tags: ["v*.*.*"]
   workflow_dispatch:
-  pull_request:
-    paths:
-      - .github/workflows/release.yml
-      - .github/workflows/build.yml
-      - scripts/release_check.py
-      - scripts/build_exe.bat
-      - src/ethosloganalyser/__init__.py
-      - CHANGELOG.md
 
 permissions:
   contents: read
