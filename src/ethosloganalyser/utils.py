@@ -57,8 +57,33 @@ def _trend(x, y):
     return s, b
 
 
+def fmt_duration(s, unit=False, na="–"):
+    """Duration in seconds as min:s, from one hour on as h:min:s - the one time format of the app.
+
+    Rounded to whole seconds first (59.9 s -> "1:00"). Negative values get a leading minus, missing values
+    (None, NaN, inf, non-numbers) become na. unit=True appends " min" or " h".
+    Examples: 0 -> "0:00", 75 -> "1:15", 3599 -> "59:59", 3600 -> "1:00:00".
+    """
+    try:
+        v = float(s)
+    except (TypeError, ValueError):
+        return na
+    if not np.isfinite(v):
+        return na
+    sign = "-" if v < 0 and round(abs(v)) > 0 else ""
+    total = int(round(abs(v)))
+    h, rest = divmod(total, 3600)
+    m, sec = divmod(rest, 60)
+    if h:
+        txt = f"{sign}{h}:{m:02d}:{sec:02d}"
+        return txt + " h" if unit else txt
+    txt = f"{sign}{m}:{sec:02d}"
+    return txt + " min" if unit else txt
+
+
 def _mmss(s):
-    return "–" if not np.isfinite(s) else f"{int(s // 60)}:{int(s % 60):02d} min"
+    """Duration with unit for running text, e.g. "8:58 min" (see fmt_duration)."""
+    return fmt_duration(s, unit=True)
 
 
 def _window_change(df, col, k):

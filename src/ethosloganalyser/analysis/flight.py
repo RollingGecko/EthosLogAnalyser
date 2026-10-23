@@ -9,7 +9,7 @@ from ..analysis.rx_spikes import rx_spike_analysis
 from ..config import Params, SPIKE_CAUSES, STEP
 from ..i18n import Msg
 from ..io.ethos_log import CURR_KEYS, VOLT_KEYS, _active_series, _exact_series, _file_datetime, _find_col, _first_series, _numeric_cols, _switch_columns, _time_seconds, _to_num, read_log
-from ..utils import _nanmax, _nanmin, _rolling
+from ..utils import _mmss, _nanmax, _nanmin, _rolling
 
 
 def analyse_file(path, p: Params):
@@ -96,7 +96,7 @@ def analyse_file(path, p: Params):
     i = win["i"].to_numpy()
     dur = float(t[-1] - t[0])
     if dur < p.min_flight_s:
-        return None, Msg("zu kurz ({dur:.0f} s < {min:.0f} s)", dur=dur, min=p.min_flight_s)
+        return None, Msg("zu kurz ({dur} < {min})", dur=_mmss(dur), min=_mmss(p.min_flight_s))
 
     dt = np.clip(np.diff(t, prepend=t[0]), 0, 5.0)         # do not integrate over gaps in the log
     q_mah = np.cumsum(i * dt) / 3.6                        # A*s -> mAh

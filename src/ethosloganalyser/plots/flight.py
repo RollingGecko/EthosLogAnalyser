@@ -5,7 +5,7 @@ import numpy as np
 
 from ..config import SPIKE_CAUSES, SPIKE_COLOR, SPIKE_LABELS, STICK_LABELS, label
 from ..i18n import N_, fmt_datetime, tr
-from ..plots.common import _note, _style_mpl
+from ..plots.common import _note, _style_mpl, hover_info, time_axis
 from ..utils import _mmss
 
 
@@ -88,6 +88,8 @@ def draw_flight(fig, res, p, path, view=FLIGHT_VIEWS[0]):
             fig._readout.append((name, pn["unit"], y))
         a.set_ylabel(pn["unit"])
         a.set_title(pn["title"], loc="left")
+        time_axis(a, "x")
+        hover_info(a, y=lambda v, u=pn["unit"]: f"{v:.4g} {u}")
         _note(a, pn["note"])
         if pn.get("spikes") and rx:
             a.axhline(rx["thr"], color="tab:red", ls="--", lw=0.9, label=tr("Spitzenschwelle {thr:.2f} A", thr=rx["thr"]))
@@ -125,7 +127,7 @@ def draw_flight(fig, res, p, path, view=FLIGHT_VIEWS[0]):
         extra.append((tr("Gas"), "%", s["gas"]))
     fig._readout += extra
     fig._t = t
-    axes[-1].set_xlabel(tr("Zeit seit Motorstart [s]"))
+    axes[-1].set_xlabel(tr("Zeit seit Motorstart [min:s]"))
     axes[-1].set_xlim(t[0], t[-1])
     return list(axes)
 

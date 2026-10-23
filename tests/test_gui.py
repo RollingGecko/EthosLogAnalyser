@@ -59,6 +59,7 @@ def test_gui_analyses_example_logs(monkeypatch, tmp_path):
             root.update()
         h["set_xlim"](10, 70)
         root.update()
+        _check_fullscreen(root)
         _check_language_switch(root, settings)
         _check_period_filter(root, errors)
     finally:
@@ -104,3 +105,17 @@ def _check_period_filter(root, errors):
     assert errors and "Datum" in errors[-1][1]
     errors.clear()
     h["params"]["date_from"].set("")
+
+
+def _check_fullscreen(root):
+    """Every chart opens in a full-screen window with tooltip and toolbar; Esc closes it."""
+    h = root._akku
+    for builder, title in ((h["tab_builder"]("akku"), "Akku"), (h["flight_builder"], "Einzelflug")):
+        win = h["open_fullscreen"](builder, title)
+        root.update()
+        assert win.winfo_exists() and h["fullscreen"] == [win]
+        canvases = [w for w in win.winfo_children() if w.winfo_class() == "Canvas"]
+        assert canvases, "no chart in the full-screen window"
+        win.event_generate("<Escape>", when="tail")
+        root.update()
+        assert h["fullscreen"] == []

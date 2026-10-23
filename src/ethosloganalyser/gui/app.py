@@ -19,11 +19,12 @@ from ..i18n import LANGUAGES, Msg, N_, detect_language, fmt_datetime, get_langua
 from ..plots.flight import FLIGHT_VIEWS, VIEW_LABELS, draw_flight, figure_flight
 from ..plots.overview import figure_akku, figure_antrieb, figure_belastung, figure_funk
 from ..report.text import flight_detail_lines, summary_lines
-from ..utils import _mmss
+from ..plots.hover import Hover
+from ..utils import _mmss, fmt_duration
 
 
 TABLE_COLS = [
-    ("Flug", N_("Flug"), 45), ("datum", N_("Datum"), 120), ("dauer_s", N_("Dauer s"), 60),
+    ("Flug", N_("Flug"), 45), ("datum", N_("Datum"), 120), ("dauer_s", N_("Dauer min:s"), 75),
     ("entnommen_mAh", N_("entnommen mAh"), 90), ("ESC_mAh", N_("ESC mAh"), 65), ("Sensor_Abw_pct", N_("Abw. %"), 55),
     ("energie_Wh", N_("Energie Wh"), 75), ("I_mittel_A", N_("Ø A"), 50), ("I_max_A", N_("max A"), 55),
     ("P_max_W", N_("P max W"), 65), ("C_peak", N_("C Spitze"), 60), ("SoC_start_pct", N_("SoC Start %"), 75),
@@ -34,7 +35,7 @@ TABLE_COLS = [
     ("Ri_End_Zelle_mOhm", N_("Ri Ende"), 65), ("U_ref_Zelle_V", N_("U Ref V/Z"), 70),
     ("U_min_Zelle_V", N_("U min V/Z"), 70), ("U_ende_Zelle_V", N_("U Ende V/Z"), 75),
     ("U_ende_Quelle", N_("U Ende Quelle"), 85), ("Reserve_Zelle_V", N_("Reserve V/Z"), 80),
-    ("Timer_s", N_("Timer s"), 55), ("rpm_p90", N_("rpm P90"), 70), ("P_ref_W", N_("P Ref W"), 65),
+    ("Timer_s", N_("Timer min:s"), 75), ("rpm_p90", N_("rpm P90"), 70), ("P_ref_W", N_("P Ref W"), 65),
     ("Hoehe_max_m", N_("Höhe max"), 65), ("Wh_je_100m", N_("Wh/100m"), 65), ("g_max", N_("g max"), 50),
     ("RSSI_min", N_("RSSI min"), 65), ("VFR_min", N_("VFR min"), 60), ("RxBatt_min_V", N_("Rx V min"), 65),
     ("RxStrom_mittel_A", N_("Rx A Ø"), 55), ("RxStrom_max_A", N_("Rx A max"), 65),
@@ -55,7 +56,13 @@ def error_text(codes):
     return ", ".join(label(QUALITY_LABELS, c) for c in str(codes).split(", ") if c)
 
 
+# durations [s] shown as min:s (table) and exported additionally as min:s text columns (CSV)
+DURATION_COLS = ["dauer_s", "Timer_s", "Zeit_80_s", "t_steig_s", "t_reise_s", "t_sink_s"]
+
+
 def fmt_cell(key, v):
+    if key in DURATION_COLS:
+        return fmt_duration(v)
     if key == "datum":
         return fmt_datetime(v)
     if key == "U_ende_Quelle":
@@ -70,8 +77,15 @@ def fmt_cell(key, v):
 
 
 def export_table(df):
-    """Result table for the CSV export: internal columns removed, text columns in the current language."""
+    """Result table for the CSV export: internal columns removed, text columns in the current language.
+
+    Durations stay in seconds (columns ..._s, unchanged for existing evaluations); a text column ..._mmss with
+    min:s follows each of them.
+    """
     out = df.drop(columns=["pfad", "P_a", "P_n", "k_V_je_Ah"], errors="ignore").copy()
+    for col in DURATION_COLS:
+        if col in out:
+            out.insert(out.columns.get_loc(col) + 1, col[:-2] + "_mmss", [fmt_duration(v, na="") for v in out[col]])
     if "U_ende_Quelle" in out:
         out["U_ende_Quelle"] = [label(VOLTAGE_SOURCE_LABELS, v) for v in out["U_ende_Quelle"]]
     if "Auffaellig" in out:
@@ -151,13 +165,14 @@ def run_gui():
 
         nb = ttk.Notebook(main)
         nb.pack(fill="both", expand=True, padx=6, pady=(4, 6))
-        tabs = {}
+        tabs, tab_titles, fullscreen = {}, {}, []
         for key, title in [("settings", tr("Daten & Einstellungen")), ("summary", tr("Zusammenfassung")),
                            ("akku", tr("Akku")), ("belastung", tr("Belastung & Flugprofil")), ("antrieb", tr("Antrieb")),
                            ("funk", tr("Funk & Bordnetz")), ("flight", tr("Einzelflug")), ("table", tr("Tabelle"))]:
             fr = ttk.Frame(nb)
             nb.add(fr, text=title)
             tabs[key] = fr
+            tab_titles[key] = title
 
         def make_text(parent, height=None):
             kw = dict(wrap="word", font=(fam, 10), padx=12, pady=8, relief="flat", background="#ffffff",
@@ -284,6 +299,8 @@ def run_gui():
         details_btn = ttk.Button(bar, text=tr("Details ausblenden"), command=lambda: toggle_details())
         details_btn.pack(side="right")
         ttk.Button(bar, text=tr("Bild speichern …"), command=lambda: save_flight_png()).pack(side="right", padx=6)
+        ttk.Button(bar, text=tr("Vollbild"), command=lambda: open_fullscreen(flight_builder, tr("Einzelflug"))).pack(
+            side="right")
 
         # views in a row of their own: the labels are much longer in some languages
         vbar = ttk.Frame(ft, padding=(6, 0, 6, 4))
@@ -308,7 +325,7 @@ def run_gui():
         spike_box.pack(side="left", padx=4)
 
         readout = tk.StringVar(value=tr("Maus über das Diagramm bewegen: Werte zum Zeitpunkt.   Mausrad: zoomen  ·  "
-                                        "Ziehen mit linker Maustaste: verschieben  ·  Doppelklick: ganzer Flug"))
+                                        "Ziehen mit linker Maustaste: verschieben  ·  Doppelklick: Vollbild"))
         ttk.Label(ft, textvariable=readout, style="Readout.TLabel").pack(fill="x", padx=6)
 
         paned = ttk.PanedWindow(ft, orient="vertical")
@@ -324,9 +341,32 @@ def run_gui():
         det_txt.pack(side="left", fill="both", expand=True)
 
         flight_fig = Figure(figsize=(12, 7), dpi=100)
+        fs = {"axes": [], "drag": None, "details": True, "spikes": []}
+
+        def flight_builder():
+            """Current flight, view and zoom as a new figure (for the full-screen window)."""
+            fig = Figure(figsize=(12, 7), dpi=100)
+            path = current_path()
+            if path is not None:
+                axes = draw_flight(fig, state["res"], state["p"], path, view_var.get())
+                if axes and fs["axes"]:
+                    axes[0].set_xlim(fs["axes"][0].get_xlim())
+            return fig
+
+        def show_readout(x):
+            t = getattr(flight_fig, "_t", None)
+            if x is None or t is None:
+                return
+            k = int(np.clip(np.searchsorted(t, x), 0, len(t) - 1))
+            parts = [f"t = {fmt_duration(t[k])}"]
+            for name, unit, y in flight_fig._readout:
+                if y is not None and k < len(y) and np.isfinite(y[k]):
+                    parts.append(f"{name} {y[k]:.4g} {unit}")
+            readout.set("   ·   ".join(parts))
+
         flight_canvas = FigureCanvasTkAgg(flight_fig, master=plot_frame)
+        flight_canvas._hover = Hover(flight_canvas, crosshair=True, on_move=show_readout)
         flight_canvas.get_tk_widget().pack(fill="both", expand=True)
-        fs = {"axes": [], "cross": [], "drag": None, "details": True}
 
         # ---------------- tab: table ----------------
         cols = [c[0] for c in TABLE_COLS]
@@ -368,14 +408,58 @@ def run_gui():
                 messagebox.showerror(tr("Eingabefehler"), tr("Bitte gültige Zahlen in den Einstellungen eintragen."))
                 return None
 
-        def show_fig(frame, fig):
+        def chart_canvas(parent, fig, builder, title, crosshair=False, on_move=None):
+            """Canvas with toolbar, tooltip (plots/hover.py) and a full-screen button - the same for every chart."""
+            canvas = FigureCanvasTkAgg(fig, master=parent)
+            toolbar = NavigationToolbar2Tk(canvas, parent)
+            if builder is not None:
+                ttk.Button(toolbar, text=tr("Vollbild"), command=lambda: open_fullscreen(builder, title)).pack(
+                    side="left", padx=6)
+            toolbar.update()
+            canvas._hover = Hover(canvas, crosshair=crosshair, on_move=on_move)     # keep a reference
+            if builder is not None:
+                canvas.mpl_connect("button_press_event",
+                                   lambda ev: ev.dblclick and ev.inaxes is not None and open_fullscreen(builder, title))
+            canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
+            return canvas
+
+        def open_fullscreen(builder, title):
+            """The chart in its own window filling the screen (new figure from builder); Esc closes it."""
+            win = tk.Toplevel(root)
+            win.title(tr("{title} – Vollbild (Esc schließt)", title=title))
+            win.configure(background=BG)
+            try:
+                win.state("zoomed")                       # Windows
+            except tk.TclError:
+                try:
+                    win.attributes("-zoomed", True)       # Linux
+                except tk.TclError:
+                    win.geometry(f"{root.winfo_screenwidth()}x{root.winfo_screenheight()}+0+0")
+            fig = builder()
+            bar = ttk.Frame(win)
+            bar.pack(side="top", fill="x")
+
+            def close(*_):
+                if win in fullscreen:
+                    fullscreen.remove(win)
+                win.destroy()
+
+            ttk.Button(bar, text=tr("Schließen (Esc)"), command=close).pack(side="right", padx=6, pady=2)
+            ttk.Label(bar, text=tr("Maus über einen Datenpunkt: Wert.  Werkzeugleiste unten: zoomen, verschieben, "
+                                   "speichern."), foreground="#666").pack(side="left", padx=6)
+            canvas = chart_canvas(win, fig, None, title, crosshair=getattr(fig, "_t", None) is not None)
+            canvas.draw()
+            win.bind("<Escape>", close)
+            win.protocol("WM_DELETE_WINDOW", close)
+            win.focus_set()
+            fullscreen.append(win)
+            return win
+
+        def show_fig(frame, fig, builder=None, title=""):
             for w in frame.winfo_children():
                 w.destroy()
-            canvas = FigureCanvasTkAgg(fig, master=frame)
-            toolbar = NavigationToolbar2Tk(canvas, frame)
-            toolbar.update()
+            canvas = chart_canvas(frame, fig, builder, title)
             canvas.draw()
-            canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
 
         def flight_label(r):
             return f"{int(r['Flug'])} | {fmt_datetime(r['datum'])} | {_mmss(r['dauer_s'])} | {r['entnommen_mAh']:.0f} mAh"
@@ -394,7 +478,6 @@ def run_gui():
                 return
             old = fs["axes"][0].get_xlim() if (keep_zoom and fs["axes"] and state["path"] == path) else None
             fs["axes"] = draw_flight(flight_fig, state["res"], state["p"], path, view_var.get())
-            fs["cross"] = [a.axvline(np.nan, color="#333", lw=0.8, alpha=0.7) for a in fs["axes"]]
             if old and fs["axes"]:
                 fs["axes"][0].set_xlim(old)
                 autoscale_y()
@@ -412,8 +495,9 @@ def run_gui():
             rx = res.series[path].get("rx")
             items = []
             if rx:
-                items = [f"{sp['t']:.0f} s – {sp['peak']:.2f} A – {label(SPIKE_LABELS, sp['anlass'])}"
+                items = [f"{fmt_duration(sp['t'])} – {sp['peak']:.2f} A – {label(SPIKE_LABELS, sp['anlass'])}"
                          + (f" ({sp['schalter']})" if sp["schalter"] else "") for sp in rx["spikes"]]
+            fs["spikes"] = [sp["t"] for sp in rx["spikes"]] if rx else []
             spike_box["values"] = items
             spike_var.set("" if items else tr("keine Spitzen"))
 
@@ -486,10 +570,10 @@ def run_gui():
             set_xlim(lo + d, hi + d)
 
         def goto_spike(*_):
-            sel = spike_var.get()
-            if not sel or not sel[0].isdigit():
+            vals = list(spike_box["values"])
+            if spike_var.get() not in vals:
                 return
-            t_ = float(sel.split(" s")[0])
+            t_ = fs["spikes"][vals.index(spike_var.get())]
             set_xlim(t_ - 10, t_ + 10)
 
         spike_box.bind("<<ComboboxSelected>>", goto_spike)
@@ -503,7 +587,8 @@ def run_gui():
             if ev.inaxes is None or ev.xdata is None:
                 return
             if ev.dblclick:
-                zoom_to(None)
+                fs["drag"] = None
+                open_fullscreen(flight_builder, tr("Einzelflug"))
                 return
             if ev.button == 1:
                 fs["drag"] = (ev.x, fs["axes"][0].get_xlim())
@@ -518,20 +603,7 @@ def run_gui():
                 dt = (ev.x - x0) / max(bbox.width, 1) * (hi - lo)
                 set_xlim(lo - dt, hi - dt)
                 return
-            if ev.inaxes is None or ev.xdata is None or not fs["axes"]:
-                return
-            t = getattr(flight_fig, "_t", None)
-            if t is None:
-                return
-            k = int(np.clip(np.searchsorted(t, ev.xdata), 0, len(t) - 1))
-            for ln in fs["cross"]:
-                ln.set_xdata([t[k], t[k]])
-            parts = [f"t = {t[k]:.1f} s"]
-            for name, unit, y in flight_fig._readout:
-                if y is not None and k < len(y) and np.isfinite(y[k]):
-                    parts.append(f"{name} {y[k]:.4g} {unit}")
-            readout.set("   ·   ".join(parts))
-            flight_canvas.draw_idle()
+            # tooltip, crosshair and read-out: plots/hover.py (show_readout)
 
         for ev_name, fn in [("scroll_event", on_scroll), ("button_press_event", on_press),
                             ("button_release_event", on_release), ("motion_notify_event", on_motion)]:
@@ -609,7 +681,7 @@ def run_gui():
                                 ("antrieb", figure_antrieb), ("funk", figure_funk)]:
                     fig = fn(res, p)
                     state["figs"][key] = fig
-                    show_fig(tabs[key], fig)
+                    show_fig(tabs[key], fig, builder=lambda fn=fn: fn(state["res"], state["p"]), title=tab_titles[key])
                 labels = [flight_label(r) for _, r in df.iterrows()]
                 flight_box["values"] = labels
                 flight_var.set(labels[-1])
@@ -685,7 +757,11 @@ def run_gui():
         root._akku = dict(fbox=flight_box, run=run, folder_var=folder_var, params=V, status=status, nb=nb, tabs=tabs,
                           flight_var=flight_var, view_var=view_var, select_flight=select_flight, redraw=redraw_flight,
                           set_xlim=set_xlim, goto_spike=goto_spike, spike_var=spike_var, lang_var=lang_var,
-                          set_language=change_language, summary=txt, details=det_txt, table=tree)
+                          set_language=change_language, summary=txt, details=det_txt, table=tree,
+                          fullscreen=fullscreen, open_fullscreen=open_fullscreen, flight_builder=flight_builder,
+                          tab_builder=lambda key: (lambda: dict(akku=figure_akku, belastung=figure_belastung,
+                                                                antrieb=figure_antrieb, funk=figure_funk)[key](
+                                                       state["res"], state["p"])))
 
     def on_close():
         store_settings()

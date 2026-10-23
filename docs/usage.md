@@ -64,13 +64,22 @@ The language applies to the whole user interface, the text reports, the charts a
 | Single flight (Einzelflug) | time series in four views, detail report compared with the median of all flights |
 | Table (Tabelle) | all metrics per flight |
 
+### Working with charts
+
+The same functions are available in every chart (built in one place, `plots/hover.py`, `plots/common.py` and `gui/app.py`, so new charts get them automatically):
+
+- **Mouse-over**: a tooltip shows the data point nearest to the pointer – series name, x value (flight number and date, or the time) and y value with its unit. In stacked bars it shows the value of the segment.
+- **Full screen**: the *Full screen* (Vollbild) button in the toolbar below each chart, or a double-click into a chart, opens it in a window of its own that fills the screen. Zoom, pan and save with the toolbar, the tooltip works there as well; **Esc** or *Close (Esc)* closes the window.
+- **Time format**: all times are shown as min:s (`8:58`), from one hour on as h:min:s (`1:02:05`), rounded to whole seconds – in charts, tables, the summary and the timer.
+
 ### Single-flight view
 
-- **Mouse wheel**: zoom around the cursor; **drag**: pan; **double-click**: whole flight.
+
+- **Mouse wheel**: zoom around the cursor; **drag**: pan; **double-click**: full screen; *Whole flight* (Ganzer Flug) resets the zoom.
 - Buttons for take-off/landing (60 s each), zoom and pan; all charts stay time-aligned.
 - **Current spike** (Stromspitze): jumps to a detected receiver current spike.
-- The line above the charts shows all values at the time under the cursor.
+- The line above the charts shows all values at the time under the cursor; a vertical line marks that time in all charts.
 
 ## Export
 
-Under **Data & settings → Export**: the table as CSV (semicolon separator, decimal comma – opens directly in a German or Spanish Excel) or report, table and all charts into a folder. Report texts, chart labels and file names are in the selected language.
+Under **Data & settings → Export**: the table as CSV (semicolon separator, decimal comma – opens directly in a German or Spanish Excel) or report, table and all charts into a folder. Durations stay in seconds in the CSV (columns `…_s`, e.g. `dauer_s`), each followed by the same value as min:s text (`…_mmss`, e.g. `dauer_mmss`). Report texts, chart labels and file names are in the selected language.

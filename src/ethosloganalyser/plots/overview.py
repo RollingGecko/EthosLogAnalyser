@@ -5,7 +5,8 @@ import numpy as np
 
 from ..config import CHEM, SPIKE_CAUSES, SPIKE_COLS, SPIKE_LABELS, label
 from ..i18n import tr
-from ..plots.common import _bottom_labels_only, _empty_fig, _new_fig, _note, _plot_trend, flag_note, trend_note
+from ..plots.common import (_bottom_labels_only, _empty_fig, _new_fig, _note, _plot_trend, flag_note, flight_hover,
+                            time_axis, trend_note)
 
 
 def figure_akku(res, p):
@@ -102,6 +103,7 @@ def figure_belastung(res, p):
     else:
         a.text(0.5, 0.5, tr("keine Höhe im Log"), transform=a.transAxes, ha="center", color="grey")
     a.set_title(tr("Energie je Flugphase [Wh]"), loc="left")
+    flight_hover(a, df)
     _note(a, tr("Wofür die Energie verbraucht wurde (aus Höhenänderung)."))
     a.set_xlabel(tr("Flug Nr."), fontsize=8)
     _plot_trend(ax[1][1], df, "P_max_W", "tab:blue", tr("Spitzenleistung je Flug [W]"), trend=False,
@@ -117,7 +119,9 @@ def figure_belastung(res, p):
     a.plot(df["Flug"], df["Timer_s"], "o", color="tab:red", ms=5,
            label=tr("Timer für {reserve:.0f} % Rest", reserve=p.reserve_pct))
     a.legend(fontsize=7)
-    a.set_title(tr("Flugzeit und Timer-Empfehlung [s]"), loc="left")
+    a.set_title(tr("Flugzeit und Timer-Empfehlung [min:s]"), loc="left")
+    time_axis(a, "y")
+    flight_hover(a, df)
     _note(a, tr("Balken über dem roten Punkt: länger geflogen als für die Reserve empfohlen."))
     a.set_xlabel(tr("Flug Nr."), fontsize=8)
     _bottom_labels_only(ax)
@@ -213,6 +217,7 @@ def figure_funk(res, p):
     else:
         a.text(0.5, 0.5, tr("kein Empfängerstrom im Log"), transform=a.transAxes, ha="center", color="grey")
     a.set_title(tr("Empfängerstrom-Spitzen je Flug nach Anlass"), loc="left")
+    flight_hover(a, df)
     _note(a, tr("Schwarz = ohne erkennbaren Anlass: Servos prüfen. Details im Reiter Einzelflug."))
     a.set_xlabel(tr("Flug Nr."), fontsize=8)
     _plot_trend(ax[2][1], df, "TxBat_min_V", "tab:purple", tr("Senderakku min. [V]"), trend=False,
