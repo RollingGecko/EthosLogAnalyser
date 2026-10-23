@@ -10,7 +10,8 @@ import os
 import numpy as np
 
 from ..analysis.evaluate import FLAG_LABELS
-from ..analysis.fleet import analyse_folder
+from ..analysis.quality import QUALITY_LABELS
+from ..analysis.fleet import analyse_folder, parse_date
 from ..config import CHEM, SPIKE_LABELS, VOLTAGE_SOURCE_LABELS, Params, label, load_settings, save_settings
 from ..gui.style import BG, _setup_style
 from ..i18n import LANGUAGES, Msg, N_, detect_language, fmt_datetime, get_language, set_language, tr
@@ -27,6 +28,7 @@ TABLE_COLS = [
     ("P_max_W", N_("P max W"), 65), ("C_peak", N_("C Spitze"), 60), ("SoC_start_pct", N_("SoC Start %"), 75),
     ("SoC_ende_pct", N_("SoC Ende %"), 75), ("SoC_ende_U_pct", N_("SoC Ende (U) %"), 90),
     ("SoC_Abw_pct", N_("SoC Abw. Pkt"), 80), ("Kap_gesch_mAh", N_("Kapazität mAh"), 90),
+    ("Kap_norm_mAh", N_("Kapazität normiert"), 105),
     ("Ri_Zelle_mOhm", N_("Ri/Zelle mΩ"), 80), ("Ri_Anf_Zelle_mOhm", N_("Ri Anfang"), 70),
     ("Ri_End_Zelle_mOhm", N_("Ri Ende"), 65), ("U_ref_Zelle_V", N_("U Ref V/Z"), 70),
     ("U_min_Zelle_V", N_("U min V/Z"), 70), ("U_ende_Zelle_V", N_("U Ende V/Z"), 75),
@@ -38,12 +40,18 @@ TABLE_COLS = [
     ("RxSpitzen_n", N_("Rx Spitzen"), 70), ("RxSp_Schalter", N_("Sp. Schalter"), 80),
     ("RxSp_ohne", N_("Sp. o. Anlass"), 85), ("Rx_r_Knueppel", N_("r Rx/Knüppel"), 85),
     ("fit_R2", N_("R² Fit"), 50), ("versatz_s", N_("Versatz s"), 60), ("Auffaellig", N_("Auffälligkeiten"), 260),
+    ("Datenfehler", N_("Messfehler"), 260),
 ]
 
 
 def flag_text(codes):
     """Column "Auffaellig" (comma-separated flag codes) as text in the current language."""
     return ", ".join(label(FLAG_LABELS, c) for c in str(codes).split(", ") if c)
+
+
+def error_text(codes):
+    """Column "Datenfehler" (comma-separated data-error codes) as text in the current language."""
+    return ", ".join(label(QUALITY_LABELS, c) for c in str(codes).split(", ") if c)
 
 
 def fmt_cell(key, v):
@@ -53,6 +61,8 @@ def fmt_cell(key, v):
         return label(VOLTAGE_SOURCE_LABELS, v)
     if key == "Auffaellig":
         return flag_text(v)
+    if key == "Datenfehler":
+        return error_text(v)
     if isinstance(v, (float, np.floating)):
         return "–" if not np.isfinite(v) else f"{v:.5g}"
     return "" if v is None else str(v)
@@ -65,6 +75,8 @@ def export_table(df):
         out["U_ende_Quelle"] = [label(VOLTAGE_SOURCE_LABELS, v) for v in out["U_ende_Quelle"]]
     if "Auffaellig" in out:
         out["Auffaellig"] = [flag_text(v) for v in out["Auffaellig"]]
+    if "Datenfehler" in out:
+        out["Datenfehler"] = [error_text(v) for v in out["Datenfehler"]]
     return out
 
 
@@ -99,6 +111,8 @@ def run_gui():
         "reserve_pct": tk.StringVar(value=saved.get("reserve_pct", "20")),
         "col_voltage": tk.StringVar(value=saved.get("col_voltage", "")),
         "col_current": tk.StringVar(value=saved.get("col_current", "")),
+        "date_from": tk.StringVar(value=saved.get("date_from", "")),
+        "date_to": tk.StringVar(value=saved.get("date_to", "")),
     }
     ui = {"frame": None}
 
@@ -205,6 +219,8 @@ def run_gui():
         field(lf, 2, tr("Reserve bei Landung [%]"), "reserve_pct", tr("für die Timer-Empfehlung"))
         field(lf, 3, tr("Spalte Spannung (optional)"), "col_voltage", tr("Teil des Spaltennamens"))
         field(lf, 4, tr("Spalte Strom (optional)"), "col_current", "")
+        field(lf, 5, tr("Zeitraum von"), "date_from", tr("TT.MM.JJJJ, leer = ohne Grenze"))
+        field(lf, 6, tr("Zeitraum bis"), "date_to", tr("z. B. nur die Flüge eines Akkus"))
 
         lf = ttk.LabelFrame(st_tab, text=tr("Sprache (Language)"), padding=10)
         lf.grid(row=2, column=0, sticky="nwe", padx=(0, 6), pady=10)
@@ -325,11 +341,21 @@ def run_gui():
 
         def read_params():
             try:
+                d0, d1 = parse_date(V["date_from"].get()), parse_date(V["date_to"].get())
+            except ValueError:
+                messagebox.showerror(tr("Eingabefehler"), tr("Bitte ein gültiges Datum eintragen (TT.MM.JJJJ) oder das "
+                                                            "Feld leer lassen."))
+                return None
+            if d0 and d1 and d0 > d1:
+                messagebox.showerror(tr("Eingabefehler"), tr("Der Beginn des Zeitraums liegt nach dem Ende."))
+                return None
+            try:
                 num = lambda k: float(V[k].get().replace(",", "."))
                 return Params(cells=int(num("cells")), chem=V["chem"].get(), nominal_mah=num("nominal_mah"),
                               min_flight_s=num("min_flight_s"), active_current_a=num("active_current_a"),
                               reserve_pct=num("reserve_pct"), col_voltage=V["col_voltage"].get().strip(),
-                              col_current=V["col_current"].get().strip())
+                              col_current=V["col_current"].get().strip(),
+                              date_from=d0.isoformat() if d0 else "", date_to=d1.isoformat() if d1 else "")
             except ValueError:
                 messagebox.showerror(tr("Eingabefehler"), tr("Bitte gültige Zahlen in den Einstellungen eintragen."))
                 return None

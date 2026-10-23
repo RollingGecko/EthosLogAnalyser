@@ -203,25 +203,12 @@ CATALOG = {
     "Nennkapazität nicht eingetragen: Ladezustand und Timer beruhen nur auf der Spannungskennlinie.":
         "Capacidad nominal no introducida: el estado de carga y el temporizador se basan solo en la curva de tensión.",
     "ALTERUNG UND RESTKAPAZITÄT": "ENVEJECIMIENTO Y CAPACIDAD RESTANTE",
-    "Für Trend, Restkapazität (SoH) und Lebensdauer-Prognose werden mindestens 4 Flüge mit gültigen Werten benötigt.":
-        "Para la tendencia, la capacidad restante (SoH) y el pronóstico de vida útil se necesitan al menos 4 vuelos "
-        "con valores válidos.",
-    "Restkapazität (SoH): ca. {soh:.0f} % der Anfangskapazität  ({first:.0f} → {cur:.0f} mAh)":
-        "Capacidad restante (SoH): aprox. {soh:.0f} % de la capacidad inicial  ({first:.0f} → {cur:.0f} mAh)",
     "  - unzuverlässig, solange die Zellchemie nicht passt (siehe oben)":
         "  - poco fiable mientras la química de celda no concuerde (ver arriba)",
-    "  absolut: ca. {cur:.0f} mAh = {pct:.0f} % der Nennkapazität":
-        "  absoluta: aprox. {cur:.0f} mAh = {pct:.0f} % de la capacidad nominal",
-    "  Prognose: 80 % SoH in ca. {n:.0f} weiteren Flügen": "  Pronóstico: 80 % SoH en aprox. {n:.0f} vuelos más",
-    "Kapazitäts-SoH nicht bestimmbar: zu wenige Flüge mit ≥ 40 % Entladetiefe.":
-        "No se puede determinar el SoH de capacidad: muy pocos vuelos con ≥ 40 % de profundidad de descarga.",
     "Innenwiderstand je Zelle: {r0:.2f} → {r1:.2f} mΩ ({pct:+.0f} %)":
         "Resistencia interna por celda: {r0:.2f} → {r1:.2f} mΩ ({pct:+.0f} %)",
-    "  Prognose: +50 % Ri (Faustregel Lebensende) in ca. {n:.0f} weiteren Flügen":
-        "  Pronóstico: +50 % Ri (regla práctica de fin de vida) en aprox. {n:.0f} vuelos más",
     "Spannung bei {iref:.0f} A / {qref:.0f} mAh: {u0:.3f} → {u1:.3f} V/Zelle ({mv:+.0f} mV)":
         "Tensión a {iref:.0f} A / {qref:.0f} mAh: {u0:.3f} → {u1:.3f} V/celda ({mv:+.0f} mV)",
-    "Restlebensdauer (früheres Kriterium): ca. {n:.0f} Flüge": "Vida útil restante (criterio más temprano): aprox. {n:.0f} vuelos",
     ", ≈ {cycles:.0f} Vollzyklen": ", ≈ {cycles:.0f} ciclos completos",
     "Zusammenhang Nutzung ↔ Ri-Abweichung (Hinweis, keine Kausalität):":
         "Relación uso ↔ desviación de Ri (indicio, no causalidad):",
@@ -552,4 +539,102 @@ CATALOG = {
     "R² Fit": "R² ajuste",
     "Versatz s": "Desfase s",
     "Auffälligkeiten": "Anomalías",
+
+    # ---------------- data quality, ageing model, period filter ----------------
+    "Stromsensor hängt am Anschlag":
+        "Sensor de corriente bloqueado en el máximo",
+    "Spannungsausfall":
+        "Caída de la señal de tensión",
+    "Ruhespannung nach der Landung unmöglich":
+        "Tensión en reposo tras el aterrizaje imposible",
+    "VFR außerhalb 0–100 %":
+        "VFR fuera de 0–100 %",
+    "Innenwiderstand unplausibel":
+        "Resistencia interna inverosímil",
+    "Der Strom liegt fast den ganzen Flug am Höchstwert (Sensor übersteuert oder falsch skaliert). Entnommene Ladung, Ladezustand, Kapazität, Innenwiderstand und Timer dieser Flüge werden nicht verwendet.":
+        "La corriente se mantiene en su máximo casi todo el vuelo (sensor saturado o mal escalado). La carga consumida, el estado de carga, la capacidad, la resistencia interna y el temporizador de estos vuelos no se usan.",
+    "Die Spannung fällt im Flug auf unter {limit:.1f} V/Zelle (Sensor- oder Kabelausfall, kein Spannungseinbruch des Akkus). Spannungs- und Akkuwerte dieser Flüge werden nicht verwendet.":
+        "La tensión cae por debajo de {limit:.1f} V/celda durante el vuelo (fallo de sensor o de cable, no una caída de tensión de la batería). Los valores de tensión y de batería de estos vuelos no se usan.",
+    "Die gemessene Spannung nach der Landung liegt unter der Spannung unter Last am Flugende – das ist physikalisch unmöglich (Akku vermutlich abgesteckt oder Sensor aus, bevor die Messung fertig war). Verwendet wird die Modellschätzung der Ruhespannung; keine Tiefentladung.":
+        "La tensión medida tras el aterrizaje es inferior a la tensión bajo carga al final del vuelo, algo físicamente imposible (probablemente se desconectó la batería o se apagó el sensor antes de terminar la medición). Se usa la estimación del modelo de la tensión en reposo; no hay descarga profunda.",
+    "VFR-Werte außerhalb von 0–100 % (ältere Firmware oder Sensorfehler) werden nicht verwendet.":
+        "Los valores de VFR fuera de 0–100 % (firmware antiguo o error de sensor) no se usan.",
+    "Innenwiderstand weniger als halb oder mehr als doppelt so groß wie der Median aller Flüge (Fit gescheitert, z. B. wegen fehlerhafter Strom- oder Spannungswerte). Wird nicht für Trends verwendet.":
+        "Resistencia interna inferior a la mitad o superior al doble de la mediana de todos los vuelos (ajuste fallido, p. ej. por valores de corriente o tensión erróneos). No se usa para las tendencias.",
+    "Kapazität normiert":
+        "Capacidad normalizada",
+    "Messfehler":
+        "Errores de medición",
+    "Zeitraum von":
+        "Periodo desde",
+    "TT.MM.JJJJ, leer = ohne Grenze":
+        "DD/MM/AAAA, vacío = sin límite",
+    "Zeitraum bis":
+        "Periodo hasta",
+    "z. B. nur die Flüge eines Akkus":
+        "p. ej. solo los vuelos de una batería",
+    "Der Beginn des Zeitraums liegt nach dem Ende.":
+        "El inicio del periodo es posterior a su fin.",
+    "Bitte ein gültiges Datum eintragen (TT.MM.JJJJ) oder das Feld leer lassen.":
+        "Introduzca una fecha válida (DD/MM/AAAA) o deje el campo vacío.",
+    "Auf {depth:.0f} % Entladetiefe bezogen.":
+        "Referida a una profundidad de descarga del {depth:.0f} %.",
+    "80 % der Nennkapazität":
+        "80 % de la capacidad nominal",
+    "zu wenige Flüge mit gültigen Werten für einen Trend (mindestens {min} über {span} Flüge)":
+        "demasiados pocos vuelos con valores válidos para una tendencia (al menos {min} a lo largo de {span} vuelos)",
+    "  Trend: {slope} {unit} je 100 Flüge (90 %-Bereich {lo} bis {hi}) – {verdict}":
+        "  Tendencia: {slope} {unit} cada 100 vuelos (intervalo del 90 %: {lo} a {hi}) – {verdict}",
+    "die Werte streuen zu stark (±{pct:.0f} %)":
+        "los valores tienen demasiada dispersión (±{pct:.0f} %)",
+    "kein gesicherter Trend – der 90-%-Bereich der Steigung schließt null ein":
+        "sin tendencia fiable: el intervalo del 90 % de la pendiente incluye el cero",
+    "der Wert verbessert sich über den Zeitraum – kein Alterungssignal (z. B. Temperatur, Jahreszeit oder Einfliegen)":
+        "el valor mejora a lo largo del periodo: no hay señal de envejecimiento (p. ej. temperatura, estación del año o rodaje)",
+    "  Trend: zu wenige Flüge für einen Trend (mindestens {min} über {span} Flüge)":
+        "  Tendencia: demasiados pocos vuelos para una tendencia (al menos {min} a lo largo de {span} vuelos)",
+    "kein gesicherter Trend":
+        "sin tendencia fiable",
+    "gesichert fallend":
+        "descenso fiable",
+    "gesichert steigend":
+        "aumento fiable",
+    "DATENQUALITÄT (Messfehler, nicht in Trends und Warnungen)":
+        "CALIDAD DE LOS DATOS (errores de medición, no usados en tendencias ni avisos)",
+    "Restkapazität (SoH): ca. {soh:.0f} % der Nennkapazität  (aktuell ≈ {cur:.0f} ± {err} mAh, Nennkapazität {nom:.0f} mAh)":
+        "Capacidad restante (SoH): aprox. {soh:.0f} % de la capacidad nominal  (actualmente ≈ {cur:.0f} ± {err} mAh, capacidad nominal {nom:.0f} mAh)",
+    "Restkapazität (SoH): ca. {soh:.0f} % der Anfangskapazität  (aktuell ≈ {cur:.0f} ± {err} mAh, Anfangswert ≈ {start:.0f} mAh; Nennkapazität nicht eingetragen)":
+        "Capacidad restante (SoH): aprox. {soh:.0f} % de la capacidad inicial  (actualmente ≈ {cur:.0f} ± {err} mAh, valor inicial ≈ {start:.0f} mAh; capacidad nominal no introducida)",
+    "Restlebensdauer: ca. {n:.0f} Flüge (90 %-Bereich {lo:.0f}–{hi:.0f}) – das frühere der Kriterien 80 % SoH und +50 % Ri":
+        "Vida útil restante: aprox. {n:.0f} vuelos (intervalo del 90 %: {lo:.0f}–{hi:.0f}), el primero de los criterios 80 % SoH y +50 % Ri",
+    "Zeitraum-Filter: {start} – {end}; {n} Dateien außerhalb nicht ausgewertet":
+        "Filtro de periodo: {start} – {end}; {n} archivos fuera del periodo no analizados",
+    "Hinweis auf mehrere Akkus: Die Kapazitätswerte bilden zwei Gruppen (≈ {low:.0f} mAh in {n_low} Flügen, ≈ {high:.0f} mAh in {n_high} Flügen). Alterungsaussagen über diesen Zeitraum gelten dann für keinen einzelnen Akku. Zeitraum auf einen Akku eingrenzen (Daten & Einstellungen → Zeitraum).":
+        "Indicio de varias baterías: los valores de capacidad forman dos grupos (≈ {low:.0f} mAh en {n_low} vuelos, ≈ {high:.0f} mAh en {n_high} vuelos). Las conclusiones sobre el envejecimiento en este periodo no se aplican entonces a ninguna batería concreta. Limite el periodo a una batería (Datos y ajustes → Periodo).",
+    "Kapazitäts-SoH nicht bestimmbar: zu wenige Flüge mit gültiger Kapazitätsschätzung (≥ 40 % Entladetiefe; vorhanden {n}, nötig {min}).":
+        "No se puede determinar el SoH de capacidad: demasiados pocos vuelos con una estimación de capacidad válida (≥ 40 % de profundidad de descarga; disponibles {n}, necesarios {min}).",
+    "Keine Messfehler erkannt.":
+        "No se detectaron errores de medición.",
+    "MESSFEHLER IN DIESEM FLUG (nicht in Trends und Warnungen)":
+        "ERRORES DE MEDICIÓN EN ESTE VUELO (no usados en tendencias ni avisos)",
+    "  gegenüber dem Anfangswert dieses Zeitraums (≈ {start:.0f} mAh bei Flug {first:.0f}): {pct:+.1f} %":
+        "  respecto al valor inicial de este periodo (≈ {start:.0f} mAh en el vuelo {first:.0f}): {pct:+.1f} %",
+    "  Kapazität einheitlich auf {depth:.0f} % Entladetiefe bezogen (die Schätzung hängt von der Entladetiefe ab: {coef:+.0f} mAh je Prozentpunkt).":
+        "  Capacidad referida de forma uniforme a una profundidad de descarga del {depth:.0f} % (la estimación depende de la profundidad de descarga: {coef:+.0f} mAh por punto porcentual).",
+    "  Prognose: 80 % SoH in ca. {n:.0f} weiteren Flügen (90 %-Bereich {lo:.0f}–{hi:.0f})":
+        "  Pronóstico: 80 % SoH en aprox. {n:.0f} vuelos más (intervalo del 90 %: {lo:.0f}–{hi:.0f})",
+    "  Prognose: +50 % Ri (Faustregel Lebensende) in ca. {n:.0f} weiteren Flügen (90 %-Bereich {lo:.0f}–{hi:.0f})":
+        "  Pronóstico: +50 % Ri (regla práctica de fin de vida) en aprox. {n:.0f} vuelos más (intervalo del 90 %: {lo:.0f}–{hi:.0f})",
+    "Restlebensdauer: keine belastbare Prognose im gewählten Zeitraum (Gründe siehe oben).":
+        "Vida útil restante: no hay pronóstico fiable para el periodo seleccionado (motivos arriba).",
+    "  80 % SoH ist bereits erreicht.":
+        "  Ya se ha alcanzado el 80 % de SoH.",
+    "  Keine Prognose: {reason}.":
+        "  Sin pronóstico: {reason}.",
+    "  +50 % Ri ist bereits erreicht.":
+        "  Ya se ha alcanzado +50 % de Ri.",
+    "  Keine Ri-Prognose: {reason}.":
+        "  Sin pronóstico de Ri: {reason}.",
+    " Linie gestrichelt: kein gesicherter Trend.":
+        " Línea discontinua: sin tendencia fiable.",
 }

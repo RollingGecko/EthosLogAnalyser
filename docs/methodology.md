@@ -31,16 +31,32 @@ Rᵢ is additionally determined separately for the first, middle and last third 
 
 The curves (resting voltage → state of charge) live in `config.py` and are approximations.
 
-## Capacity and ageing (`analysis/fleet.py`)
+## Measurement errors (`analysis/quality.py`)
+
+Some log values are physically impossible. They are not findings about the battery: they are taken out of all battery values, trends, start values and limit warnings and listed under *Data quality* in the summary (column `Datenfehler` in the table) instead of being reported as deep discharge or voltage collapse.
+
+| Code | Rule | Consequence |
+| --- | --- | --- |
+| `current_stuck` | mean current ≥ 97 % of the maximum current (sensor saturated or wrongly scaled) | drawn charge, state of charge by coulomb counting, capacity, Rᵢ, voltage at reference load and timer of the flight are not used |
+| `voltage_dropout` | lowest voltage under load below half the load limit of the cell chemistry (e.g. 1.4 V/cell for Li-Ion) | voltage and battery values of the flight are not used |
+| `rest_voltage_invalid` | measured resting voltage after landing below the lowest voltage under load in the last 10 s of the flight (typically: battery unplugged or sensor off within the 5–30 s window) | the model estimate of the resting voltage is used instead |
+| `vfr_invalid` | VFR below 0 % or above 100 % | the VFR value is not used |
+| `ri_implausible` | Rᵢ below half or above twice the median of all flights (fit failed) | Rᵢ and voltage at reference load of the flight are not used |
+
+## Capacity and ageing (`analysis/ageing.py`)
 
 - **Estimated capacity** = drawn charge / drop in state of charge according to the resting voltage, only for a depth of discharge of at least 40 %; gross outliers (factor 1.6 from the median) are discarded.
-- **State of health (SoH)**: median of the latest flights vs. median of the first flights.
-- **Voltage at reference load**: computed from the model above for every flight at the same current and drawn charge – makes flights with different profiles comparable.
-- **Remaining life forecast**: linear trend until 80 % capacity or +50 % internal resistance, whichever comes first.
+- **Depth correction**: the estimate depends on the depth of discharge because the resting-voltage curve is only an approximation (on the real logs about −25 to −45 mAh per percentage point: shallow flights estimate too high). If this dependency is significant (|t| ≥ 2) and the depth varies enough, it is estimated together with the trend and all capacities are referred to the median depth of the analysed flights (column `Kap_norm_mAh`).
+- **One model for everything**: capacity, internal resistance and voltage at reference load are each described by one robust straight line over the flight number (Huber-weighted least squares, values more than 3.5 robust standard deviations away are ignored). The *start value* is the line at the first flight, the *current value* the line at the last flight, the *trend* its slope with a 90 % range. SoH, trend and forecast therefore cannot contradict each other, and single start flights or outliers do not move them.
+- **State of health (SoH)**: current capacity / nominal capacity. Without a nominal capacity: current / start value. With a nominal capacity the change against the start value of the selected period is shown as well.
+- **Trend**: “reliably falling/rising” only if the 90 % range of the slope does not include zero; at least 10 valid values spread over at least 10 flights are needed.
+- **Forecast**: flights until the line reaches 80 % of the SoH reference (capacity) or +50 % of the start value (Rᵢ), with the 90 % range from the slope. No forecast – with the reason stated – if there are too few values, if they scatter too much (capacity ±6 %, Rᵢ ±15 %), if the trend is not significant, or if the value improves (e.g. a falling Rᵢ, which without temperature data is usually seasonal). The voltage at reference load is shown with its trend but has no end-of-life criterion.
+- **Several batteries**: if the capacity values around the trend form two clearly separated groups (bimodality coefficient > 0.555, both groups ≥ 20 % of the flights, Ashman’s D > 3), the summary warns that ageing statements over the period apply to no single battery. Two batteries whose capacities differ by less than the scatter of the estimate (about ±2 %) cannot be told apart this way; then the period filter or a battery identifier in the log is needed.
+- **Period filter**: *Data & settings → Period from/to* limits the analysis to the flights in that period (by the date in the file name), e.g. the flights of one battery.
 
 ## Timer recommendation
 
-Per flight: the time at which the drawn charge reaches the capacity down to the desired reserve (extrapolated with the mean current of the last 60 s if needed). The recommendation is the median of the last five flights.
+Per flight: the time at which the drawn charge reaches the capacity down to the desired reserve (extrapolated with the mean current of the last 60 s if needed). The recommendation is the median of the last five flights. Because the capacity estimate depends on the depth of discharge, the timer uses the estimate at the depth that corresponds to the reserve (within the observed range); with a nominal capacity entered, the smaller of the two is used.
 
 ## Drive
 
@@ -59,7 +75,7 @@ Without attitude data (sticks, rotation rate, g-load) the cause is “no attitud
 
 ## Anomalies (`analysis/evaluate.py`)
 
-Limits (deep discharge, voltage collapse under load, sensor deviation, spikes without cause) apply to every flight. Statistical outliers are only searched from 6 flights on: robust z-score above 3.5, for ageing metrics relative to the trend.
+Limits (deep discharge, voltage collapse under load, sensor deviation, spikes without cause) apply to every flight except for values that were recognised as measurement errors. Statistical outliers are only searched from 6 flights on: robust z-score above 3.5, for ageing metrics relative to the trend.
 
 ## Limitations
 

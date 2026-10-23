@@ -198,24 +198,12 @@ CATALOG = {
     "Nennkapazität nicht eingetragen: Ladezustand und Timer beruhen nur auf der Spannungskennlinie.":
         "Nominal capacity not entered: state of charge and timer are based on the voltage curve only.",
     "ALTERUNG UND RESTKAPAZITÄT": "AGEING AND REMAINING CAPACITY",
-    "Für Trend, Restkapazität (SoH) und Lebensdauer-Prognose werden mindestens 4 Flüge mit gültigen Werten benötigt.":
-        "Trend, remaining capacity (SoH) and life forecast need at least 4 flights with valid values.",
-    "Restkapazität (SoH): ca. {soh:.0f} % der Anfangskapazität  ({first:.0f} → {cur:.0f} mAh)":
-        "Remaining capacity (SoH): approx. {soh:.0f} % of the initial capacity  ({first:.0f} → {cur:.0f} mAh)",
     "  - unzuverlässig, solange die Zellchemie nicht passt (siehe oben)":
         "  - unreliable as long as the cell chemistry does not match (see above)",
-    "  absolut: ca. {cur:.0f} mAh = {pct:.0f} % der Nennkapazität":
-        "  absolute: approx. {cur:.0f} mAh = {pct:.0f} % of the nominal capacity",
-    "  Prognose: 80 % SoH in ca. {n:.0f} weiteren Flügen": "  Forecast: 80 % SoH in approx. {n:.0f} more flights",
-    "Kapazitäts-SoH nicht bestimmbar: zu wenige Flüge mit ≥ 40 % Entladetiefe.":
-        "Capacity SoH cannot be determined: too few flights with ≥ 40 % depth of discharge.",
     "Innenwiderstand je Zelle: {r0:.2f} → {r1:.2f} mΩ ({pct:+.0f} %)":
         "Internal resistance per cell: {r0:.2f} → {r1:.2f} mΩ ({pct:+.0f} %)",
-    "  Prognose: +50 % Ri (Faustregel Lebensende) in ca. {n:.0f} weiteren Flügen":
-        "  Forecast: +50 % Ri (rule of thumb for end of life) in approx. {n:.0f} more flights",
     "Spannung bei {iref:.0f} A / {qref:.0f} mAh: {u0:.3f} → {u1:.3f} V/Zelle ({mv:+.0f} mV)":
         "Voltage at {iref:.0f} A / {qref:.0f} mAh: {u0:.3f} → {u1:.3f} V/cell ({mv:+.0f} mV)",
-    "Restlebensdauer (früheres Kriterium): ca. {n:.0f} Flüge": "Remaining life (earlier criterion): approx. {n:.0f} flights",
     ", ≈ {cycles:.0f} Vollzyklen": ", ≈ {cycles:.0f} full cycles",
     "Zusammenhang Nutzung ↔ Ri-Abweichung (Hinweis, keine Kausalität):":
         "Relation usage ↔ Ri deviation (hint, not causality):",
@@ -537,4 +525,102 @@ CATALOG = {
     "R² Fit": "R² fit",
     "Versatz s": "Offset s",
     "Auffälligkeiten": "Anomalies",
+
+    # ---------------- data quality, ageing model, period filter ----------------
+    "Stromsensor hängt am Anschlag":
+        "Current sensor stuck at its limit",
+    "Spannungsausfall":
+        "Voltage dropout",
+    "Ruhespannung nach der Landung unmöglich":
+        "Impossible rest voltage after landing",
+    "VFR außerhalb 0–100 %":
+        "VFR outside 0–100 %",
+    "Innenwiderstand unplausibel":
+        "Implausible internal resistance",
+    "Der Strom liegt fast den ganzen Flug am Höchstwert (Sensor übersteuert oder falsch skaliert). Entnommene Ladung, Ladezustand, Kapazität, Innenwiderstand und Timer dieser Flüge werden nicht verwendet.":
+        "The current stays at its maximum for almost the whole flight (sensor saturated or wrongly scaled). Drawn charge, state of charge, capacity, internal resistance and timer of these flights are not used.",
+    "Die Spannung fällt im Flug auf unter {limit:.1f} V/Zelle (Sensor- oder Kabelausfall, kein Spannungseinbruch des Akkus). Spannungs- und Akkuwerte dieser Flüge werden nicht verwendet.":
+        "The voltage drops below {limit:.1f} V/cell during the flight (sensor or cable failure, not a voltage sag of the battery). Voltage and battery values of these flights are not used.",
+    "Die gemessene Spannung nach der Landung liegt unter der Spannung unter Last am Flugende – das ist physikalisch unmöglich (Akku vermutlich abgesteckt oder Sensor aus, bevor die Messung fertig war). Verwendet wird die Modellschätzung der Ruhespannung; keine Tiefentladung.":
+        "The voltage measured after landing is below the voltage under load at the end of the flight – physically impossible (battery probably unplugged or sensor switched off before the measurement was complete). The model estimate of the rest voltage is used; no deep discharge.",
+    "VFR-Werte außerhalb von 0–100 % (ältere Firmware oder Sensorfehler) werden nicht verwendet.":
+        "VFR values outside 0–100 % (older firmware or sensor error) are not used.",
+    "Innenwiderstand weniger als halb oder mehr als doppelt so groß wie der Median aller Flüge (Fit gescheitert, z. B. wegen fehlerhafter Strom- oder Spannungswerte). Wird nicht für Trends verwendet.":
+        "Internal resistance less than half or more than twice the median of all flights (fit failed, e.g. because of faulty current or voltage values). Not used for trends.",
+    "Kapazität normiert":
+        "Capacity normalised",
+    "Messfehler":
+        "Measurement errors",
+    "Zeitraum von":
+        "Period from",
+    "TT.MM.JJJJ, leer = ohne Grenze":
+        "DD/MM/YYYY, empty = no limit",
+    "Zeitraum bis":
+        "Period to",
+    "z. B. nur die Flüge eines Akkus":
+        "e.g. only the flights of one battery",
+    "Der Beginn des Zeitraums liegt nach dem Ende.":
+        "The start of the period is after its end.",
+    "Bitte ein gültiges Datum eintragen (TT.MM.JJJJ) oder das Feld leer lassen.":
+        "Please enter a valid date (DD/MM/YYYY) or leave the field empty.",
+    "Auf {depth:.0f} % Entladetiefe bezogen.":
+        "Referred to {depth:.0f} % depth of discharge.",
+    "80 % der Nennkapazität":
+        "80 % of the nominal capacity",
+    "zu wenige Flüge mit gültigen Werten für einen Trend (mindestens {min} über {span} Flüge)":
+        "too few flights with valid values for a trend (at least {min} over {span} flights)",
+    "  Trend: {slope} {unit} je 100 Flüge (90 %-Bereich {lo} bis {hi}) – {verdict}":
+        "  Trend: {slope} {unit} per 100 flights (90 % range {lo} to {hi}) – {verdict}",
+    "die Werte streuen zu stark (±{pct:.0f} %)":
+        "the values scatter too much (±{pct:.0f} %)",
+    "kein gesicherter Trend – der 90-%-Bereich der Steigung schließt null ein":
+        "no reliable trend – the 90 % range of the slope includes zero",
+    "der Wert verbessert sich über den Zeitraum – kein Alterungssignal (z. B. Temperatur, Jahreszeit oder Einfliegen)":
+        "the value improves over the period – no sign of ageing (e.g. temperature, season or breaking in)",
+    "  Trend: zu wenige Flüge für einen Trend (mindestens {min} über {span} Flüge)":
+        "  Trend: too few flights for a trend (at least {min} over {span} flights)",
+    "kein gesicherter Trend":
+        "no reliable trend",
+    "gesichert fallend":
+        "reliably falling",
+    "gesichert steigend":
+        "reliably rising",
+    "DATENQUALITÄT (Messfehler, nicht in Trends und Warnungen)":
+        "DATA QUALITY (measurement errors, not used in trends and warnings)",
+    "Restkapazität (SoH): ca. {soh:.0f} % der Nennkapazität  (aktuell ≈ {cur:.0f} ± {err} mAh, Nennkapazität {nom:.0f} mAh)":
+        "Remaining capacity (SoH): approx. {soh:.0f} % of the nominal capacity  (currently ≈ {cur:.0f} ± {err} mAh, nominal capacity {nom:.0f} mAh)",
+    "Restkapazität (SoH): ca. {soh:.0f} % der Anfangskapazität  (aktuell ≈ {cur:.0f} ± {err} mAh, Anfangswert ≈ {start:.0f} mAh; Nennkapazität nicht eingetragen)":
+        "Remaining capacity (SoH): approx. {soh:.0f} % of the initial capacity  (currently ≈ {cur:.0f} ± {err} mAh, initial value ≈ {start:.0f} mAh; nominal capacity not entered)",
+    "Restlebensdauer: ca. {n:.0f} Flüge (90 %-Bereich {lo:.0f}–{hi:.0f}) – das frühere der Kriterien 80 % SoH und +50 % Ri":
+        "Remaining life: approx. {n:.0f} flights (90 % range {lo:.0f}–{hi:.0f}) – the earlier of the criteria 80 % SoH and +50 % Ri",
+    "Zeitraum-Filter: {start} – {end}; {n} Dateien außerhalb nicht ausgewertet":
+        "Period filter: {start} – {end}; {n} files outside not analysed",
+    "Hinweis auf mehrere Akkus: Die Kapazitätswerte bilden zwei Gruppen (≈ {low:.0f} mAh in {n_low} Flügen, ≈ {high:.0f} mAh in {n_high} Flügen). Alterungsaussagen über diesen Zeitraum gelten dann für keinen einzelnen Akku. Zeitraum auf einen Akku eingrenzen (Daten & Einstellungen → Zeitraum).":
+        "Sign of several batteries: the capacity values form two groups (≈ {low:.0f} mAh in {n_low} flights, ≈ {high:.0f} mAh in {n_high} flights). Statements about ageing over this period then apply to no single battery. Limit the period to one battery (Data & settings → Period).",
+    "Kapazitäts-SoH nicht bestimmbar: zu wenige Flüge mit gültiger Kapazitätsschätzung (≥ 40 % Entladetiefe; vorhanden {n}, nötig {min}).":
+        "Capacity SoH cannot be determined: too few flights with a valid capacity estimate (≥ 40 % depth of discharge; available {n}, needed {min}).",
+    "Keine Messfehler erkannt.":
+        "No measurement errors detected.",
+    "MESSFEHLER IN DIESEM FLUG (nicht in Trends und Warnungen)":
+        "MEASUREMENT ERRORS IN THIS FLIGHT (not used in trends and warnings)",
+    "  gegenüber dem Anfangswert dieses Zeitraums (≈ {start:.0f} mAh bei Flug {first:.0f}): {pct:+.1f} %":
+        "  compared with the initial value of this period (≈ {start:.0f} mAh at flight {first:.0f}): {pct:+.1f} %",
+    "  Kapazität einheitlich auf {depth:.0f} % Entladetiefe bezogen (die Schätzung hängt von der Entladetiefe ab: {coef:+.0f} mAh je Prozentpunkt).":
+        "  Capacity uniformly referred to {depth:.0f} % depth of discharge (the estimate depends on the depth of discharge: {coef:+.0f} mAh per percentage point).",
+    "  Prognose: 80 % SoH in ca. {n:.0f} weiteren Flügen (90 %-Bereich {lo:.0f}–{hi:.0f})":
+        "  Forecast: 80 % SoH in approx. {n:.0f} more flights (90 % range {lo:.0f}–{hi:.0f})",
+    "  Prognose: +50 % Ri (Faustregel Lebensende) in ca. {n:.0f} weiteren Flügen (90 %-Bereich {lo:.0f}–{hi:.0f})":
+        "  Forecast: +50 % Ri (rule of thumb for end of life) in approx. {n:.0f} more flights (90 % range {lo:.0f}–{hi:.0f})",
+    "Restlebensdauer: keine belastbare Prognose im gewählten Zeitraum (Gründe siehe oben).":
+        "Remaining life: no reliable forecast for the selected period (reasons see above).",
+    "  80 % SoH ist bereits erreicht.":
+        "  80 % SoH has already been reached.",
+    "  Keine Prognose: {reason}.":
+        "  No forecast: {reason}.",
+    "  +50 % Ri ist bereits erreicht.":
+        "  +50 % Ri has already been reached.",
+    "  Keine Ri-Prognose: {reason}.":
+        "  No Ri forecast: {reason}.",
+    " Linie gestrichelt: kein gesicherter Trend.":
+        " Dashed line: no reliable trend.",
 }

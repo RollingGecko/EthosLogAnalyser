@@ -33,11 +33,17 @@ def _empty_fig(text):
     return fig
 
 
+NOTE_WIDTH = 95         # characters per line of a chart note (longer notes are wrapped)
+
+
 def _note(ax, text):
     """Short explanation below the chart title: what is shown and what is good."""
     if text:
-        ax.text(0, 1.012, text, transform=ax.transAxes, fontsize=7.5, color="#555555", va="bottom", ha="left")
-        ax.set_title(ax.get_title(loc="left"), loc="left", pad=14)
+        import textwrap
+        lines = textwrap.wrap(text.strip(), NOTE_WIDTH) or [""]
+        ax.text(0, 1.012, "\n".join(lines), transform=ax.transAxes, fontsize=7.5, color="#555555", va="bottom",
+                ha="left")
+        ax.set_title(ax.get_title(loc="left"), loc="left", pad=14 + 10 * (len(lines) - 1))
 
 
 def _bottom_labels_only(ax):
@@ -64,11 +70,13 @@ def _axis_color(a, color, label, side="left"):
 
 
 def _plot_trend(ax, df, col, color, title, flags=None, flag_label=None, hlines=(), label=None, trend=True, marker="o",
-                note=None):
+                note=None, model=None):
     """Values of one column per flight with optional trend line.
 
     title, label, note and hline texts must already be translated; flag_label is a flag code
-    (see analysis.evaluate.FLAG_LABELS) whose flights are circled in red.
+    (see analysis.evaluate.FLAG_LABELS) whose flights are circled in red. model is an ageing model
+    (analysis.ageing.ageing_model): its line is drawn instead of a plain least-squares trend - solid if the
+    trend is significant, dashed if not.
     """
     x = df["Flug"].to_numpy(dtype=float)
     y = df[col].to_numpy(dtype=float)
@@ -77,7 +85,11 @@ def _plot_trend(ax, df, col, color, title, flags=None, flag_label=None, hlines=(
         ax.text(0.5, 0.5, tr("keine Daten"), transform=ax.transAxes, ha="center", va="center", color="grey")
     else:
         ax.plot(x[good], y[good], marker, ms=5, color=color, label=label, ls="none")
-        if trend:
+        if trend and model is not None and model.get("status") == "ok":
+            xs = np.array([model["first"], model["last"]])
+            ys = model["current"] + model["slope"] * (xs - model["last"])
+            ax.plot(xs, ys, "-" if model["trend"] != "none" else "--", color=color, alpha=0.6, lw=1.8)
+        elif trend:
             trd = _trend(x, y)
             if trd:
                 ax.plot(x, trd[0] * x + trd[1], "-", color=color, alpha=0.5, lw=1.5)
@@ -95,3 +107,7 @@ def _plot_trend(ax, df, col, color, title, flags=None, flag_label=None, hlines=(
 
 def flag_note():
     return tr(" Rot umkreist: auffälliger Flug.")
+
+
+def trend_note():
+    return tr(" Linie gestrichelt: kein gesicherter Trend.")

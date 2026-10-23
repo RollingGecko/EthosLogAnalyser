@@ -7,11 +7,14 @@ All texts are produced in the current language (see i18n.py) at the time the rep
 import numpy as np
 import pandas as pd
 
+from ..analysis.ageing import MIN_TREND_SPAN, MIN_TREND_VALUES, MIN_VALUES, Z90, forecast
 from ..analysis.evaluate import FLAG_LABELS, SEVERE_FLAGS, USAGE_LABELS
+from ..analysis.quality import QUALITY_LABELS, quality_messages
 from ..config import (CAP_SOURCE_LABELS, CHEM, CORR_LABELS, SOC_TOL_PCT, SPIKE_CAUSES, SPIKE_COLS, SPIKE_LABELS,
                       VOLTAGE_SOURCE_LABELS, label)
 from ..i18n import fmt_date, fmt_datetime, tr
-from ..utils import _f, _mmss, _trend, _window_change
+from ..analysis.fleet import parse_date
+from ..utils import _f, _mmss, _window_change
 
 
 def soc_lines(r, meta):
@@ -46,7 +49,6 @@ def summary_lines(res, p):
     if df.empty:
         return [("bad", tr("Keine auswertbaren Flüge gefunden."))]
     n = len(df)
-    x = df["Flug"].to_numpy(dtype=float)
     k = max(1, min(3, n // 3))
     cells = meta["cells"]
 
@@ -54,13 +56,19 @@ def summary_lines(res, p):
     L.append(("info", tr("{n} Flüge ausgewertet ({first} – {last}), {skipped} Dateien übersprungen",
                          n=n, first=fmt_date(df["datum"].min()), last=fmt_date(df["datum"].max()),
                          skipped=len(res.skipped))))
+    if p.date_from or p.date_to:
+        L.append(("info", tr("Zeitraum-Filter: {start} – {end}; {n} Dateien außerhalb nicht ausgewertet",
+                             start=fmt_date(parse_date(p.date_from)) if p.date_from else "…",
+                             end=fmt_date(parse_date(p.date_to)) if p.date_to else "…",
+                             n=meta.get("outside_period", 0))))
     line = tr("Akku: {cells}S {chem}", cells=cells, chem=p.chem)
     if p.cells <= 0:
         line += tr("  (Zellenzahl automatisch erkannt)")
     if p.nominal_mah > 0:
         line += tr(", Nennkapazität {cap:.0f} mAh", cap=p.nominal_mah)
     L.append(("info", line))
-    line = tr("Gesamt entnommen: {ah:.1f} Ah", ah=df["entnommen_mAh"].sum() / 1000)
+    valid = df[df["Akku_gueltig"]] if "Akku_gueltig" in df.columns else df
+    line = tr("Gesamt entnommen: {ah:.1f} Ah", ah=valid["entnommen_mAh"].sum() / 1000)
     if np.isfinite(df["Vollzyklen_kum"].iloc[-1]):
         line += tr("  (≈ {cycles:.1f} Vollzyklen)", cycles=df["Vollzyklen_kum"].iloc[-1])
     L.append(("info", line))
@@ -68,7 +76,7 @@ def summary_lines(res, p):
     # ---------------- battery ----------------
     L.append(("h", tr("AKKU ÜBER ALLE FLÜGE")))
     L.append(("info", tr("Details zu jedem einzelnen Flug (auch zum letzten) stehen im Reiter Einzelflug.")))
-    med = lambda c: float(df[c].median()) if df[c].notna().any() else np.nan
+    med = lambda c: float(valid[c].median()) if valid[c].notna().any() else np.nan
     L.append(("info", tr("Typischer Flug (Median): {dur}, {drawn} mAh entnommen, Ladezustand am Ende ≈ {soc} %, "
                          "Spitze {imax} A / {pmax} W, min. {umin} V/Zelle unter Last",
                          dur=_mmss(med("dauer_s")), drawn=_f(med("entnommen_mAh")), soc=_f(med("SoC_ende_pct")),
@@ -96,55 +104,8 @@ def summary_lines(res, p):
 
     # ---------------- ageing ----------------
     L.append(("h", tr("ALTERUNG UND RESTKAPAZITÄT")))
-    if n < 4:
-        L.append(("warn", tr("Für Trend, Restkapazität (SoH) und Lebensdauer-Prognose werden mindestens 4 Flüge "
-                             "mit gültigen Werten benötigt.")))
-    else:
-        life = []
-        cw = _window_change(df, "Kap_gesch_mAh", k)
-        if cw:
-            first, cur = cw
-            soh = cur / first * 100
-            tag = "ok" if soh >= 90 else ("warn" if soh >= 80 else "bad")
-            shaky = p.chem in fit and fit[p.chem] > SOC_TOL_PCT
-            line = tr("Restkapazität (SoH): ca. {soh:.0f} % der Anfangskapazität  ({first:.0f} → {cur:.0f} mAh)",
-                      soh=soh, first=first, cur=cur)
-            if shaky:
-                line += tr("  - unzuverlässig, solange die Zellchemie nicht passt (siehe oben)")
-            L.append(("warn" if shaky else tag, line))
-            if p.nominal_mah > 0:
-                L.append(("info", tr("  absolut: ca. {cur:.0f} mAh = {pct:.0f} % der Nennkapazität",
-                                     cur=cur, pct=cur / p.nominal_mah * 100)))
-            trd = _trend(x, df["Kap_gesch_mAh"].to_numpy(dtype=float))
-            if trd and trd[0] < 0:
-                fl = max((0.8 * first - (trd[0] * x[-1] + trd[1])) / trd[0], 0)
-                life.append(fl)
-                L.append(("info", tr("  Prognose: 80 % SoH in ca. {n:.0f} weiteren Flügen", n=fl)))
-        else:
-            L.append(("warn", tr("Kapazitäts-SoH nicht bestimmbar: zu wenige Flüge mit ≥ 40 % Entladetiefe.")))
-        rw = _window_change(df, "Ri_Zelle_mOhm", k)
-        if rw:
-            r0, r1 = rw
-            ch_pct = (r1 / r0 - 1) * 100
-            tag = "ok" if ch_pct < 20 else ("warn" if ch_pct < 50 else "bad")
-            L.append((tag, tr("Innenwiderstand je Zelle: {r0:.2f} → {r1:.2f} mΩ ({pct:+.0f} %)", r0=r0, r1=r1, pct=ch_pct)))
-            trd = _trend(x, df["Ri_Zelle_mOhm"].to_numpy(dtype=float))
-            if trd and trd[0] > 0:
-                fl = max((1.5 * r0 - (trd[0] * x[-1] + trd[1])) / trd[0], 0)
-                life.append(fl)
-                L.append(("info", tr("  Prognose: +50 % Ri (Faustregel Lebensende) in ca. {n:.0f} weiteren Flügen", n=fl)))
-        uw = _window_change(df, "U_ref_Zelle_V", k)
-        if uw:
-            L.append(("info", tr("Spannung bei {iref:.0f} A / {qref:.0f} mAh: {u0:.3f} → {u1:.3f} V/Zelle ({mv:+.0f} mV)",
-                                 iref=meta["iref"], qref=meta["qref"], u0=uw[0], u1=uw[1], mv=(uw[1] - uw[0]) * 1000)))
-        if life:
-            fl = min(life)
-            avg = float(df["entnommen_mAh"].mean())
-            cap = meta["cap_ref"]
-            line = tr("Restlebensdauer (früheres Kriterium): ca. {n:.0f} Flüge", n=fl)
-            if np.isfinite(cap) and cap > 0:
-                line += tr(", ≈ {cycles:.0f} Vollzyklen", cycles=fl * avg / cap)
-            L.append(("info", line))
+    L.extend(ageing_lines(res, p))
+    if n >= 4:
         if meta["corr"]:
             L.append(("info", tr("Zusammenhang Nutzung ↔ Ri-Abweichung (Hinweis, keine Kausalität):")))
             for code, r in meta["corr"][:3]:
@@ -195,6 +156,10 @@ def summary_lines(res, p):
     if df["RxSpitzen_n"].notna().any():
         L.extend(rx_summary_lines(df))
 
+    # ---------------- data quality ----------------
+    L.append(("h", tr("DATENQUALITÄT (Messfehler, nicht in Trends und Warnungen)")))
+    L.extend(quality_lines(res, p))
+
     # ---------------- warnings ----------------
     L.append(("h", tr("WARNUNGEN UND AUFFÄLLIGKEITEN")))
     if meta["warnings"]:
@@ -227,6 +192,136 @@ def summary_lines(res, p):
         if len(res.skipped) > 40:
             L.append(("info", tr("… und {n} weitere", n=len(res.skipped) - 40)))
     return L
+
+
+def _reason(f):
+    """Why there is no forecast (see ageing.forecast)."""
+    s = f["status"]
+    if s == "too_scattered":
+        return tr("die Werte streuen zu stark (±{pct:.0f} %)", pct=f["scatter"] * 100)
+    if s == "no_trend":
+        return tr("kein gesicherter Trend – der 90-%-Bereich der Steigung schließt null ein")
+    if s == "improving":
+        return tr("der Wert verbessert sich über den Zeitraum – kein Alterungssignal (z. B. Temperatur, Jahreszeit "
+                  "oder Einfliegen)")
+    return tr("zu wenige Flüge mit gültigen Werten für einen Trend (mindestens {min} über {span} Flüge)",
+              min=MIN_TREND_VALUES, span=MIN_TREND_SPAN)
+
+
+def _trend_line(m, unit, fmt):
+    """Trend of an ageing model per 100 flights with its 90 % range."""
+    if not m["trend_possible"]:
+        return tr("  Trend: zu wenige Flüge für einen Trend (mindestens {min} über {span} Flüge)",
+                  min=MIN_TREND_VALUES, span=MIN_TREND_SPAN)
+    verdict = {"down": tr("gesichert fallend"), "up": tr("gesichert steigend")}.get(m["trend"], tr("kein gesicherter Trend"))
+    return tr("  Trend: {slope} {unit} je 100 Flüge (90 %-Bereich {lo} bis {hi}) – {verdict}",
+              slope=fmt.format(m["slope"] * 100), lo=fmt.format(m["slope_lo"] * 100), hi=fmt.format(m["slope_hi"] * 100),
+              unit=unit, verdict=verdict)
+
+
+def ageing_lines(res, p):
+    """State of health, ageing trends and forecasts - all from the robust models in meta["ageing"]."""
+    df, meta = res.df, res.meta
+    ag = meta.get("ageing", {})
+    L = []
+    mix = meta.get("battery_mix")
+    if mix:
+        L.append(("warn", tr("Hinweis auf mehrere Akkus: Die Kapazitätswerte bilden zwei Gruppen (≈ {low:.0f} mAh in "
+                             "{n_low} Flügen, ≈ {high:.0f} mAh in {n_high} Flügen). Alterungsaussagen über diesen "
+                             "Zeitraum gelten dann für keinen einzelnen Akku. Zeitraum auf einen Akku eingrenzen "
+                             "(Daten & Einstellungen → Zeitraum).", **mix)))
+    fit = meta.get("chem_fit", {})
+    shaky = p.chem in fit and fit[p.chem] > SOC_TOL_PCT
+    life = []
+
+    cm = ag.get("capacity", {})
+    if cm.get("status") == "ok":
+        cur, start = cm["current"], cm["start"]
+        err = Z90 * cm["se_current"] if np.isfinite(cm["se_current"]) else np.nan
+        ref = p.nominal_mah if p.nominal_mah > 0 else start
+        soh = cur / ref * 100
+        tag = "ok" if soh >= 90 else ("warn" if soh >= 80 else "bad")
+        if p.nominal_mah > 0:
+            line = tr("Restkapazität (SoH): ca. {soh:.0f} % der Nennkapazität  (aktuell ≈ {cur:.0f} ± {err} mAh, "
+                      "Nennkapazität {nom:.0f} mAh)", soh=soh, cur=cur, err=_f(err), nom=p.nominal_mah)
+        else:
+            line = tr("Restkapazität (SoH): ca. {soh:.0f} % der Anfangskapazität  (aktuell ≈ {cur:.0f} ± {err} mAh, "
+                      "Anfangswert ≈ {start:.0f} mAh; Nennkapazität nicht eingetragen)",
+                      soh=soh, cur=cur, err=_f(err), start=start)
+        if shaky:
+            line += tr("  - unzuverlässig, solange die Zellchemie nicht passt (siehe oben)")
+        L.append(("warn" if shaky else tag, line))
+        if p.nominal_mah > 0:
+            L.append(("info", tr("  gegenüber dem Anfangswert dieses Zeitraums (≈ {start:.0f} mAh bei Flug {first:.0f}): "
+                                 "{pct:+.1f} %", start=start, first=cm["first"], pct=(cur / start - 1) * 100)))
+        L.append(("info", _trend_line(cm, "mAh", "{:+.0f}")))
+        if cm["depth_coef"]:
+            L.append(("info", tr("  Kapazität einheitlich auf {depth:.0f} % Entladetiefe bezogen (die Schätzung hängt von "
+                                 "der Entladetiefe ab: {coef:+.0f} mAh je Prozentpunkt).",
+                                 depth=cm["depth_ref"], coef=cm["depth_coef"])))
+        f = forecast(cm, 0.8 * ref, "down")
+        if f["status"] == "ok":
+            life.append(f)
+            L.append(("info", tr("  Prognose: 80 % SoH in ca. {n:.0f} weiteren Flügen (90 %-Bereich {lo:.0f}–{hi:.0f})",
+                                 n=f["flights"], lo=f["lo"], hi=f["hi"])))
+        elif f["status"] == "reached":
+            L.append(("bad", tr("  80 % SoH ist bereits erreicht.")))
+        else:
+            L.append(("info", tr("  Keine Prognose: {reason}.", reason=_reason(f))))
+    else:
+        L.append(("warn", tr("Kapazitäts-SoH nicht bestimmbar: zu wenige Flüge mit gültiger Kapazitätsschätzung "
+                             "(≥ 40 % Entladetiefe; vorhanden {n}, nötig {min}).",
+                             n=cm.get("n", 0), min=MIN_VALUES)))
+
+    rm = ag.get("ri", {})
+    if rm.get("status") == "ok":
+        r0, r1 = rm["start"], rm["current"]
+        pct = (r1 / r0 - 1) * 100
+        tag = "ok" if pct < 20 else ("warn" if pct < 50 else "bad")
+        L.append((tag, tr("Innenwiderstand je Zelle: {r0:.2f} → {r1:.2f} mΩ ({pct:+.0f} %)", r0=r0, r1=r1, pct=pct)))
+        L.append(("info", _trend_line(rm, "mΩ", "{:+.2f}")))
+        f = forecast(rm, 1.5 * r0, "up")
+        if f["status"] == "ok":
+            life.append(f)
+            L.append(("info", tr("  Prognose: +50 % Ri (Faustregel Lebensende) in ca. {n:.0f} weiteren Flügen "
+                                 "(90 %-Bereich {lo:.0f}–{hi:.0f})", n=f["flights"], lo=f["lo"], hi=f["hi"])))
+        elif f["status"] == "reached":
+            L.append(("bad", tr("  +50 % Ri ist bereits erreicht.")))
+        else:
+            L.append(("info", tr("  Keine Ri-Prognose: {reason}.", reason=_reason(f))))
+
+    um = ag.get("u_ref", {})
+    if um.get("status") == "ok":
+        L.append(("info", tr("Spannung bei {iref:.0f} A / {qref:.0f} mAh: {u0:.3f} → {u1:.3f} V/Zelle ({mv:+.0f} mV)",
+                             iref=meta["iref"], qref=meta["qref"], u0=um["start"], u1=um["current"],
+                             mv=(um["current"] - um["start"]) * 1000)))
+        in_mv = dict(um, slope=um["slope"] * 1000, slope_lo=um["slope_lo"] * 1000, slope_hi=um["slope_hi"] * 1000)
+        L.append(("info", _trend_line(in_mv, "mV", "{:+.0f}")))
+
+    if cm.get("status") == "ok" or rm.get("status") == "ok":
+        if life:
+            best = min(life, key=lambda f: f["flights"])
+            line = tr("Restlebensdauer: ca. {n:.0f} Flüge (90 %-Bereich {lo:.0f}–{hi:.0f}) – das frühere der Kriterien "
+                      "80 % SoH und +50 % Ri", n=best["flights"], lo=best["lo"], hi=best["hi"])
+            valid = df[df["Akku_gueltig"]] if "Akku_gueltig" in df.columns else df
+            avg = float(valid["entnommen_mAh"].mean())
+            cap = meta["cap_ref"]
+            if np.isfinite(cap) and cap > 0:
+                line += tr(", ≈ {cycles:.0f} Vollzyklen", cycles=best["flights"] * avg / cap)
+            L.append(("info", line))
+        else:
+            L.append(("info", tr("Restlebensdauer: keine belastbare Prognose im gewählten Zeitraum (Gründe siehe oben).")))
+    return L
+
+
+def quality_lines(res, p):
+    """Data-quality hints: measurement errors that were taken out of the analysis."""
+    meta = res.meta
+    q = meta.get("quality", {})
+    lines = quality_messages(q, len(res.df), CHEM[p.chem])
+    if not lines:
+        return [("ok", tr("Keine Messfehler erkannt."))]
+    return [(tag, "• " + str(text)) for tag, text in lines]
 
 
 def rx_summary_lines(df):
@@ -281,6 +376,11 @@ def flight_detail_lines(res, p, path):
         L.append(("h", tr("AUFFÄLLIGKEITEN IN DIESEM FLUG")))
         for code in own:
             L.append(("bad" if code in SEVERE_FLAGS else "warn", f"• {label(FLAG_LABELS, code)}"))
+    errs = [c for c in str(r.get("Datenfehler", "")).split(", ") if c]
+    if errs:
+        L.append(("h", tr("MESSFEHLER IN DIESEM FLUG (nicht in Trends und Warnungen)")))
+        for code in errs:
+            L.append(("info", f"• {label(QUALITY_LABELS, code)}"))
 
     L.append(("h", tr("AKKU")))
     if np.isfinite(r["Ri_mOhm"]):

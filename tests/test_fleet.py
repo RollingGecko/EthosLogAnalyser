@@ -48,7 +48,7 @@ def test_internal_resistance_outlier_is_detected():
         "Ri_Zelle_mOhm": [4.0, 4.05, 3.98, 4.02, 4.01, 6.5, 4.03, 4.0, 4.04, 3.99],
     })
     for col in ["SoC_Abw_pct", "Reserve_Zelle_V", "SoC_ende_Q_pct", "U_ende_Zelle_V", "Sensor_Abw_pct",
-                "RxSp_ohne", "U_ref_Zelle_V", "Kap_gesch_mAh", "P_ref_W", "RSSI_min", "VFR_min",
+                "RxSp_ohne", "U_ref_Zelle_V", "Kap_norm_mAh", "P_ref_W", "RSSI_min", "VFR_min",
                 "RxBatt_min_V", "RxStrom_max_A"]:
         df[col] = np.nan
     df["U_min_Zelle_V"] = 3.5
