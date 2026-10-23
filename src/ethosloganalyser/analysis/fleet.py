@@ -3,17 +3,46 @@
 
 import os
 import glob
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
 
+from ..analysis.ageing import ageing_model, battery_mix, check_consistency
 from ..analysis.evaluate import evaluate, usage_correlations
 from ..analysis.flight import analyse_file
+from ..analysis.quality import BATTERY_INVALID, detect_data_errors, rest_voltage_invalid
 from ..config import CHEM, Params, SOC_TOL_PCT, soc_pct
+from ..io.ethos_log import _file_datetime
+
+
+# minimum depth of discharge [%] for the capacity estimate and the internal-resistance trend
+MIN_DEPTH_PCT = 40.0
 
 
 class Result:
     def __init__(self, df, skipped, total, series, meta):
         self.df, self.skipped, self.total, self.series, self.meta = df, skipped, total, series, meta
+
+
+def parse_date(text):
+    """Date from user input: YYYY-MM-DD, DD.MM.YYYY or DD/MM/YYYY; empty -> None. Raises ValueError."""
+    text = (text or "").strip()
+    if not text:
+        return None
+    for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y", "%d.%m.%y", "%d/%m/%y"):
+        try:
+            return datetime.strptime(text, fmt).date()
+        except ValueError:
+            pass
+    raise ValueError(text)
+
+
+def in_period(dt, p):
+    """True if the flight date lies within the period p.date_from .. p.date_to (both inclusive, ISO dates)."""
+    d0, d1 = parse_date(p.date_from), parse_date(p.date_to)
+    d = dt.date() if isinstance(dt, datetime) else dt
+    return (d0 is None or d >= d0) and (d1 is None or d <= d1)
 
 
 def _timer_s(series, q_limit):
@@ -29,6 +58,11 @@ def _timer_s(series, q_limit):
 def analyse_folder(folder, p: Params, progress=None):
     files = sorted(glob.glob(os.path.join(folder, "**", "*.csv"), recursive=True))
     rows, skipped, series = [], [], {}
+    meta = {}
+    if p.date_from or p.date_to:          # period filter by the date in the file name (cheap, before reading)
+        inside = [f for f in files if in_period(_file_datetime(f), p)]
+        meta["outside_period"] = len(files) - len(inside)
+        files = inside
     for n, f in enumerate(files):
         res, msg = analyse_file(f, p)
         if res is None:
@@ -39,7 +73,6 @@ def analyse_folder(folder, p: Params, progress=None):
         if progress:
             progress(n + 1, len(files))
 
-    meta = {}
     if not rows:
         return Result(pd.DataFrame(), skipped, len(files), series, meta)
 
@@ -53,7 +86,7 @@ def analyse_folder(folder, p: Params, progress=None):
     meta["cells"] = cells
     df["Zellen"] = cells
 
-    for src, dst in [("U_min_V", "U_min_Zelle_V"), ("U_ruhe_start_V", "U_start_Zelle_V"),
+    for src, dst in [("U_min_V", "U_min_Zelle_V"), ("U_last_ende_V", "U_last_Zelle_V"), ("U_ruhe_start_V", "U_start_Zelle_V"),
                      ("U_ocv_ende_V", "U_ende_gesch_Zelle_V"), ("U_ruhe_nach_V", "U_ende_mess_Zelle_V"),
                      ("U0_V", "U0_Zelle_V")]:
         df[dst] = (df[src] / cells).round(3)
@@ -61,12 +94,30 @@ def analyse_folder(folder, p: Params, progress=None):
                      ("Ri_Ende_mOhm", "Ri_End_Zelle_mOhm")]:
         df[dst] = (df[src] / cells).round(2)
 
+    # Measurement errors (physically impossible values): taken out of all battery values, trends and limit
+    # warnings and reported as data-quality hints (see quality.py).
+    errors = detect_data_errors(df, ch)
+    batt_bad = np.zeros(len(df), dtype=bool)
+    for code in BATTERY_INVALID:
+        batt_bad |= errors[code]
+    df["Akku_gueltig"] = ~batt_bad
+    ri_cols = ["Ri_mOhm", "Ri_Anfang_mOhm", "Ri_Mitte_mOhm", "Ri_Ende_mOhm", "Ri_Zelle_mOhm", "Ri_Anf_Zelle_mOhm",
+               "Ri_End_Zelle_mOhm", "U0_V"]
+    df.loc[batt_bad | errors["ri_implausible"], ri_cols] = np.nan
+    df.loc[errors["voltage_dropout"], ["U_min_Zelle_V", "U_last_Zelle_V", "U_start_Zelle_V", "U_ende_mess_Zelle_V",
+                                       "U_ende_gesch_Zelle_V"]] = np.nan
+    df.loc[errors["vfr_invalid"], "VFR_min"] = np.nan
+
     # Resting voltage at the end: measured after motor stop preferred, otherwise model estimate.
     # A value above the start voltage is physically impossible (e.g. battery swap in the same log) -> discard.
+    # A value below the voltage under load at the end of the flight is impossible as well (battery unplugged or
+    # sensor off during the measurement) -> data error, the model estimate is used.
     u_st = df["U_start_Zelle_V"].to_numpy(dtype=float)
     u_me = df["U_ende_mess_Zelle_V"].to_numpy(dtype=float)
     u_ge = df["U_ende_gesch_Zelle_V"].to_numpy(dtype=float)
-    below = lambda v: np.isfinite(v) & (~np.isfinite(u_st) | (v < u_st - 0.03))
+    u_mi = df["U_last_Zelle_V"].to_numpy(dtype=float)
+    errors["rest_voltage_invalid"] = rest_voltage_invalid(u_me, u_mi) & ~batt_bad
+    below = lambda v: np.isfinite(v) & (~np.isfinite(u_st) | (v < u_st - 0.03)) & ~rest_voltage_invalid(v, u_mi)
     ok_me, ok_ge = below(u_me), below(u_ge)
     df["U_ende_Zelle_V"] = np.where(ok_me, u_me, np.where(ok_ge, u_ge, np.nan)).round(3)
     df["U_ende_Quelle"] = np.where(ok_me, "measured", np.where(ok_ge, "estimated", ""))   # codes, see VOLTAGE_SOURCE_LABELS
@@ -75,8 +126,10 @@ def analyse_folder(folder, p: Params, progress=None):
     df["SoC_start_pct"] = np.round(soc_pct(df["U_start_Zelle_V"].to_numpy(dtype=float), p.chem), 0)
     df["SoC_ende_U_pct"] = np.round(soc_pct(df["U_ende_Zelle_V"].to_numpy(dtype=float), p.chem), 0)
     dsoc_u = (df["SoC_start_pct"] - df["SoC_ende_U_pct"]).to_numpy(dtype=float)
-    ent = df["entnommen_mAh"].to_numpy(dtype=float)
-    kap = np.where(dsoc_u >= 40, np.round(ent / (np.where(dsoc_u > 0, dsoc_u, np.nan) / 100.0), 0), np.nan)
+    df["dSoC_U_pct"] = dsoc_u
+    # drawn charge of flights with a stuck current sensor is meaningless
+    ent = np.where(batt_bad, np.nan, df["entnommen_mAh"].to_numpy(dtype=float))
+    kap = np.where(dsoc_u >= MIN_DEPTH_PCT, np.round(ent / (np.where(dsoc_u > 0, dsoc_u, np.nan) / 100.0), 0), np.nan)
     kf = kap[np.isfinite(kap)]
     if len(kf) >= 3:                                    # discard gross outliers (factor 1.6)
         med = np.median(kf)
@@ -88,9 +141,33 @@ def analyse_folder(folder, p: Params, progress=None):
     df["Sensor_Abw_pct"] = np.where(esc > 100, np.round((ent - esc) / np.where(esc > 0, esc, np.nan) * 100, 1), np.nan)
     df["Pause_h"] = df["datum"].diff().dt.total_seconds() / 3600.0
 
-    # capacity reference: current estimate (last 3 valid flights) or nominal capacity
+    # capacity: one robust model for start value, current value and trend (see ageing.py), reported at the
+    # median depth of discharge because the estimate depends on it; the depth effect is estimated from flights
+    # of the same day only, so it cannot take the ageing trend with it
+    days = df.assign(_day=df["datum"].dt.strftime("%Y-%m-%d"))
+    ageing = {"capacity": ageing_model(days, "Kap_gesch_mAh", "capacity", depth_col="dSoC_U_pct",
+                                       session_col="_day")}
+    cm = ageing["capacity"]
+    df["Kap_norm_mAh"] = np.round(cm["normed"], 0) if cm["status"] == "ok" else df["Kap_gesch_mAh"]
+
+    # reference conditions for a fair comparison across all flights (from flights with valid battery values)
+    valid = df[df["Akku_gueltig"]] if df["Akku_gueltig"].any() else df
+    iref = max(5.0, round(float(valid["I_mittel_A"].median()) / 5) * 5)
+    qref = max(100.0, round(0.5 * float(valid["entnommen_mAh"].median()) / 100) * 100)
+    meta.update(iref=iref, qref=qref)
+    ok = (df["entnommen_mAh"] >= qref) & df["U0_V"].notna()
+    df["U_ref_Zelle_V"] = np.where(
+        ok, (df["U0_V"] - df["Ri_mOhm"] / 1000.0 * iref + df["k_V_je_Ah"] * qref / 1000.0) / cells, np.nan)
+    df["U_ref_Zelle_V"] = df["U_ref_Zelle_V"].round(3)
+
+    # voltage at reference load: same robust model; it is the cross-check of the capacity trend - both must
+    # point in the same direction, otherwise the capacity statement is uncertain (shown without trend)
+    ageing["u_ref"] = ageing_model(df, "U_ref_Zelle_V", "u_ref")
+    check_consistency(cm, ageing["u_ref"])
+
+    # capacity reference: current estimate (capacity model, else last 3 valid flights) or nominal capacity
     kv = df["Kap_gesch_mAh"].dropna()
-    cap_est = float(kv.iloc[-3:].median()) if len(kv) else np.nan
+    cap_est = cm["current"] if cm["status"] == "ok" else (float(kv.iloc[-3:].median()) if len(kv) else np.nan)
     cap_ref = p.nominal_mah if p.nominal_mah > 0 else cap_est
     meta.update(cap_est=cap_est, cap_ref=cap_ref,
                 cap_src="nominal" if p.nominal_mah > 0 else "estimated")           # code, see CAP_SOURCE_LABELS
@@ -124,14 +201,21 @@ def analyse_folder(folder, p: Params, progress=None):
             if len(dd) >= 3:
                 meta["chem_fit"][chem_] = float(np.median(dd))
 
-    # reference conditions for a fair comparison across all flights
-    iref = max(5.0, round(float(df["I_mittel_A"].median()) / 5) * 5)
-    qref = max(100.0, round(0.5 * float(df["entnommen_mAh"].median()) / 100) * 100)
-    meta.update(iref=iref, qref=qref)
-    ok = (df["entnommen_mAh"] >= qref) & df["U0_V"].notna()
-    df["U_ref_Zelle_V"] = np.where(
-        ok, (df["U0_V"] - df["Ri_mOhm"] / 1000.0 * iref + df["k_V_je_Ah"] * qref / 1000.0) / cells, np.nan)
-    df["U_ref_Zelle_V"] = df["U_ref_Zelle_V"].round(3)
+    # internal resistance: same robust model as the capacity.
+    # Short flights (depth of discharge below MIN_DEPTH_PCT) are not used for capacity and internal resistance:
+    # their resistance fit covers only the flat top of the discharge curve. Depth from the resting voltage,
+    # otherwise from the drawn charge.
+    depth = np.where(np.isfinite(dsoc_u), dsoc_u,
+                     ent / cap_ref * 100.0 if np.isfinite(cap_ref) and cap_ref > 0 else np.nan)
+    short = np.isfinite(depth) & (depth < MIN_DEPTH_PCT) & df["Akku_gueltig"].to_numpy()
+    meta["short_flights"] = set(int(v) for v in df.loc[short, "Flug"])
+    ageing["ri"] = ageing_model(df, "Ri_Zelle_mOhm", "ri", use=~short)
+    meta["ageing"] = ageing
+    # several batteries in the period? (capacity values around the fitted trend form two groups) - hint only
+    meta["battery_mix"] = None
+    if cm["status"] == "ok":
+        x = df["Flug"].to_numpy(dtype=float)
+        meta["battery_mix"] = battery_mix(cm["normed"] - (cm["fit_current"] + cm["slope"] * (x - cm["last"])))
 
     rpm_ref = np.nan
     if df["rpm_p90"].notna().any():
@@ -144,25 +228,38 @@ def analyse_folder(folder, p: Params, progress=None):
 
     df["C_peak"] = df["I_max_A"] / (cap_ref / 1000.0) if np.isfinite(cap_ref) and cap_ref > 0 else np.nan
     if np.isfinite(cap_ref) and cap_ref > 0:
-        df["Vollzyklen_kum"] = (df["entnommen_mAh"].cumsum() / cap_ref).round(2)
+        df["Vollzyklen_kum"] = (pd.Series(np.nan_to_num(ent)).cumsum() / cap_ref).round(2).to_numpy()
     else:
         df["Vollzyklen_kum"] = np.nan
 
     # timer: time until the reserve (remaining charge = reserve_pct), per flight from its own profile
-    cap_timer = cap_est if np.isfinite(cap_est) else (p.nominal_mah if p.nominal_mah > 0 else np.nan)
+    # The capacity estimate depends on the depth of discharge; the timer aims at the reserve, so it uses the
+    # estimate at that depth (within the observed range, no extrapolation).
+    if cm["status"] == "ok" and cm["depth_coef"]:
+        dd = df["dSoC_U_pct"].to_numpy(dtype=float)[np.isfinite(cm["normed"])]
+        soc_start = float(np.nanmedian(df["SoC_start_pct"])) if df["SoC_start_pct"].notna().any() else 100.0
+        d_timer = float(np.clip(soc_start - p.reserve_pct, dd.min(), dd.max()))
+        cap_est_timer = cm["current"] + cm["depth_coef"] * (d_timer - cm["depth_ref"])
+    else:
+        cap_est_timer = cap_est
+    cap_timer = cap_est_timer if np.isfinite(cap_est_timer) else (p.nominal_mah if p.nominal_mah > 0 else np.nan)
     if p.nominal_mah > 0:
-        cap_timer = p.nominal_mah if not np.isfinite(cap_est) else min(cap_est, p.nominal_mah)
+        cap_timer = p.nominal_mah if not np.isfinite(cap_est_timer) else min(cap_est_timer, p.nominal_mah)
     timers = []
     for _, r in df.iterrows():
         s = series[r["pfad"]]
         soc0 = r["SoC_start_pct"] if np.isfinite(r["SoC_start_pct"]) else 100.0
-        if np.isfinite(cap_timer) and soc0 > p.reserve_pct:
+        if np.isfinite(cap_timer) and soc0 > p.reserve_pct and r["Akku_gueltig"]:
             timers.append(round(_timer_s(s, cap_timer * (soc0 - p.reserve_pct) / 100.0), 0))
         else:
             timers.append(np.nan)
     df["Timer_s"] = timers
     meta["timer_s"] = float(np.nanmedian(df["Timer_s"].iloc[-5:])) if df["Timer_s"].notna().any() else np.nan
     meta["cap_timer"] = cap_timer
+
+    # data errors per flight (codes, user-facing labels: quality.QUALITY_LABELS)
+    meta["quality"] = {code: set(int(v) for v in df.loc[mask, "Flug"]) for code, mask in errors.items() if mask.any()}
+    df["Datenfehler"] = [", ".join(code for code, mask in errors.items() if mask[k]) for k in range(len(df))]
 
     warnings, flags = evaluate(df, p, meta)
     meta["warnings"], meta["flags"] = warnings, flags

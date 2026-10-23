@@ -5,7 +5,7 @@ import numpy as np
 
 from ..config import CHEM, SPIKE_CAUSES, SPIKE_COLS, SPIKE_LABELS, label
 from ..i18n import tr
-from ..plots.common import _bottom_labels_only, _empty_fig, _new_fig, _note, _plot_trend, flag_note
+from ..plots.common import _bottom_labels_only, _empty_fig, _new_fig, _note, _plot_trend, flag_note, trend_note
 
 
 def figure_akku(res, p):
@@ -16,24 +16,33 @@ def figure_akku(res, p):
     fl = meta["flags"]
     fig, ax = _new_fig(3, 2, size=(11, 9))
     h = []
+    cm = meta.get("ageing", {}).get("capacity", {})
     if p.nominal_mah > 0:
         h.append((p.nominal_mah, tr("Nennkapazität"), "grey"))
-    kv = df["Kap_gesch_mAh"].dropna()
-    if len(kv) >= 4:
-        ref = float(np.median(kv.iloc[:max(1, min(3, len(kv) // 3))]))
-        h.append((0.8 * ref, tr("80 % der Anfangskapazität"), "tab:red"))
-    _plot_trend(ax[0][0], df, "Kap_gesch_mAh", "tab:green", tr("Geschätzte Gesamtkapazität [mAh]"), fl, "capacity", h,
-                note=tr("Aus entnommener Ladung und Spannungsabfall. Fallender Trend = Alterung.") + flag_note())
+        h.append((0.8 * p.nominal_mah, tr("80 % der Nennkapazität"), "tab:red"))
+    elif cm.get("status") == "ok":
+        h.append((0.8 * cm["start"], tr("80 % der Anfangskapazität"), "tab:red"))
+    cap_col = "Kap_norm_mAh" if "Kap_norm_mAh" in df.columns else "Kap_gesch_mAh"
+    note = tr("Aus entnommener Ladung und Spannungsabfall. Fallender Trend = Alterung.")
+    if cm.get("status") == "ok" and cm["depth_coef"]:
+        note += " " + tr("Auf {depth:.0f} % Entladetiefe bezogen.", depth=cm["depth_ref"])
+    if cm.get("status") == "ok" and cm.get("uncertain"):
+        note += " " + tr("Trend unsicher, siehe Bericht.")
+    ag = meta.get("ageing", {})
+    _plot_trend(ax[0][0], df, cap_col, "tab:green", tr("Geschätzte Gesamtkapazität [mAh]"), fl, "capacity", h,
+                note=note + flag_note(), model=cm or None)
     a = ax[0][1]
     ri_title = tr("Innenwiderstand je Zelle [mΩ]")
     _plot_trend(a, df, "Ri_Zelle_mOhm", "tab:red", ri_title, fl, "ri", label=tr("Ø Flug"),
-                note=tr("Steigender Trend = Alterung; +50 % gilt als Lebensende."))
+                note=tr("Steigender Trend = Alterung; +50 % gilt als Lebensende.") + trend_note(), model=ag.get("ri"))
     _plot_trend(a, df, "Ri_Anf_Zelle_mOhm", "tab:orange", ri_title, label=tr("Flugbeginn"), trend=False, marker="^")
     _plot_trend(a, df, "Ri_End_Zelle_mOhm", "tab:purple", ri_title, label=tr("Flugende"), trend=False, marker="v")
     a.legend(fontsize=7)
     _plot_trend(ax[1][0], df, "U_ref_Zelle_V", "tab:blue",
                 tr("Spannung bei {iref:.0f} A und {qref:.0f} mAh [V/Zelle]", iref=meta["iref"], qref=meta["qref"]),
-                fl, "u_ref", note=tr("Vergleich unter gleichen Bedingungen. Fallender Trend = Akku wird schwächer."))
+                fl, "u_ref", note=tr("Vergleich unter gleichen Bedingungen. Fallender Trend = Akku wird schwächer.")
+                + trend_note(),
+                model=ag.get("u_ref"))
     a = ax[1][1]
     rv_title = tr("Ruhespannung Start / Ende [V/Zelle]")
     _plot_trend(a, df, "U_start_Zelle_V", "tab:blue", rv_title, label=tr("Start"), trend=False,

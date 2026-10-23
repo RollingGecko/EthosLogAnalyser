@@ -286,6 +286,8 @@ def analyse_file(path, p: Params):
             esc_mah = float(ev.max() - ev.min())
 
     umin = float(np.min(_rolling(u, 5)))
+    # lowest voltage in the last 10 s under load: the resting voltage after landing cannot be lower
+    u_end_load = float(np.min(_rolling(u, 5)[t >= t[-1] - 10.0]))
     row = dict(
         datei=os.path.basename(path), pfad=path,
         datum=_file_datetime(path),
@@ -297,7 +299,7 @@ def analyse_file(path, p: Params):
         Gas_mittel_pct=round(float(np.mean(gas_pct)), 1) if gas_pct is not None else np.nan,
         U_start_V=round(float(np.max(u[:max(3, len(u) // 50)])), 2),
         U_ruhe_start_V=round(u_rest_start, 2) if np.isfinite(u_rest_start) else np.nan,
-        U_min_V=round(umin, 2), U_ocv_ende_V=round(u_ocv_end, 2) if np.isfinite(u_ocv_end) else np.nan,
+        U_min_V=round(umin, 2), U_last_ende_V=round(u_end_load, 2), U_ocv_ende_V=round(u_ocv_end, 2) if np.isfinite(u_ocv_end) else np.nan,
         U_ruhe_nach_V=round(u_rest_after, 2) if np.isfinite(u_rest_after) else np.nan,
         Ri_mOhm=round(ri * 1000, 1) if np.isfinite(ri) else np.nan,
         Ri_Anfang_mOhm=round(ri_seg[0] * 1000, 1) if np.isfinite(ri_seg[0]) else np.nan,

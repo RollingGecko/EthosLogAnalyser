@@ -84,6 +84,8 @@ class Params:
     reserve_pct: float = 20.0      # desired remaining charge at landing (for the timer)
     col_voltage: str = ""          # optional: column name (substring), empty = automatic
     col_current: str = ""
+    date_from: str = ""            # optional period filter (YYYY-MM-DD, inclusive); empty = open
+    date_to: str = ""
 
 
 STEP = 0.25   # time series grid in s

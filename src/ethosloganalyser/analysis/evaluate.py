@@ -5,7 +5,7 @@ import numpy as np
 
 from ..config import CAP_SOURCE_LABELS, CHEM, SOC_TOL_PCT
 from ..i18n import LazyDate, Msg, N_
-from ..utils import _ranges, _trend
+from ..utils import _col, _ranges, _trend
 
 
 # flags: language-neutral code -> user-facing label (meta["flags"] and column "Auffaellig" use the codes)
@@ -34,7 +34,7 @@ SEVERE_FLAGS = {"deep_discharge", "voltage_sag"}
 ANOM_METRICS = [
     ("Ri_Zelle_mOhm", "high", "ri"),
     ("U_ref_Zelle_V", "low", "u_ref"),
-    ("Kap_gesch_mAh", "low", "capacity"),
+    ("Kap_norm_mAh", "low", "capacity"),
     ("P_ref_W", "high", "p_ref"),
     ("RSSI_min", "low", "rssi"),
     ("VFR_min", "low", "vfr"),
@@ -44,7 +44,7 @@ ANOM_METRICS = [
 ]
 
 
-TREND_METRICS = {"Ri_Zelle_mOhm", "U_ref_Zelle_V", "Kap_gesch_mAh", "P_ref_W"}
+TREND_METRICS = {"Ri_Zelle_mOhm", "U_ref_Zelle_V", "Kap_norm_mAh", "P_ref_W"}
 
 
 def evaluate(df, p, meta):
@@ -105,7 +105,7 @@ def evaluate(df, p, meta):
     if n >= 6:
         fl = df["Flug"].to_numpy(dtype=float)
         for col, direction, code in ANOM_METRICS:
-            x = df[col].to_numpy(dtype=float)
+            x = _col(df, col)
             good = np.isfinite(x)
             if good.sum() < 6:
                 continue

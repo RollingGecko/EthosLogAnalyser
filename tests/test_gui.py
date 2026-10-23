@@ -57,6 +57,7 @@ def test_gui_analyses_example_logs(monkeypatch, tmp_path):
         h["set_xlim"](10, 70)
         root.update()
         _check_language_switch(root, settings)
+        _check_period_filter(root, errors)
     finally:
         root.destroy()
 
@@ -82,3 +83,21 @@ def _check_language_switch(root, settings):
         assert h["view_var"].get() == view
         assert h["nb"].index("current") == h["nb"].index(h["tabs"]["flight"])
         assert json.loads(settings.read_text(encoding="utf-8"))["language"] == code    # remembered
+
+
+def _check_period_filter(root, errors):
+    """The period fields limit the analysis to the flights in that period; invalid input is rejected."""
+    h = root._akku
+    h["params"]["date_from"].set("20.09.2026")
+    h["run"]()
+    root.update()
+    h = root._akku
+    assert not errors, errors
+    assert "2 Flüge ausgewertet" in h["status"].get()
+    assert "Zeitraum-Filter: 20.09.2026 – …; 1 Dateien außerhalb nicht ausgewertet" in h["summary"].get("1.0", "end")
+    h["params"]["date_from"].set("kein Datum")
+    h["run"]()
+    root.update()
+    assert errors and "Datum" in errors[-1][1]
+    errors.clear()
+    h["params"]["date_from"].set("")
