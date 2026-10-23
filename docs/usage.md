@@ -30,7 +30,7 @@ With the virtual environment activated:
 scripts\build_exe.bat
 ```
 
-The result is `dist\EthosLogAnalyser.exe`. GitHub also builds the EXE on every push; download it from the respective run under **Actions → Tests → Artifacts**.
+The result is `dist\EthosLogAnalyser.exe`. GitHub also builds the EXE on every push; download it from the respective run under **Actions → Tests → Artifacts**. Released versions are attached to the [releases](https://github.com/RollingGecko/EthosLogAnalyser/releases) (see [Releasing](releasing.md)).
 
 ## Workflow
 

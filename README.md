@@ -12,7 +12,11 @@ Desktop app (Python/Tkinter) for analysing **FrSky Ethos flight logs** (CSV), fo
 - **Radio & onboard power:** RSSI, VFR, receiver and transmitter battery, receiver current spikes classified by cause (switch, manoeuvre, take-off/landing or no apparent cause).
 - **Single flight:** time series with zoom and crosshair, detail report compared with the median of all flights.
 
-## Quick start
+## Download
+
+The Windows EXE is attached to each release under [Releases](https://github.com/RollingGecko/EthosLogAnalyser/releases): download `EthosLogAnalyser-vX.Y.Z.exe` and start it – no Python needed. Windows SmartScreen may warn because the EXE is not signed (*More info → Run anyway*).
+
+## Quick start (from source)
 
 ```bat
 git clone https://github.com/RollingGecko/EthosLogAnalyser.git
@@ -23,7 +27,7 @@ pip install -e .
 ethosloganalyser
 ```
 
-Three real flight logs to try are in `examples/logs/`. `scripts\build_exe.bat` builds the Windows EXE; GitHub also builds it on every push (Actions → Artifacts).
+Three real flight logs to try are in `examples/logs/`. `scripts\build_exe.bat` builds the Windows EXE; GitHub also builds it on every push (Actions → Artifacts) and publishes it with every release.
 
 ## Documentation
 
@@ -31,6 +35,7 @@ Three real flight logs to try are in `examples/logs/`. `scripts\build_exe.bat` b
 - [Methodology](docs/methodology.md) – how internal resistance, state of charge, capacity, timer and spikes are computed
 - [Ethos log format](docs/ethos-log-format.md) – which columns the app expects
 - [Translations](docs/translations.md) – how the user interface is translated and how to add or improve a language
+- [Releasing](docs/releasing.md) – how a new version is published
 
 ## Project layout
 
@@ -48,7 +53,7 @@ tests/            pytest tests
 docs/             documentation
 examples/logs/    example logs
 ethos/            Lua scripts for the transmitter
-scripts/          Windows EXE build
+scripts/          Windows EXE build, release check
 ```
 
 ## Development
