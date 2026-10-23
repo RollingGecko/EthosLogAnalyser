@@ -108,14 +108,98 @@ def _check_period_filter(root, errors):
 
 
 def _check_fullscreen(root):
-    """Every chart opens in a full-screen window with tooltip and toolbar; Esc closes it."""
+    """Whole page and single charts open in a full-screen window with tooltip and toolbar; Esc closes it."""
     h = root._akku
     for builder, title in ((h["tab_builder"]("akku"), "Akku"), (h["flight_builder"], "Einzelflug")):
         win = h["open_fullscreen"](builder, title)
         root.update()
-        assert win.winfo_exists() and h["fullscreen"] == [win]
-        canvases = [w for w in win.winfo_children() if w.winfo_class() == "Canvas"]
-        assert canvases, "no chart in the full-screen window"
-        win.event_generate("<Escape>", when="tail")
-        root.update()
-        assert h["fullscreen"] == []
+        assert len(win._fig.axes) > 1                       # the whole page
+        _close(root, win)
+
+    # double-click on "Peak C rate per flight" in the tab Load: exactly this chart, alone
+    h["nb"].select(h["tabs"]["belastung"])
+    root.update()
+    canvas = h["tab_canvas"]("belastung")
+    ax = next(a for a in canvas.figure.axes if a.get_title(loc="left") == "Spitzen-C-Rate je Flug [C]")
+    win = _double_click(root, canvas, ax)
+    assert len(win._fig.axes) == 1
+    (big,) = win._fig.axes
+    assert big.get_title(loc="left") == "Spitzen-C-Rate je Flug [C]"
+    assert big.get_xlabel() == "Flug Nr."
+    assert any("Höchster Strom geteilt durch Kapazität" in t.get_text() for t in big.texts)
+    assert "Spitzen-C-Rate je Flug [C]" in win.title()
+    assert win._fig.canvas._hover is not None               # tooltip in the window
+    _close(root, win)
+
+    # right-click: context menu "Enlarge this chart" / "Enlarge whole page"
+    import tkinter as tk_
+    menus = []
+    popup = tk_.Menu.tk_popup
+    tk_.Menu.tk_popup = lambda self, *a: menus.append(self)
+    try:
+        from matplotlib.backend_bases import MouseEvent
+        ax = canvas.figure.axes[0]
+        x, y = ax.bbox.x0 + ax.bbox.width / 2, ax.bbox.y0 + ax.bbox.height / 2
+        canvas.callbacks.process("button_press_event", MouseEvent("button_press_event", canvas, x, y, button=3))
+    finally:
+        tk_.Menu.tk_popup = popup
+    assert len(menus) == 1
+    menu = menus[0]
+    assert [menu.entrycget(i, "label") for i in range(menu.index("end") + 1)] == [
+        "Dieses Diagramm vergrößern", "Ganze Seite vergrößern"]
+    menu.invoke(0)
+    root.update()
+    win = h["fullscreen"][-1]
+    assert len(win._fig.axes) == 1 and win._fig.axes[0].get_title(loc="left") == ax.get_title(loc="left")
+    _close(root, win)
+
+    # single flight: double-click on the second chart opens only that chart, with the zoom of the tab
+    canvas = h["flight_canvas"]
+    canvas.draw()
+    root.update()
+    ax = canvas.figure.axes[1]
+    xlim = canvas.figure.axes[0].get_xlim()
+    win = _double_click(root, canvas, ax)
+    assert len(win._fig.axes) == 1
+    (big,) = win._fig.axes
+    assert big.get_title(loc="left") == ax.get_title(loc="left")
+    assert big.get_xlim() == pytest.approx(xlim)
+    assert big.get_xlabel() == "Zeit seit Motorstart [min:s]"
+    buttons = [w for w in _widgets(win) if w.winfo_class() == "TButton"]
+    whole = [b for b in buttons if b.cget("text") == "Ganzer Flug"]
+    assert whole, "no button 'Ganzer Flug' in the single-flight window"
+    whole[0].invoke()
+    root.update()
+    t = win._fig._t
+    assert big.get_xlim() == pytest.approx((t[0], t[-1]))
+    _close(root, win)
+
+
+def _widgets(w):
+    for c in w.winfo_children():
+        yield c
+        yield from _widgets(c)
+
+
+def _double_click(root, canvas, ax):
+    """Double-click into the middle of ax (as matplotlib reports it) and return the full-screen window."""
+    from matplotlib.backend_bases import MouseEvent
+    h = root._akku
+    canvas.draw()
+    x, y = ax.bbox.x0 + ax.bbox.width / 2, ax.bbox.y0 + ax.bbox.height / 2
+    n = len(h["fullscreen"])
+    ev = MouseEvent("button_press_event", canvas, x, y, button=1, dblclick=True)
+    canvas.callbacks.process("button_press_event", ev)
+    root.update()
+    assert len(h["fullscreen"]) == n + 1, "double-click did not open a window"
+    win = h["fullscreen"][-1]
+    assert win.winfo_exists()
+    assert [w for w in win.winfo_children() if w.winfo_class() == "Canvas"], "no chart in the full-screen window"
+    return win
+
+
+def _close(root, win):
+    h = root._akku
+    win.event_generate("<Escape>", when="tail")
+    root.update()
+    assert h["fullscreen"] == []

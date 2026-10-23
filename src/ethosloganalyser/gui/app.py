@@ -16,10 +16,11 @@ from ..analysis.fleet import analyse_folder, parse_date
 from ..config import CHEM, SPIKE_LABELS, VOLTAGE_SOURCE_LABELS, Params, label, load_settings, save_settings
 from ..gui.style import BG, _setup_style
 from ..i18n import LANGUAGES, Msg, N_, detect_language, fmt_datetime, get_language, set_language, tr
-from ..plots.flight import FLIGHT_VIEWS, VIEW_LABELS, draw_flight, figure_flight
+from ..plots.flight import FLIGHT_VIEWS, VIEW_LABELS, draw_flight, figure_flight, fit_y
 from ..plots.overview import figure_akku, figure_antrieb, figure_belastung, figure_funk
 from ..report.text import flight_detail_lines, summary_lines
 from ..plots.hover import Hover
+from ..plots.single import chart_index, chart_title, single_chart
 from ..utils import _mmss, fmt_duration
 
 
@@ -166,6 +167,7 @@ def run_gui():
         nb = ttk.Notebook(main)
         nb.pack(fill="both", expand=True, padx=6, pady=(4, 6))
         tabs, tab_titles, fullscreen = {}, {}, []
+        page_canvases = {}
         for key, title in [("settings", tr("Daten & Einstellungen")), ("summary", tr("Zusammenfassung")),
                            ("akku", tr("Akku")), ("belastung", tr("Belastung & Flugprofil")), ("antrieb", tr("Antrieb")),
                            ("funk", tr("Funk & Bordnetz")), ("flight", tr("Einzelflug")), ("table", tr("Tabelle"))]:
@@ -299,8 +301,8 @@ def run_gui():
         details_btn = ttk.Button(bar, text=tr("Details ausblenden"), command=lambda: toggle_details())
         details_btn.pack(side="right")
         ttk.Button(bar, text=tr("Bild speichern …"), command=lambda: save_flight_png()).pack(side="right", padx=6)
-        ttk.Button(bar, text=tr("Vollbild"), command=lambda: open_fullscreen(flight_builder, tr("Einzelflug"))).pack(
-            side="right")
+        ttk.Button(bar, text=tr("Ganze Seite vergrößern"),
+                   command=lambda: open_fullscreen(flight_builder, tr("Einzelflug"), flight=True)).pack(side="right")
 
         # views in a row of their own: the labels are much longer in some languages
         vbar = ttk.Frame(ft, padding=(6, 0, 6, 4))
@@ -325,7 +327,8 @@ def run_gui():
         spike_box.pack(side="left", padx=4)
 
         readout = tk.StringVar(value=tr("Maus über das Diagramm bewegen: Werte zum Zeitpunkt.   Mausrad: zoomen  ·  "
-                                        "Ziehen mit linker Maustaste: verschieben  ·  Doppelklick: Vollbild"))
+                                        "Ziehen mit linker Maustaste: verschieben  ·  Doppelklick oder Rechtsklick: Diagramm "
+                                        "vergrößern"))
         ttk.Label(ft, textvariable=readout, style="Readout.TLabel").pack(fill="x", padx=6)
 
         paned = ttk.PanedWindow(ft, orient="vertical")
@@ -409,22 +412,69 @@ def run_gui():
                 return None
 
         def chart_canvas(parent, fig, builder, title, crosshair=False, on_move=None):
-            """Canvas with toolbar, tooltip (plots/hover.py) and a full-screen button - the same for every chart."""
+            """Canvas with toolbar and tooltip (plots/hover.py) - the same for every chart.
+
+            With a builder (function that draws the page again): a double-click or the context menu (right-click)
+            enlarges the chart under the mouse on its own; the toolbar button enlarges the whole page.
+            """
             canvas = FigureCanvasTkAgg(fig, master=parent)
             toolbar = NavigationToolbar2Tk(canvas, parent)
             if builder is not None:
-                ttk.Button(toolbar, text=tr("Vollbild"), command=lambda: open_fullscreen(builder, title)).pack(
+                ttk.Button(toolbar, text=tr("Ganze Seite vergrößern"), command=lambda: open_fullscreen(builder, title)).pack(
                     side="left", padx=6)
+                ttk.Label(toolbar, text=tr("Doppelklick oder Rechtsklick auf ein Diagramm: allein vergrößern"),
+                          foreground="#666", background=toolbar.cget("background")).pack(side="left", padx=6)
             toolbar.update()
             canvas._hover = Hover(canvas, crosshair=crosshair, on_move=on_move)     # keep a reference
             if builder is not None:
-                canvas.mpl_connect("button_press_event",
-                                   lambda ev: ev.dblclick and ev.inaxes is not None and open_fullscreen(builder, title))
+                def on_press(ev):
+                    if ev.inaxes is None or getattr(toolbar.mode, "name", "NONE") != "NONE":
+                        return                            # zoom/pan mode of the toolbar uses the mouse buttons
+                    if ev.dblclick:
+                        open_chart(canvas, builder, title, ev.inaxes)
+                    elif ev.button == 3:
+                        chart_menu(ev, canvas, builder, title)
+                canvas.mpl_connect("button_press_event", on_press)
             canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
             return canvas
 
-        def open_fullscreen(builder, title):
-            """The chart in its own window filling the screen (new figure from builder); Esc closes it."""
+        def chart_menu(ev, canvas, builder, title, flight=False):
+            """Context menu of a chart: enlarge this chart or the whole page."""
+            if ev.inaxes is None:
+                return
+            ax = ev.inaxes
+            menu = tk.Menu(root, tearoff=0)
+            menu.add_command(label=tr("Dieses Diagramm vergrößern"),
+                             command=lambda: open_chart(canvas, builder, title, ax, flight=flight))
+            menu.add_command(label=tr("Ganze Seite vergrößern"),
+                             command=lambda: open_fullscreen(builder, title, flight=flight))
+            gui = getattr(ev, "guiEvent", None)
+            x, y = (gui.x_root, gui.y_root) if gui is not None and hasattr(gui, "x_root") else (
+                root.winfo_pointerx(), root.winfo_pointery())
+            try:
+                menu.tk_popup(x, y)
+            finally:
+                menu.grab_release()
+
+        def open_chart(canvas, builder, title, ax, flight=False):
+            """The chart ax of the page shown in canvas on its own in a full-screen window."""
+            return open_fullscreen(builder, title, index=chart_index(canvas.figure, ax), flight=flight)
+
+        def open_fullscreen(builder, title, index=None, flight=False):
+            """A page (index None) or one chart of it (index of its axes) in its own window filling the screen.
+
+            The page is drawn again by builder; for one chart all other charts are removed (plots/single.py).
+            flight: single-flight chart - the window gets the button "Whole flight". Esc closes the window.
+            """
+            fig = builder()
+            axes = []
+            if index is not None and index < len(fig.axes):
+                axes = single_chart(fig, index)
+                name = chart_title(axes[0])
+                if name:
+                    title = f"{name} – {title}"
+            elif flight:
+                axes = [a for a in fig.axes if a.get_subplotspec() is not None]
             win = tk.Toplevel(root)
             win.title(tr("{title} – Vollbild (Esc schließt)", title=title))
             win.configure(background=BG)
@@ -435,7 +485,6 @@ def run_gui():
                     win.attributes("-zoomed", True)       # Linux
                 except tk.TclError:
                     win.geometry(f"{root.winfo_screenwidth()}x{root.winfo_screenheight()}+0+0")
-            fig = builder()
             bar = ttk.Frame(win)
             bar.pack(side="top", fill="x")
 
@@ -445,6 +494,15 @@ def run_gui():
                 win.destroy()
 
             ttk.Button(bar, text=tr("Schließen (Esc)"), command=close).pack(side="right", padx=6, pady=2)
+            is_flight = flight and getattr(fig, "_t", None) is not None and axes
+            if is_flight:
+                def whole_flight():
+                    t = fig._t
+                    axes[0].set_xlim(t[0], t[-1])
+                    fit_y(axes)
+                    canvas.draw_idle()
+                ttk.Button(bar, text=tr("Ganzer Flug"), command=whole_flight).pack(side="right", padx=6, pady=2)
+                fit_y(axes)                               # y range of the zoomed time window, as in the tab
             ttk.Label(bar, text=tr("Maus über einen Datenpunkt: Wert.  Werkzeugleiste unten: zoomen, verschieben, "
                                    "speichern."), foreground="#666").pack(side="left", padx=6)
             canvas = chart_canvas(win, fig, None, title, crosshair=getattr(fig, "_t", None) is not None)
@@ -453,6 +511,7 @@ def run_gui():
             win.protocol("WM_DELETE_WINDOW", close)
             win.focus_set()
             fullscreen.append(win)
+            win._fig = fig                                # for tests
             return win
 
         def show_fig(frame, fig, builder=None, title=""):
@@ -460,6 +519,11 @@ def run_gui():
                 w.destroy()
             canvas = chart_canvas(frame, fig, builder, title)
             canvas.draw()
+            page_canvases[str(frame)] = canvas
+
+        def tab_canvas(key):
+            """Canvas of the chart page in tab key (for tests)."""
+            return page_canvases.get(str(tabs[key]))
 
         def flight_label(r):
             return f"{int(r['Flug'])} | {fmt_datetime(r['datum'])} | {_mmss(r['dauer_s'])} | {r['entnommen_mAh']:.0f} mAh"
@@ -526,23 +590,7 @@ def run_gui():
 
         def autoscale_y():
             """Fit the y axes to the visible time window."""
-            lo, hi = fs["axes"][0].get_xlim()
-            for a in fs["axes"]:
-                ys = []
-                for ln in a.get_lines():
-                    if ln.get_gid() != "data":          # ignore helper lines (thresholds, markers)
-                        continue
-                    x = np.asarray(ln.get_xdata(), dtype=float)
-                    if len(x) < 2:
-                        continue
-                    y = np.asarray(ln.get_ydata(), dtype=float)
-                    m = (x >= lo) & (x <= hi) & np.isfinite(y)
-                    if m.any():
-                        ys.append((y[m].min(), y[m].max()))
-                if ys:
-                    y0, y1 = min(v[0] for v in ys), max(v[1] for v in ys)
-                    pad = (y1 - y0) * 0.08 or 0.5
-                    a.set_ylim(y0 - pad, y1 + pad)
+            fit_y(fs["axes"])
 
         def zoom_to(where):
             if not fs["axes"]:
@@ -588,7 +636,10 @@ def run_gui():
                 return
             if ev.dblclick:
                 fs["drag"] = None
-                open_fullscreen(flight_builder, tr("Einzelflug"))
+                open_chart(flight_canvas, flight_builder, tr("Einzelflug"), ev.inaxes, flight=True)
+                return
+            if ev.button == 3:
+                chart_menu(ev, flight_canvas, flight_builder, tr("Einzelflug"), flight=True)
                 return
             if ev.button == 1:
                 fs["drag"] = (ev.x, fs["axes"][0].get_xlim())
@@ -758,7 +809,8 @@ def run_gui():
                           flight_var=flight_var, view_var=view_var, select_flight=select_flight, redraw=redraw_flight,
                           set_xlim=set_xlim, goto_spike=goto_spike, spike_var=spike_var, lang_var=lang_var,
                           set_language=change_language, summary=txt, details=det_txt, table=tree,
-                          fullscreen=fullscreen, open_fullscreen=open_fullscreen, flight_builder=flight_builder,
+                          fullscreen=fullscreen, open_fullscreen=open_fullscreen, open_chart=open_chart,
+                          flight_builder=flight_builder, flight_canvas=flight_canvas, tab_canvas=tab_canvas,
                           tab_builder=lambda key: (lambda: dict(akku=figure_akku, belastung=figure_belastung,
                                                                 antrieb=figure_antrieb, funk=figure_funk)[key](
                                                        state["res"], state["p"])))

@@ -664,8 +664,6 @@ CATALOG = {
         "  t = {t}  {peak:.2f} A, {dur:.1f} s  →  {why}:  sticks {stick} %/s, velocidad de giro {rate} °/s, {g} g, gas {gas} %, altura {alt} m",
     "Mittlere Leistung {value}, {t80} über 80 % des Spitzenstroms, mittleres Gas {gas} %":
         "Potencia media {value}, {t80} por encima del 80 % de la corriente de pico, gas medio {gas} %",
-    "Maus über das Diagramm bewegen: Werte zum Zeitpunkt.   Mausrad: zoomen  ·  Ziehen mit linker Maustaste: verschieben  ·  Doppelklick: Vollbild":
-        "Mueva el ratón sobre el gráfico: valores en ese instante.   Rueda del ratón: zoom  ·  arrastrar con el botón izquierdo: desplazar  ·  doble clic: pantalla completa",
     "zu kurz ({dur} < {min})":
         "demasiado corto ({dur} < {min})",
     "Zeit seit Motorstart [min:s]":
@@ -680,12 +678,18 @@ CATALOG = {
         "Vuelo {no} – {date}",
     "Flug {no}":
         "Vuelo {no}",
-    "Vollbild":
-        "Pantalla completa",
     "Schließen (Esc)":
         "Cerrar (Esc)",
     "{title} – Vollbild (Esc schließt)":
         "{title} – pantalla completa (Esc cierra)",
     "Maus über einen Datenpunkt: Wert.  Werkzeugleiste unten: zoomen, verschieben, speichern.":
         "Ratón sobre un punto: su valor.  Barra de herramientas abajo: zoom, desplazar, guardar.",
+    "Maus über das Diagramm bewegen: Werte zum Zeitpunkt.   Mausrad: zoomen  ·  Ziehen mit linker Maustaste: verschieben  ·  Doppelklick oder Rechtsklick: Diagramm vergrößern":
+        "Mueva el ratón sobre el gráfico: valores en ese instante.   Rueda del ratón: zoom  ·  arrastrar con el botón izquierdo: desplazar  ·  doble clic o clic derecho: ampliar el gráfico",
+    "Ganze Seite vergrößern":
+        "Ampliar página completa",
+    "Dieses Diagramm vergrößern":
+        "Ampliar este gráfico",
+    "Doppelklick oder Rechtsklick auf ein Diagramm: allein vergrößern":
+        "Doble clic o clic derecho en un gráfico: ampliarlo solo",
 }

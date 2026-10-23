@@ -132,6 +132,29 @@ def draw_flight(fig, res, p, path, view=FLIGHT_VIEWS[0]):
     return list(axes)
 
 
+def fit_y(axes):
+    """Fits the y axes of single-flight charts to the visible time window (only data lines, not helper lines)."""
+    if not axes:
+        return
+    lo, hi = axes[0].get_xlim()
+    for a in axes:
+        ys = []
+        for ln in a.get_lines():
+            if ln.get_gid() != "data":
+                continue
+            x = np.asarray(ln.get_xdata(), dtype=float)
+            if len(x) < 2:
+                continue
+            y = np.asarray(ln.get_ydata(), dtype=float)
+            m = (x >= lo) & (x <= hi) & np.isfinite(y)
+            if m.any():
+                ys.append((y[m].min(), y[m].max()))
+        if ys:
+            y0, y1 = min(v[0] for v in ys), max(v[1] for v in ys)
+            pad = (y1 - y0) * 0.08 or 0.5
+            a.set_ylim(y0 - pad, y1 + pad)
+
+
 def figure_flight(res, p, path, view=FLIGHT_VIEWS[0]):
     """Single flight as a standalone figure (for export)."""
     from matplotlib.figure import Figure

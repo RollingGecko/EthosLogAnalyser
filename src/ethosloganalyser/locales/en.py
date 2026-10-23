@@ -650,8 +650,6 @@ CATALOG = {
         "  t = {t}  {peak:.2f} A, {dur:.1f} s  →  {why}:  stick {stick} %/s, rotation rate {rate} °/s, {g} g, throttle {gas} %, altitude {alt} m",
     "Mittlere Leistung {value}, {t80} über 80 % des Spitzenstroms, mittleres Gas {gas} %":
         "Mean power {value}, {t80} above 80 % of the peak current, mean throttle {gas} %",
-    "Maus über das Diagramm bewegen: Werte zum Zeitpunkt.   Mausrad: zoomen  ·  Ziehen mit linker Maustaste: verschieben  ·  Doppelklick: Vollbild":
-        "Move the mouse over the chart: values at that time.   Mouse wheel: zoom  ·  drag with the left mouse button: pan  ·  double-click: full screen",
     "zu kurz ({dur} < {min})":
         "too short ({dur} < {min})",
     "Zeit seit Motorstart [min:s]":
@@ -666,12 +664,18 @@ CATALOG = {
         "Flight {no} – {date}",
     "Flug {no}":
         "Flight {no}",
-    "Vollbild":
-        "Full screen",
     "Schließen (Esc)":
         "Close (Esc)",
     "{title} – Vollbild (Esc schließt)":
         "{title} – full screen (Esc closes)",
     "Maus über einen Datenpunkt: Wert.  Werkzeugleiste unten: zoomen, verschieben, speichern.":
         "Mouse over a data point: its value.  Toolbar below: zoom, pan, save.",
+    "Maus über das Diagramm bewegen: Werte zum Zeitpunkt.   Mausrad: zoomen  ·  Ziehen mit linker Maustaste: verschieben  ·  Doppelklick oder Rechtsklick: Diagramm vergrößern":
+        "Move the mouse over the chart: values at that time.   Mouse wheel: zoom  ·  drag with the left mouse button: pan  ·  double-click or right-click: enlarge the chart",
+    "Ganze Seite vergrößern":
+        "Enlarge whole page",
+    "Dieses Diagramm vergrößern":
+        "Enlarge this chart",
+    "Doppelklick oder Rechtsklick auf ein Diagramm: allein vergrößern":
+        "Double-click or right-click a chart to enlarge it on its own",
 }

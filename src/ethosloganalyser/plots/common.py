@@ -41,8 +41,10 @@ def _note(ax, text):
     if text:
         import textwrap
         lines = textwrap.wrap(text.strip(), NOTE_WIDTH) or [""]
-        ax.text(0, 1.012, "\n".join(lines), transform=ax.transAxes, fontsize=7.5, color="#555555", va="bottom",
-                ha="left")
+        # fixed offset in points (not a fraction of the axes height): the note keeps its place below the title
+        # also when the chart is enlarged on its own (plots/single.py)
+        ax.annotate("\n".join(lines), xy=(0, 1), xycoords="axes fraction", xytext=(0, 2.5), textcoords="offset points",
+                    fontsize=7.5, color="#555555", va="bottom", ha="left")
         ax.set_title(ax.get_title(loc="left"), loc="left", pad=14 + 10 * (len(lines) - 1))
 
 
