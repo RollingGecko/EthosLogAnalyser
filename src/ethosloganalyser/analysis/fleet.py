@@ -14,7 +14,7 @@ from ..analysis.flight import analyse_file
 from ..analysis.motor_curve import flight_deviation, overall_curve, steady_points
 from ..analysis.quality import BATTERY_INVALID, detect_data_errors, rest_voltage_invalid
 from ..config import CHEM, Params, SOC_TOL_PCT, soc_pct
-from ..io.ethos_log import _file_datetime
+from ..io.ethos_log import UNKNOWN_MODEL, _file_datetime, model_from_filename
 
 
 # minimum depth of discharge [%] for the capacity estimate and the internal-resistance trend
@@ -46,6 +46,30 @@ def in_period(dt, p):
     return (d0 is None or d >= d0) and (d1 is None or d <= d1)
 
 
+def find_logs(folder):
+    """All CSV files in folder and its subfolders, sorted."""
+    return sorted(glob.glob(os.path.join(folder, "**", "*.csv"), recursive=True))
+
+
+def models_in(files):
+    """Logs grouped by model (from the file name): {model: dict(files=[...], latest=datetime of the newest log)}."""
+    out = {}
+    for f in files:
+        g = out.setdefault(model_from_filename(f), dict(files=[], latest=None))
+        g["files"].append(f)
+        dt = _file_datetime(f)
+        if g["latest"] is None or dt > g["latest"]:
+            g["latest"] = dt
+    return out
+
+
+def default_model(models):
+    """The model with the newest log (models as from models_in), None if there is none."""
+    if not models:
+        return None
+    return max(models, key=lambda m: (models[m]["latest"], m))
+
+
 def _timer_s(series, q_limit):
     """Time at which the drawn charge reaches q_limit [mAh] (extrapolated if needed)."""
     t, q = series["t"], np.maximum.accumulate(series["q"])
@@ -56,10 +80,17 @@ def _timer_s(series, q_limit):
     return float(t[-1] + (q_limit - q[-1]) / (i_mean / 3.6))
 
 
-def analyse_folder(folder, p: Params, progress=None):
-    files = sorted(glob.glob(os.path.join(folder, "**", "*.csv"), recursive=True))
+def analyse_folder(folder, p: Params, progress=None, model=None):
+    """Analyses the logs of ONE model in folder (subfolders included); models are never mixed.
+
+    model: model name as from model_from_filename; None or a model that is not in the folder -> the model with
+    the newest log. meta["model"] is the analysed model, meta["models"] {model: number of logs} all models found.
+    """
+    groups = models_in(find_logs(folder))
+    chosen = model if model in groups else default_model(groups)
+    files = groups[chosen]["files"] if chosen is not None else []
     rows, skipped, series = [], [], {}
-    meta = {}
+    meta = {"model": chosen, "models": {m: len(g["files"]) for m, g in groups.items()}}
     if p.date_from or p.date_to:          # period filter by the date in the file name (cheap, before reading)
         inside = [f for f in files if in_period(_file_datetime(f), p)]
         meta["outside_period"] = len(files) - len(inside)
@@ -79,6 +110,7 @@ def analyse_folder(folder, p: Params, progress=None):
 
     df = pd.DataFrame(rows).sort_values("datum").reset_index(drop=True)
     df.insert(0, "Flug", np.arange(1, len(df) + 1))
+    df.insert(df.columns.get_loc("datei") + 1, "Modell", chosen if chosen is not None else UNKNOWN_MODEL)
     ch = CHEM[p.chem]
 
     # cell count: as configured, or estimated from the highest start voltage
