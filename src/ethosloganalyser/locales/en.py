@@ -382,8 +382,6 @@ CATALOG = {
     "Antrieb und Sensor-Plausibilität": "Drive and sensor plausibility",
     "keine Drehzahl im Log": "no RPM in the log",
     "Kennlinie: Leistung gegen Drehzahl": "Curve: power vs. RPM",
-    "Farbe: frühe Flüge violett → späte gelb. Wandert die Kurve nach oben: Verschleiß/Fremdkörper.":
-        "Colour: early flights violet → late ones yellow. If the curve moves up: wear/foreign object.",
     "Drehzahl [1000 U/min]": "RPM [1000 rpm]",
     "Leistung [kW]": "Power [kW]",
     "Leistungsbedarf bei {rpm} U/min [W]": "Power demand at {rpm} rpm [W]",
@@ -431,7 +429,6 @@ CATALOG = {
     " Timer-Empfehlung": " timer recommendation",
     "entnommen": "drawn",
     "Leistung": "Power",
-    "Akkuspannung": "Battery voltage",
     "Gestrichelt: geschätzte Spannung ohne Last. Abstand = Spannungsabfall durch den Innenwiderstand.":
         "Dashed: estimated voltage without load. Gap = voltage drop across the internal resistance.",
     "Spannung": "Voltage",
@@ -462,10 +459,8 @@ CATALOG = {
     "Gasknüppel.": "Throttle stick.",
     "Bricht sie bei Stromspitzen ein, ist die Versorgung zu schwach.":
         "If it drops during current spikes, the supply is too weak.",
-    "Roll- und Nickwinkel.": "Roll and pitch angle.",
     "Roll": "Roll",
     "Nick": "Pitch",
-    "Wie schnell sich die Lage ändert (aus Roll und Nick).": "How fast the attitude changes (from roll and pitch).",
     "Beschleunigung, 1 g = Geradeausflug.": "Acceleration, 1 g = straight and level flight.",
 
     # ---------------- table headings ----------------
@@ -678,4 +673,46 @@ CATALOG = {
         "Enlarge this chart",
     "Doppelklick oder Rechtsklick auf ein Diagramm: allein vergrößern":
         "Double-click or right-click a chart to enlarge it on its own",
+    "P Abw. Kurve %":
+        "P dev. curve %",
+    "V/Zelle":
+        "V/cell",
+    "Akkuspannung je Zelle":
+        "Battery voltage per cell",
+    "Akkuspannung (gesamt)":
+        "Battery voltage (total)",
+    "Mittlere Zellspannung = Gesamtspannung / {cells} Zellen.":
+        "Mean cell voltage = total voltage / {cells} cells.",
+    "Zellenzahl unbekannt: Gesamtspannung des Akkus.":
+        "Cell count unknown: total battery voltage.",
+    "Rollwinkel und Querruder":
+        "Roll angle and aileron",
+    "Links Rollwinkel [°], rechts Querruder-Knüppel [%] (Ethos-Kanalwert, ±100 % = Vollausschlag).":
+        "Left: roll angle [°], right: aileron stick [%] (Ethos channel value, ±100 % = full deflection).",
+    "Nickwinkel und Höhenruder":
+        "Pitch angle and elevator",
+    "Links Nickwinkel [°], rechts Höhenruder-Knüppel [%] (Ethos-Kanalwert).":
+        "Left: pitch angle [°], right: elevator stick [%] (Ethos channel value).",
+    "Gas und Seitenruder":
+        "Throttle and rudder",
+    "Gas 0–100 %, Seitenruder-Knüppel ±100 %. Senkrechte Linien: Schalter.":
+        "Throttle 0–100 %, rudder stick ±100 %. Vertical lines: switches.",
+    "Grenze unter Last {v:.2f} V/Zelle":
+        "Limit under load {v:.2f} V/cell",
+    "Mindest-Ruhespannung {v:.2f} V/Zelle":
+        "Minimum resting voltage {v:.2f} V/cell",
+    "{stick} (Knüppel)":
+        "{stick} (stick)",
+    "Nicht im Log oder nicht bewegt: {channels}.":
+        "Not in the log or not moved: {channels}.",
+    "Farbe: frühe Flüge violett → späte gelb. Schwarz: Gesamtkennlinie aller Flüge mit Streuband. Liegt ein Flug darüber, braucht er mehr Leistung bei gleicher Drehzahl: Verschleiß/Fremdkörper.":
+        "Colour: early flights purple → late yellow. Black: overall curve of all flights with spread band. A flight above it needs more power at the same RPM: wear/foreign object.",
+    "Gesamtkennlinie (Median aller Flüge)":
+        "Overall curve (median of all flights)",
+    "Streuband 25–75 %":
+        "Spread band 25–75 %",
+    "Gesamtkennlinie: {classes} Drehzahlklassen aus {n} Flügen; Flüge weichen {lo:+.1f} bis {hi:+.1f} % davon ab (größte Abweichung: Flug {no})":
+        "Overall curve: {classes} RPM classes from {n} flights; flights deviate from it by {lo:+.1f} to {hi:+.1f} % (largest deviation: flight {no})",
+    "Leistung gegenüber der Gesamtkennlinie aller Flüge: {dev:+.1f} % (Median bei gleicher Drehzahl)":
+        "Power compared with the overall curve of all flights: {dev:+.1f} % (median at the same RPM)",
 }

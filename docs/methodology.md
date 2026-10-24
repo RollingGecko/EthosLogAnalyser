@@ -63,6 +63,18 @@ Per flight: the time at which the drawn charge reaches the capacity down to the 
 
 Electrical power over RPM is fitted as a power law P = a · nᵇ. The power demand at a fixed reference RPM is comparable across flights; if it rises, the drive is running harder (bearings, dirt, foreign object).
 
+### Overall motor curve (`analysis/motor_curve.py`)
+
+The points of one flight scatter too much to show a clear curve, so the chart *Curve: power vs. RPM* also draws an overall curve from all analysed flights:
+
+1. **Steady points only.** Per flight, RPM (rolling median over 1 s) and power (rolling mean over 1 s) on the 0.25 s grid; a point is used if RPM > 1000, power > 100 W and the RPM changes by less than 5 % per second. Run-up, throttle changes and spool-down are left out: power and RPM are not in equilibrium there, and the two sensors are logged with a small time offset. Flights whose current is invalid (stuck current sensor, voltage dropouts; see *Measurement errors*) do not contribute.
+2. **RPM classes.** The class width is a round value (250 … 20 000 RPM) giving about 25 classes between the 1st and 99th percentile of the pooled RPM (2026 logs: 5000 RPM).
+3. **Median and band.** Per class: median power (black line, plotted at the median RPM of the class) and the 25–75 % quantiles (grey band). Median and quartiles are not moved by single outliers.
+4. **Too few data → no class.** A class is used only with at least 40 points (10 s) from at least 3 flights (from all flights if fewer were analysed). Classes are connected by straight lines; there is no extrapolation beyond the outermost classes.
+5. **Deviation per flight** (column `P_Kurve_Abw_pct`, table *P dev. curve %*, single-flight details): median of the relative deviations of the flight's steady points from the curve, linearly interpolated at their RPM. Positive = the flight needed more power for the same RPM. At least 40 steady points inside the curve are required.
+
+Overall curve 2026 (33 flights, Li-Ion 13S): 17 classes from 23 700 to 101 500 RPM; flights deviate by −2.2 … +2.7 %.
+
 ## Receiver current spikes (`analysis/rx_spikes.py`)
 
 Threshold = maximum of baseline + 4 · robust spread, 1.5 × baseline and baseline + 0.3 A. Spikes less than 1 s apart are merged. Each spike gets a cause, in this order (English label, internal code in brackets):

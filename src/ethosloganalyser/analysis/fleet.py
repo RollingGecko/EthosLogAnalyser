@@ -11,6 +11,7 @@ import pandas as pd
 from ..analysis.ageing import ageing_model, battery_mix, check_consistency
 from ..analysis.evaluate import evaluate, usage_correlations
 from ..analysis.flight import analyse_file
+from ..analysis.motor_curve import flight_deviation, overall_curve, steady_points
 from ..analysis.quality import BATTERY_INVALID, detect_data_errors, rest_voltage_invalid
 from ..config import CHEM, Params, SOC_TOL_PCT, soc_pct
 from ..io.ethos_log import _file_datetime
@@ -225,6 +226,14 @@ def analyse_folder(folder, p: Params, progress=None):
     else:
         df["P_ref_W"] = np.nan
     meta["rpm_ref"] = rpm_ref
+
+    # overall motor curve from the steady-state points of all flights (not from flights whose current is
+    # invalid: their power is wrong); deviation of each flight from it
+    steady = {path: steady_points(series[path]["rpm"], series[path]["p"]) for path in df["pfad"]}
+    curve = overall_curve([steady[path] for path, bad in zip(df["pfad"], batt_bad) if not bad])
+    meta["motor_curve"] = curve
+    df["P_Kurve_Abw_pct"] = [round(flight_deviation(curve, *steady[path]), 1) if not bad else np.nan
+                             for path, bad in zip(df["pfad"], batt_bad)]
 
     df["C_peak"] = df["I_max_A"] / (cap_ref / 1000.0) if np.isfinite(cap_ref) and cap_ref > 0 else np.nan
     if np.isfinite(cap_ref) and cap_ref > 0:

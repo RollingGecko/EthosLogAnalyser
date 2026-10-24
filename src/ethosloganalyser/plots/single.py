@@ -48,7 +48,8 @@ def chart_title(ax):
 
 
 def _column_xlabel(fig, ax):
-    """x label of the chart below ax in the same column (pages show it only in the bottom row)."""
+    """x label of the chart below ax that shares its x axis (pages with a shared time axis label only the
+    bottom chart)."""
     cell = _cell(ax)
     if cell is None:
         return None
@@ -56,6 +57,8 @@ def _column_xlabel(fig, ax):
     for a in fig.axes:
         c = _cell(a)
         if c is None or c[0] is not cell[0] or c[2] != cell[2] or not a.get_xlabel():
+            continue
+        if not ax.get_shared_x_axes().joined(ax, a):
             continue
         if best is None or c[1].stop > _cell(best)[1].stop:
             best = a
@@ -73,8 +76,11 @@ def single_chart(fig, index):
     group = chart_group(fig, axes[index])
     main = group[0]
     if not main.get_xlabel():
+        hidden = getattr(main, "_hidden_xlabel", None)     # removed by plots.common._bottom_labels_only
         lbl = _column_xlabel(fig, main)
-        if lbl is not None:
+        if hidden is not None:
+            main.set_xlabel(hidden[0], fontsize=hidden[1])
+        elif lbl is not None:
             main.set_xlabel(lbl.get_text(), fontsize=lbl.get_fontsize())
     for a in axes:
         if a not in group:

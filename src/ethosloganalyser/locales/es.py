@@ -396,8 +396,6 @@ CATALOG = {
     "Antrieb und Sensor-Plausibilität": "Propulsión y plausibilidad del sensor",
     "keine Drehzahl im Log": "sin rpm en el log",
     "Kennlinie: Leistung gegen Drehzahl": "Curva: potencia frente a rpm",
-    "Farbe: frühe Flüge violett → späte gelb. Wandert die Kurve nach oben: Verschleiß/Fremdkörper.":
-        "Color: primeros vuelos violeta → últimos amarillo. Si la curva sube: desgaste/cuerpo extraño.",
     "Drehzahl [1000 U/min]": "Rpm [1000 rpm]",
     "Leistung [kW]": "Potencia [kW]",
     "Leistungsbedarf bei {rpm} U/min [W]": "Demanda de potencia a {rpm} rpm [W]",
@@ -445,7 +443,6 @@ CATALOG = {
     " Timer-Empfehlung": " recomendación de temporizador",
     "entnommen": "consumido",
     "Leistung": "Potencia",
-    "Akkuspannung": "Tensión de la batería",
     "Gestrichelt: geschätzte Spannung ohne Last. Abstand = Spannungsabfall durch den Innenwiderstand.":
         "Discontinua: tensión estimada sin carga. Diferencia = caída de tensión por la resistencia interna.",
     "Spannung": "Tensión",
@@ -476,10 +473,8 @@ CATALOG = {
     "Gasknüppel.": "Stick de gas.",
     "Bricht sie bei Stromspitzen ein, ist die Versorgung zu schwach.":
         "Si cae durante los picos de corriente, la alimentación es demasiado débil.",
-    "Roll- und Nickwinkel.": "Ángulos de alabeo y cabeceo.",
     "Roll": "Alabeo",
     "Nick": "Cabeceo",
-    "Wie schnell sich die Lage ändert (aus Roll und Nick).": "Con qué rapidez cambia la actitud (según alabeo y cabeceo).",
     "Beschleunigung, 1 g = Geradeausflug.": "Aceleración, 1 g = vuelo recto y nivelado.",
 
     # ---------------- table headings ----------------
@@ -692,4 +687,46 @@ CATALOG = {
         "Ampliar este gráfico",
     "Doppelklick oder Rechtsklick auf ein Diagramm: allein vergrößern":
         "Doble clic o clic derecho en un gráfico: ampliarlo solo",
+    "P Abw. Kurve %":
+        "P desv. curva %",
+    "V/Zelle":
+        "V/celda",
+    "Akkuspannung je Zelle":
+        "Tensión de la batería por celda",
+    "Akkuspannung (gesamt)":
+        "Tensión de la batería (total)",
+    "Mittlere Zellspannung = Gesamtspannung / {cells} Zellen.":
+        "Tensión media por celda = tensión total / {cells} celdas.",
+    "Zellenzahl unbekannt: Gesamtspannung des Akkus.":
+        "Número de celdas desconocido: tensión total de la batería.",
+    "Rollwinkel und Querruder":
+        "Ángulo de alabeo y alerones",
+    "Links Rollwinkel [°], rechts Querruder-Knüppel [%] (Ethos-Kanalwert, ±100 % = Vollausschlag).":
+        "Izquierda: ángulo de alabeo [°], derecha: stick de alerones [%] (valor del canal Ethos, ±100 % = recorrido máximo).",
+    "Nickwinkel und Höhenruder":
+        "Ángulo de cabeceo y profundidad",
+    "Links Nickwinkel [°], rechts Höhenruder-Knüppel [%] (Ethos-Kanalwert).":
+        "Izquierda: ángulo de cabeceo [°], derecha: stick de profundidad [%] (valor del canal Ethos).",
+    "Gas und Seitenruder":
+        "Gas y dirección",
+    "Gas 0–100 %, Seitenruder-Knüppel ±100 %. Senkrechte Linien: Schalter.":
+        "Gas 0–100 %, stick de dirección ±100 %. Líneas verticales: interruptores.",
+    "Grenze unter Last {v:.2f} V/Zelle":
+        "Límite bajo carga {v:.2f} V/celda",
+    "Mindest-Ruhespannung {v:.2f} V/Zelle":
+        "Tensión mínima en reposo {v:.2f} V/celda",
+    "{stick} (Knüppel)":
+        "{stick} (stick)",
+    "Nicht im Log oder nicht bewegt: {channels}.":
+        "No están en el log o no se movieron: {channels}.",
+    "Farbe: frühe Flüge violett → späte gelb. Schwarz: Gesamtkennlinie aller Flüge mit Streuband. Liegt ein Flug darüber, braucht er mehr Leistung bei gleicher Drehzahl: Verschleiß/Fremdkörper.":
+        "Color: primeros vuelos violeta → últimos amarillo. Negro: curva global de todos los vuelos con banda de dispersión. Un vuelo por encima necesita más potencia a las mismas rpm: desgaste/cuerpo extraño.",
+    "Gesamtkennlinie (Median aller Flüge)":
+        "Curva global (mediana de todos los vuelos)",
+    "Streuband 25–75 %":
+        "Banda de dispersión 25–75 %",
+    "Gesamtkennlinie: {classes} Drehzahlklassen aus {n} Flügen; Flüge weichen {lo:+.1f} bis {hi:+.1f} % davon ab (größte Abweichung: Flug {no})":
+        "Curva global: {classes} clases de rpm de {n} vuelos; los vuelos se desvían de ella entre {lo:+.1f} y {hi:+.1f} % (mayor desviación: vuelo {no})",
+    "Leistung gegenüber der Gesamtkennlinie aller Flüge: {dev:+.1f} % (Median bei gleicher Drehzahl)":
+        "Potencia frente a la curva global de todos los vuelos: {dev:+.1f} % (mediana a las mismas rpm)",
 }

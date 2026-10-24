@@ -154,14 +154,20 @@ def _check_fullscreen(root):
     _close(root, win)
 
     # single flight: double-click on the second chart opens only that chart, with the zoom of the tab
+    # (attitude view: pitch angle with the elevator stick on a twin axis)
+    from ethosloganalyser.plots.single import chart_group
+    h["view_var"].set("attitude")
+    h["redraw"]()
     canvas = h["flight_canvas"]
     canvas.draw()
     root.update()
     ax = canvas.figure.axes[1]
     xlim = canvas.figure.axes[0].get_xlim()
+    n_axes = len(chart_group(canvas.figure, ax))
     win = _double_click(root, canvas, ax)
-    assert len(win._fig.axes) == 1
-    (big,) = win._fig.axes
+    assert len(win._fig.axes) == n_axes == 2
+    big, stick = win._fig.axes
+    assert stick.get_ylabel() == "%" and stick.get_ylim() == (-105, 105)
     assert big.get_title(loc="left") == ax.get_title(loc="left")
     assert big.get_xlim() == pytest.approx(xlim)
     assert big.get_xlabel() == "Zeit seit Motorstart [min:s]"
