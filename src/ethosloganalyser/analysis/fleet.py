@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from ..analysis.ageing import ageing_model, battery_mix, check_consistency
+from ..analysis.rx_baseline import base_trend
 from ..analysis.evaluate import evaluate, usage_correlations
 from ..analysis.flight import analyse_file
 from ..analysis.motor_curve import flight_deviation, overall_curve, steady_points
@@ -269,6 +270,10 @@ def analyse_folder(folder, p: Params, progress=None):
     # data errors per flight (codes, user-facing labels: quality.QUALITY_LABELS)
     meta["quality"] = {code: set(int(v) for v in df.loc[mask, "Flug"]) for code, mask in errors.items() if mask.any()}
     df["Datenfehler"] = [", ".join(code for code, mask in errors.items() if mask[k]) for k in range(len(df))]
+
+    # receiver base current (sticks neutral) across the flights: robust line, shown only if confirmed
+    meta["rx_base"] = base_trend(df["Flug"], df["Rx_Grund_A"]) if "Rx_Grund_A" in df.columns else \
+        dict(status="too_few", n=0)
 
     warnings, flags = evaluate(df, p, meta)
     meta["warnings"], meta["flags"] = warnings, flags

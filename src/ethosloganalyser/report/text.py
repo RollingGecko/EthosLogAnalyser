@@ -10,8 +10,8 @@ import pandas as pd
 from ..analysis.ageing import MIN_TREND_SPAN, MIN_TREND_VALUES, MIN_VALUES, Z90, forecast
 from ..analysis.evaluate import FLAG_LABELS, SEVERE_FLAGS, USAGE_LABELS
 from ..analysis.quality import QUALITY_LABELS, quality_messages
-from ..config import (CAP_SOURCE_LABELS, CHEM, CORR_LABELS, SOC_TOL_PCT, SPIKE_CAUSES, SPIKE_COLS, SPIKE_LABELS,
-                      VOLTAGE_SOURCE_LABELS, label)
+from ..config import (CAP_SOURCE_LABELS, CHEM, CORR_LABELS, RX_BASE_LABELS, SOC_TOL_PCT, SPIKE_CAUSES, SPIKE_COLS,
+                      SPIKE_LABELS, VOLTAGE_SOURCE_LABELS, label)
 from ..i18n import N_, fmt_date, fmt_datetime, tr
 from ..analysis.fleet import MIN_DEPTH_PCT, parse_date
 from ..utils import _f, _mmss, _ranges, _window_change, fmt_duration
@@ -162,7 +162,7 @@ def summary_lines(res, p):
             parts.append(tr("{label} {value}{unit} (Flug {no})", label=lab, value=f"{val:.4g}", unit=unit, no=fl_no))
     L.append(("info", "; ".join(parts) if parts else tr("keine Funkwerte im Log")))
     if df["RxSpitzen_n"].notna().any():
-        L.extend(rx_summary_lines(df))
+        L.extend(rx_summary_lines(df, meta))
 
     # ---------------- data quality ----------------
     L.append(("h", tr("DATENQUALITÄT (Messfehler, nicht in Trends und Warnungen)")))
@@ -386,7 +386,23 @@ def quality_lines(res, p):
     return [(tag, "• " + str(text)) for tag, text in lines]
 
 
-def rx_summary_lines(df):
+def rx_base_line(rb):
+    """Summary line on the receiver base current across the flights (rb: meta["rx_base"]) or None."""
+    if not rb or rb.get("status") != "ok":
+        return None
+    span = dict(first=int(rb["first"]), last=int(rb["last"]))
+    if rb["trend"] == "up":
+        return ("warn", tr("Grundstrom des Empfängers (Knüppel neutral, geschätzt): gestiegen von {start:.2f} auf "
+                           "{end:.2f} A (Flug {first}–{last}).",
+                           start=rb["start"], end=rb["current"], **span))
+    if rb["trend"] == "down":
+        return ("info", tr("Grundstrom des Empfängers (Knüppel neutral, geschätzt): gesunken von {start:.2f} auf "
+                           "{end:.2f} A (Flug {first}–{last}).", start=rb["start"], end=rb["current"], **span))
+    return ("info", tr("Grundstrom des Empfängers (Knüppel neutral, geschätzt): im Mittel {level:.2f} A "
+                       "(Flug {first}–{last}), keine gesicherte Veränderung.", level=rb["level"], **span))
+
+
+def rx_summary_lines(df, meta=None):
     L = []
     base = df["RxStrom_mittel_A"].dropna()
     peak = df["RxStrom_max_A"].dropna()
@@ -402,6 +418,9 @@ def rx_summary_lines(df):
         share_ohne = tot.get("no_cause", 0) / n
         L.append(("warn" if share_ohne > 0.3 and n >= 5 else "info",
                   tr("Stromspitzen (alle Flüge): {n} - {shares}", n=n, shares=txt)))
+    base_line = rx_base_line((meta or {}).get("rx_base"))
+    if base_line:
+        L.append(base_line)
     for col, code in [("Rx_r_Knueppel", "stick"), ("Rx_r_Drehrate", "rate")]:
         r = df[col].dropna() if col in df.columns else pd.Series(dtype=float)
         if len(r):
@@ -522,6 +541,13 @@ def flight_detail_lines(res, p, path):
     if rx:
         L.append(("info", tr("Empfängerstrom: Grundlast {base:.2f} A, Maximum {value}, Spitzenschwelle {thr:.2f} A",
                              base=rx["base"], value=cmp("RxStrom_max_A", "{:.2f}", " A"), thr=rx["thr"])))
+        rb = s.get("rx_base") or {}
+        if np.isfinite(r.get("Rx_Grund_A", np.nan)):
+            L.append(("info", tr("Grundstrom bei neutralen Knüppeln (geschätzt): {value}",
+                                 value=cmp("Rx_Grund_A", "{:.2f}", " A"))))
+        elif rb.get("reason"):
+            L.append(("info", tr("Grundstrom bei neutralen Knüppeln: – ({reason})",
+                                 reason=label(RX_BASE_LABELS, rb["reason"]))))
         if rx["corr"]:
             L.append(("info", tr("Zusammenhang mit dem Empfängerstrom: {values}",
                                  values=", ".join(f"{label(CORR_LABELS, c)} r = {v:+.2f}" for c, v in rx["corr"].items()))))

@@ -197,7 +197,11 @@ def figure_funk(res, p):
     df, meta = res.df, res.meta
     if df.empty:
         return _empty_fig(tr("Keine Daten"))
-    fig, ax = _new_fig(3, 2, size=(11, 9))
+    fig, ax = _new_fig(4, 2, size=(11, 11.5))
+    wide = ax[3][0]                    # the receiver base current gets the whole bottom row
+    ax[3][1].remove()
+    wide.set_subplotspec(ax[0][0].get_subplotspec().get_gridspec()[3, :])
+    ax = [list(ax[0]), list(ax[1]), list(ax[2]), [wide]]
     fl = meta["flags"]
     _plot_trend(ax[0][0], df, "RSSI_min", "tab:blue", tr("RSSI-Minimum im Flug"), fl, "rssi", trend=False,
                 note=tr("Schlechteste Empfangsstärke je Flug. Ethos warnt üblicherweise unter 45.") + flag_note())
@@ -235,6 +239,32 @@ def figure_funk(res, p):
     a.set_xlabel(tr("Flug Nr."), fontsize=8)
     _plot_trend(ax[2][1], df, "TxBat_min_V", "tab:purple", tr("Senderakku min. [V]"), trend=False,
                 note=tr("Tiefster Wert des Senderakkus im Flug."))
+    _rx_base_chart(ax[3][0], df, meta.get("rx_base") or {})
     _bottom_labels_only(ax)
     fig.suptitle(tr("Funk und Bordnetz"), fontsize=12, fontweight="bold")
     return fig
+
+
+def _rx_base_chart(a, df, rb):
+    """Receiver base current per flight with the robust line (or mean level) and its 90 % range."""
+    col = "Rx_Grund_A"
+    if col not in df.columns:
+        df = df.assign(**{col: np.nan})
+    note = tr("Strom des Empfängers bei neutralen Knüppeln, aus dem ganzen Flug geschätzt (Schätzung, keine "
+              "Messung je Servo). Steigt er über die Flüge, brauchen Servos oder Anlenkungen mehr Strom als früher.")
+    if rb.get("status") == "ok":
+        note += " " + (tr("Linie mit Band: gesicherter Trend mit 90-%-Bereich.") if rb["reliable"] else
+                       tr("Gestrichelt mit Band: kein gesicherter Trend (Mittelwert mit 90-%-Bereich)."))
+    missing = int(df[col].isna().sum())
+    if missing:
+        note += " " + (tr("1 Flug ohne Wert (zu wenig Daten).") if missing == 1 else
+                       tr("{n} Flüge ohne Wert (zu wenig Daten).", n=missing))
+    _plot_trend(a, df, col, "tab:brown", tr("Grundstrom des Empfängers (Knüppel neutral) [A]"), trend=False,
+                label=tr("Flug"), note=note)
+    if rb.get("status") == "ok":
+        reliable = rb["reliable"]
+        a.fill_between(rb["band_x"], rb["band_lo"], rb["band_hi"], color="tab:brown", alpha=0.15, lw=0,
+                       label=tr("90-%-Bereich"))
+        a.plot([rb["first"], rb["last"]], [rb["start"], rb["current"]], "-" if reliable else "--",
+               color="tab:brown", alpha=0.8, lw=1.8, label=tr("Trend") if reliable else tr("Mittelwert"))
+        a.legend(fontsize=7, loc="upper left")

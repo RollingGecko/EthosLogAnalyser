@@ -5,8 +5,9 @@ import os
 import numpy as np
 import pandas as pd
 
+from ..analysis.rx_baseline import base_current
 from ..analysis.rx_spikes import rx_spike_analysis
-from ..config import Params, SPIKE_CAUSES, STEP
+from ..config import Params, SPIKE_CAUSES, STEP, channel_names
 from ..i18n import Msg
 from ..io.ethos_log import CURR_KEYS, VOLT_KEYS, _active_series, _exact_series, _file_datetime, _find_col, _first_series, _numeric_cols, _switch_columns, _time_seconds, _to_num, read_log
 from ..utils import _mmss, _nanmax, _nanmin, _rolling
@@ -31,8 +32,11 @@ def analyse_file(path, p: Params):
     # Ethos logs each sensor in its own rows -> fill gaps with the last value
     work = pd.DataFrame({"t": t, "u": _to_num(df[cv]).to_numpy(dtype=float),
                          "i": _to_num(df[ci]).to_numpy(dtype=float)}, index=df.index)
+    # throttle: the assigned column if there is one, otherwise the first column containing "gas"/"thr"
+    gas = (_exact_series(df, channel_names("throttle", p.channels)) if p.channels.get("throttle")
+           else _first_series(df, ["gas", "thr"]))
     extras = {
-        "gas": _first_series(df, ["gas", "thr"]),
+        "gas": gas,
         "rpm": (_first_series(df, ["esc rpm"]) if _first_series(df, ["esc rpm"]) is not None
                 else _first_series(df, ["rpm"])),
         "alt": _first_series(df, ["altitude", "höhe", "hoehe"]),
@@ -43,10 +47,10 @@ def analyse_file(path, p: Params):
         "rxu": _active_series(df, ["rxbatt", "rx batt", "rxbat"]),
         "roll": _first_series(df, ["roll", "r.angle"]),
         "pitch": _first_series(df, ["pitch", "nick", "p.angle"]),
-        # stick channels (Ethos sources, exact names): aileron, elevator, rudder
-        "qr": _exact_series(df, ["QR", "Quer", "Ail", "Aileron", "Querruder"]),
-        "hr": _exact_series(df, ["HR", "Ele", "Elevator", "Höhenruder"]),
-        "sr": _exact_series(df, ["SR", "Rud", "Rudder", "Seite", "Seitenruder"]),
+        # stick channels (Ethos sources, exact names; assignment in Params.channels, defaults in config)
+        "qr": _exact_series(df, channel_names("aileron", p.channels)),
+        "hr": _exact_series(df, channel_names("elevator", p.channels)),
+        "sr": _exact_series(df, channel_names("rudder", p.channels)),
     }
     switch_cols = _switch_columns(df)
     for k_, (name, sr) in enumerate(switch_cols):
@@ -273,6 +277,8 @@ def analyse_file(path, p: Params):
     txb_min = win_vals(["txbat"], "min")
 
     rx = rx_spike_analysis(tg - tg[0], rxig, gas_pct, alt_rel, rateg, gg, rollg, pitchg, stick_act, switch_ev)
+    # base current: receiver current with all sticks at neutral and still; aileron and elevator must be logged
+    rx_base = base_current(tg - tg[0], rxig, sticks if {"aileron", "elevator"} <= set(sticks) else {}, alt_rel)
     cnt = {c: 0 for c, _ in SPIKE_CAUSES}
     if rx:
         for sp in rx["spikes"]:
@@ -314,6 +320,7 @@ def analyse_file(path, p: Params):
         Wh_je_100m=wh100, Hoehe_max_m=alt_max, g_max=g_max, g_p95=g_p95, Drehrate_p95=rate_p95,
         RSSI_min=rssi_min, VFR_min=vfr_min, RxBatt_min_V=rxb_min, RxStrom_max_A=rxc_max, TxBat_min_V=txb_min,
         RxStrom_mittel_A=round(rx["mean"], 2) if rx else np.nan,
+        Rx_Grund_A=round(rx_base["value"], 3) if np.isfinite(rx_base["value"]) else np.nan,
         RxSpitzen_n=len(rx["spikes"]) if rx else np.nan,
         RxSp_Schalter=cnt["switch"] if rx else np.nan,
         RxSp_Manoever=cnt["manoeuvre"] if rx else np.nan,
@@ -330,5 +337,6 @@ def analyse_file(path, p: Params):
         t=tg - tg[0], u=ug, i=ig, p=pg, q=qg_mah, gas=gas_pct, rpm=rpmg, alt=alt_rel, ocv=ocv_g,
         gas_hist=gas_hist, rssi=rssig, vfr=vfrg, rxi=rxig, rxu=rxug, rate=rateg, g=gg, rx=rx,
         roll=rollg, pitch=pitchg, sticks=sticks, stick=stick_act, switches=switch_ev,
+        rx_base=rx_base,
     )
     return row, "ok"

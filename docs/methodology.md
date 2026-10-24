@@ -86,6 +86,18 @@ Threshold = maximum of baseline + 4 · robust spread, 1.5 × baseline and baseli
 
 Without attitude data (sticks, rotation rate, g-load) the cause is “no attitude data” (`no_attitude`).
 
+## Receiver base current (`analysis/rx_baseline.py`)
+
+The log only has the **total** receiver current, not the current of a single servo. The *base current* is the current the receiver draws with all sticks at neutral and still: receiver, servos holding neutral and other consumers on the receiver supply. Column `Rx_Grund_A`, chart in the *Radio & onboard power* tab.
+
+- **Estimate, not a reading**: flights rarely have moments with *all* sticks at neutral (on the reference model the elevator is held pulled most of the time). The base current is therefore estimated from the whole airborne part of the flight (without the first 30 s and the last 45 s, above 15 m if altitude is logged): receiver current(t + delay) = base current + Σ over the logged sticks (a · |deflection| + b · |stick speed|), fitted with Huber weights so that current spikes do not pull it. The base current is the value at 0 % deflection and no stick movement. The per-stick terms are only a means to that end and are not reported.
+- **Delay**: the receiver current is only updated about every 0.5 s (0.01 A resolution) and follows the sticks by about 0.75 s; the delay (0–2 s) is chosen by the best fit.
+- **No value** (empty cell, “too little data” in the table): less than 120 s airborne, no receiver current, or no aileron and elevator stick in the log. Stick channels come from `config.STICK_CHANNELS` (defaults `QR`, `HR`, `SR`, `Gas`); `Params.channels` can name other columns.
+- **Across flights**: robust line (Huber weights) over the flight number with its 90 % range. A rise or fall is only shown when the 90 % range of the slope excludes zero **and** the change over the period is at least 0.1 A; otherwise the chart shows the dashed mean level with its 90 % range. At least 6 values are needed for a level and 10 values over at least 10 flights for a trend. The reference are the earlier flights of the period, not a fixed limit (receiver currents differ a lot between models).
+- **Hint**: only for a confirmed rise: “The base current of the receiver has risen over the flights … Check servos and linkages.” It does not say which servo or surface, and it is no diagnosis.
+
+Background (feasibility study on the 2026 logs of the reference model, aileron servo known to bind): the current of a single control surface can only be estimated weakly from the total current – the sticks are mostly moved together, clean single-surface moments are rare, and the estimates did not single out the binding aileron. Spikes in figures with all surfaces at full deflection (e.g. snap rolls) cannot be assigned to one servo. The base current was the most robust signal (2026: about 0.6 → 0.8 A). Limits: the number of servos per channel and transmitter mixes are not known from the log and are not assumed; no airspeed (air load), no servo temperature.
+
 ## Anomalies (`analysis/evaluate.py`)
 
 Limits (deep discharge, voltage collapse under load, sensor deviation, spikes without cause) apply to every flight except for values that were recognised as measurement errors. Statistical outliers are only searched from 6 flights on: robust z-score above 3.5, for ageing metrics relative to the trend.

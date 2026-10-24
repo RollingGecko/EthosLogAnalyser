@@ -101,6 +101,15 @@ def evaluate(df, p, meta):
           Msg("mindestens 3 Stromspitzen ohne Manöver, Start oder Landung. Servos auf Schwergängigkeit, "
               "Anschlag (Brummen in Endlage) und Defekte prüfen; Zeitpunkte siehe Einzelflug."))
 
+    # receiver base current (sticks neutral): hint only when a rise is confirmed (see analysis/rx_baseline.py);
+    # the reference are the earlier flights, not a fixed limit
+    rb = meta.get("rx_base") or {}
+    if rb.get("trend") == "up":
+        warns.append(("warn", Msg("Der Grundstrom des Empfängers ist über die Flüge gestiegen ({start:.2f} → "
+                                  "{end:.2f} A, Flug {first}–{last}). Servos und Anlenkungen prüfen.",
+                                  start=rb["start"], end=rb["current"], first=int(rb["first"]),
+                                  last=int(rb["last"]))))
+
     # statistical outliers (robust z-score, relative to the trend for ageing metrics), from 6 flights on
     if n >= 6:
         fl = df["Flug"].to_numpy(dtype=float)

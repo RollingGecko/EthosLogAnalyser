@@ -41,6 +41,7 @@ TABLE_COLS = [
     ("Hoehe_max_m", N_("Höhe max"), 65), ("Wh_je_100m", N_("Wh/100m"), 65), ("g_max", N_("g max"), 50),
     ("RSSI_min", N_("RSSI min"), 65), ("VFR_min", N_("VFR min"), 60), ("RxBatt_min_V", N_("Rx V min"), 65),
     ("RxStrom_mittel_A", N_("Rx A Ø"), 55), ("RxStrom_max_A", N_("Rx A max"), 65),
+    ("Rx_Grund_A", N_("Rx Grund A"), 95),
     ("RxSpitzen_n", N_("Rx Spitzen"), 70), ("RxSp_Schalter", N_("Sp. Schalter"), 80),
     ("RxSp_ohne", N_("Sp. o. Anlass"), 85), ("Rx_r_Knueppel", N_("r Rx/Knüppel"), 85),
     ("fit_R2", N_("R² Fit"), 50), ("versatz_s", N_("Versatz s"), 60), ("Auffaellig", N_("Auffälligkeiten"), 260),
@@ -73,6 +74,8 @@ def fmt_cell(key, v):
         return flag_text(v)
     if key == "Datenfehler":
         return error_text(v)
+    if key == "Rx_Grund_A" and not (isinstance(v, (float, np.floating)) and np.isfinite(v)):
+        return tr("zu wenig Daten")
     if isinstance(v, (float, np.floating)):
         return "–" if not np.isfinite(v) else f"{v:.5g}"
     return "" if v is None else str(v)

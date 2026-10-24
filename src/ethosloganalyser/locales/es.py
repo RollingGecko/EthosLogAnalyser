@@ -729,4 +729,38 @@ CATALOG = {
         "Curva global: {classes} clases de rpm de {n} vuelos; los vuelos se desvían de ella entre {lo:+.1f} y {hi:+.1f} % (mayor desviación: vuelo {no})",
     "Leistung gegenüber der Gesamtkennlinie aller Flüge: {dev:+.1f} % (Median bei gleicher Drehzahl)":
         "Potencia frente a la curva global de todos los vuelos: {dev:+.1f} % (mediana a las mismas rpm)",
+    "Der Grundstrom des Empfängers ist über die Flüge gestiegen ({start:.2f} → {end:.2f} A, Flug {first}–{last}). Servos und Anlenkungen prüfen.":
+        "La corriente base del receptor ha aumentado a lo largo de los vuelos ({start:.2f} → {end:.2f} A, vuelo {first}–{last}). Revisar servos y transmisiones.",
+    "Quer- und Höhenruder-Knüppel nicht im Log":
+        "palancas de alerones y profundidad no están en el registro",
+    "zu wenig Daten":
+        "datos insuficientes",
+    "Rx Grund A":
+        "Rx base A",
+    "Strom des Empfängers bei neutralen Knüppeln, aus dem ganzen Flug geschätzt (Schätzung, keine Messung je Servo). Steigt er über die Flüge, brauchen Servos oder Anlenkungen mehr Strom als früher.":
+        "Corriente del receptor con las palancas en neutro, estimada a partir de todo el vuelo (una estimación, no una medición por servo). Si aumenta a lo largo de los vuelos, los servos o las transmisiones necesitan más corriente que antes.",
+    "Grundstrom des Empfängers (Knüppel neutral) [A]":
+        "Corriente base del receptor (palancas en neutro) [A]",
+    "{n} Flüge ohne Wert (zu wenig Daten).":
+        "{n} vuelos sin valor (datos insuficientes).",
+    "Linie mit Band: gesicherter Trend mit 90-%-Bereich.":
+        "Línea con banda: tendencia confirmada con intervalo del 90 %.",
+    "Gestrichelt mit Band: kein gesicherter Trend (Mittelwert mit 90-%-Bereich).":
+        "Discontinua con banda: sin tendencia confirmada (media con intervalo del 90 %).",
+    "90-%-Bereich":
+        "intervalo del 90 %",
+    "Trend":
+        "Tendencia",
+    "Grundstrom des Empfängers (Knüppel neutral, geschätzt): im Mittel {level:.2f} A (Flug {first}–{last}), keine gesicherte Veränderung.":
+        "Corriente base del receptor (palancas en neutro, estimada): {level:.2f} A de media (vuelo {first}–{last}), sin cambio confirmado.",
+    "Grundstrom des Empfängers (Knüppel neutral, geschätzt): gestiegen von {start:.2f} auf {end:.2f} A (Flug {first}–{last}).":
+        "Corriente base del receptor (palancas en neutro, estimada): ha subido de {start:.2f} a {end:.2f} A (vuelo {first}–{last}).",
+    "Grundstrom des Empfängers (Knüppel neutral, geschätzt): gesunken von {start:.2f} auf {end:.2f} A (Flug {first}–{last}).":
+        "Corriente base del receptor (palancas en neutro, estimada): ha bajado de {start:.2f} a {end:.2f} A (vuelo {first}–{last}).",
+    "Grundstrom bei neutralen Knüppeln (geschätzt): {value}":
+        "Corriente base con las palancas en neutro (estimada): {value}",
+    "Grundstrom bei neutralen Knüppeln: – ({reason})":
+        "Corriente base con las palancas en neutro: – ({reason})",
+    "1 Flug ohne Wert (zu wenig Daten).":
+        "1 vuelo sin valor (datos insuficientes).",
 }

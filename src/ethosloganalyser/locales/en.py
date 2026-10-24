@@ -715,4 +715,38 @@ CATALOG = {
         "Overall curve: {classes} RPM classes from {n} flights; flights deviate from it by {lo:+.1f} to {hi:+.1f} % (largest deviation: flight {no})",
     "Leistung gegenüber der Gesamtkennlinie aller Flüge: {dev:+.1f} % (Median bei gleicher Drehzahl)":
         "Power compared with the overall curve of all flights: {dev:+.1f} % (median at the same RPM)",
+    "Der Grundstrom des Empfängers ist über die Flüge gestiegen ({start:.2f} → {end:.2f} A, Flug {first}–{last}). Servos und Anlenkungen prüfen.":
+        "The base current of the receiver has risen over the flights ({start:.2f} → {end:.2f} A, flight {first}–{last}). Check servos and linkages.",
+    "Quer- und Höhenruder-Knüppel nicht im Log":
+        "aileron and elevator sticks not in the log",
+    "zu wenig Daten":
+        "too little data",
+    "Rx Grund A":
+        "Rx base A",
+    "Strom des Empfängers bei neutralen Knüppeln, aus dem ganzen Flug geschätzt (Schätzung, keine Messung je Servo). Steigt er über die Flüge, brauchen Servos oder Anlenkungen mehr Strom als früher.":
+        "Receiver current with the sticks at neutral, estimated from the whole flight (an estimate, not a measurement per servo). If it rises over the flights, servos or linkages need more current than before.",
+    "Grundstrom des Empfängers (Knüppel neutral) [A]":
+        "Receiver base current (sticks neutral) [A]",
+    "{n} Flüge ohne Wert (zu wenig Daten).":
+        "{n} flights without a value (too little data).",
+    "Linie mit Band: gesicherter Trend mit 90-%-Bereich.":
+        "Line with band: confirmed trend with 90 % range.",
+    "Gestrichelt mit Band: kein gesicherter Trend (Mittelwert mit 90-%-Bereich).":
+        "Dashed with band: no confirmed trend (mean with 90 % range).",
+    "90-%-Bereich":
+        "90 % range",
+    "Trend":
+        "Trend",
+    "Grundstrom des Empfängers (Knüppel neutral, geschätzt): im Mittel {level:.2f} A (Flug {first}–{last}), keine gesicherte Veränderung.":
+        "Receiver base current (sticks neutral, estimated): {level:.2f} A on average (flight {first}–{last}), no confirmed change.",
+    "Grundstrom des Empfängers (Knüppel neutral, geschätzt): gestiegen von {start:.2f} auf {end:.2f} A (Flug {first}–{last}).":
+        "Receiver base current (sticks neutral, estimated): risen from {start:.2f} to {end:.2f} A (flight {first}–{last}).",
+    "Grundstrom des Empfängers (Knüppel neutral, geschätzt): gesunken von {start:.2f} auf {end:.2f} A (Flug {first}–{last}).":
+        "Receiver base current (sticks neutral, estimated): fallen from {start:.2f} to {end:.2f} A (flight {first}–{last}).",
+    "Grundstrom bei neutralen Knüppeln (geschätzt): {value}":
+        "Base current with the sticks at neutral (estimated): {value}",
+    "Grundstrom bei neutralen Knüppeln: – ({reason})":
+        "Base current with the sticks at neutral: – ({reason})",
+    "1 Flug ohne Wert (zu wenig Daten).":
+        "1 flight without a value (too little data).",
 }
