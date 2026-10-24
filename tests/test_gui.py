@@ -60,6 +60,7 @@ def test_gui_analyses_example_logs(monkeypatch, tmp_path):
         h["set_xlim"](10, 70)
         root.update()
         _check_fullscreen(root)
+        _check_whole_page_double_click(root)
         _check_language_switch(root, settings)
         _check_period_filter(root, errors)
     finally:
@@ -179,6 +180,64 @@ def _check_fullscreen(root):
     t = win._fig._t
     assert big.get_xlim() == pytest.approx((t[0], t[-1]))
     _close(root, win)
+
+
+def _check_whole_page_double_click(root):
+    """In the window "Enlarge whole page" a double-click (or right-click) on a chart enlarges that chart alone,
+    for the overview tabs and the single-flight page; a zoomed time window of the page is kept."""
+    import tkinter as tk_
+    from matplotlib.backend_bases import MouseEvent
+    h = root._akku
+    title = "Spitzen-C-Rate je Flug [C]"
+    page = h["open_fullscreen"](h["tab_builder"]("belastung"), "Belastung")
+    root.update()
+    canvas = page._fig.canvas
+    buttons = [w.cget("text") for w in _widgets(page) if w.winfo_class() == "TButton"]
+    assert "Ganze Seite vergrößern" not in buttons             # already the whole page
+    ax = next(a for a in page._fig.axes if a.get_title(loc="left") == title)
+    win = _double_click(root, canvas, ax)
+    assert len(win._fig.axes) == 1 and win._fig.axes[0].get_title(loc="left") == title
+    assert title in win.title()
+    _close_last(root, win)
+
+    # right-click: only "Enlarge this chart" (the page is already enlarged)
+    menus = []
+    popup = tk_.Menu.tk_popup
+    tk_.Menu.tk_popup = lambda self, *a: menus.append(self)
+    try:
+        canvas.callbacks.process("button_press_event", MouseEvent(
+            "button_press_event", canvas, ax.bbox.x0 + ax.bbox.width / 2, ax.bbox.y0 + ax.bbox.height / 2, button=3))
+    finally:
+        tk_.Menu.tk_popup = popup
+    menu = menus[-1]
+    assert [menu.entrycget(i, "label") for i in range(menu.index("end") + 1)] == ["Dieses Diagramm vergrößern"]
+    menu.invoke(0)
+    root.update()
+    win = h["fullscreen"][-1]
+    assert win is not page and win._fig.axes[0].get_title(loc="left") == title
+    _close_last(root, win)
+    _close(root, page)
+
+    # single flight: zoom the time window in the page window, then double-click the second chart
+    page = h["open_fullscreen"](h["flight_builder"], "Einzelflug", flight=True)
+    root.update()
+    page._fig.axes[0].set_xlim(20, 50)
+    ax = page._fig.axes[1]
+    win = _double_click(root, page._fig.canvas, ax)
+    assert win._fig.axes[0].get_title(loc="left") == ax.get_title(loc="left")
+    assert win._fig.axes[0].get_xlim() == pytest.approx((20, 50))
+    assert any(w.winfo_class() == "TButton" and w.cget("text") == "Ganzer Flug" for w in _widgets(win))
+    _close_last(root, win)
+    _close(root, page)
+
+
+def _close_last(root, win):
+    """Closes a window opened from another full-screen window; the other one stays open."""
+    h = root._akku
+    n = len(h["fullscreen"])
+    win.event_generate("<Escape>", when="tail")
+    root.update()
+    assert len(h["fullscreen"]) == n - 1 and win not in h["fullscreen"]
 
 
 def _widgets(w):

@@ -412,15 +412,17 @@ def run_gui():
                 messagebox.showerror(tr("Eingabefehler"), tr("Bitte gültige Zahlen in den Einstellungen eintragen."))
                 return None
 
-        def chart_canvas(parent, fig, builder, title, crosshair=False, on_move=None):
+        def chart_canvas(parent, fig, builder, title, crosshair=False, on_move=None, flight=False, whole_page=True):
             """Canvas with toolbar and tooltip (plots/hover.py) - the same for every chart.
 
             With a builder (function that draws the page again): a double-click or the context menu (right-click)
             enlarges the chart under the mouse on its own; the toolbar button enlarges the whole page.
+            whole_page=False: the canvas already shows the whole page (full-screen window) - no button and no menu
+            entry for it, but double-click and "Enlarge this chart" still work. flight: single-flight page.
             """
             canvas = FigureCanvasTkAgg(fig, master=parent)
             toolbar = NavigationToolbar2Tk(canvas, parent)
-            if builder is not None:
+            if builder is not None and whole_page:
                 ttk.Button(toolbar, text=tr("Ganze Seite vergrößern"), command=lambda: open_fullscreen(builder, title)).pack(
                     side="left", padx=6)
                 ttk.Label(toolbar, text=tr("Doppelklick oder Rechtsklick auf ein Diagramm: allein vergrößern"),
@@ -432,23 +434,24 @@ def run_gui():
                     if ev.inaxes is None or getattr(toolbar.mode, "name", "NONE") != "NONE":
                         return                            # zoom/pan mode of the toolbar uses the mouse buttons
                     if ev.dblclick:
-                        open_chart(canvas, builder, title, ev.inaxes)
+                        open_chart(canvas, builder, title, ev.inaxes, flight=flight)
                     elif ev.button == 3:
-                        chart_menu(ev, canvas, builder, title)
+                        chart_menu(ev, canvas, builder, title, flight=flight, whole_page=whole_page)
                 canvas.mpl_connect("button_press_event", on_press)
             canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
             return canvas
 
-        def chart_menu(ev, canvas, builder, title, flight=False):
-            """Context menu of a chart: enlarge this chart or the whole page."""
+        def chart_menu(ev, canvas, builder, title, flight=False, whole_page=True):
+            """Context menu of a chart: enlarge this chart or (whole_page) the whole page."""
             if ev.inaxes is None:
                 return
             ax = ev.inaxes
             menu = tk.Menu(root, tearoff=0)
             menu.add_command(label=tr("Dieses Diagramm vergrößern"),
                              command=lambda: open_chart(canvas, builder, title, ax, flight=flight))
-            menu.add_command(label=tr("Ganze Seite vergrößern"),
-                             command=lambda: open_fullscreen(builder, title, flight=flight))
+            if whole_page:
+                menu.add_command(label=tr("Ganze Seite vergrößern"),
+                                 command=lambda: open_fullscreen(builder, title, flight=flight))
             gui = getattr(ev, "guiEvent", None)
             x, y = (gui.x_root, gui.y_root) if gui is not None and hasattr(gui, "x_root") else (
                 root.winfo_pointerx(), root.winfo_pointery())
@@ -506,7 +509,17 @@ def run_gui():
                 fit_y(axes)                               # y range of the zoomed time window, as in the tab
             ttk.Label(bar, text=tr("Maus über einen Datenpunkt: Wert.  Werkzeugleiste unten: zoomen, verschieben, "
                                    "speichern."), foreground="#666").pack(side="left", padx=6)
-            canvas = chart_canvas(win, fig, None, title, crosshair=getattr(fig, "_t", None) is not None)
+            page_builder = None
+            if index is None:
+                # whole page: a double-click (or right-click) on one of its charts enlarges that chart on its own,
+                # as on the normal page. Single-flight pages keep the time window zoomed in this window.
+                def page_builder():
+                    f = builder()
+                    if getattr(f, "_t", None) is not None and f.axes and fig.axes:
+                        f.axes[0].set_xlim(fig.axes[0].get_xlim())
+                    return f
+            canvas = chart_canvas(win, fig, page_builder, title, crosshair=getattr(fig, "_t", None) is not None,
+                                  flight=flight, whole_page=False)
             canvas.draw()
             win.bind("<Escape>", close)
             win.protocol("WM_DELETE_WINDOW", close)
