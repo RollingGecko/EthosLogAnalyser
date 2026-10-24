@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- In the window *Enlarge whole page* a double-click on a chart (or right-click → *Enlarge this chart*) now enlarges that chart on its own, as on the normal page – in all tabs and in the single-flight views (the time window of the page window is kept). Before, double-click and right-click did nothing there.
 - Single flight, attitude view: stick positions on the same time axis as the attitude – roll angle with the aileron stick, pitch angle with the elevator stick (secondary axis in %, both centred on zero), throttle with the rudder stick, then g-load and altitude. Missing or unmoved channels are left out and named in a note. The rotation-rate chart was removed from this view; the rotation rate is still used to assign receiver current spikes to manoeuvres and is listed per spike in the single-flight details.
 - Single flight: the battery voltage is shown per cell (V/cell, total voltage / cell count of the analysis) in the chart, tooltip and read-out line, with the limit under load and the minimum resting voltage of the cell chemistry; without a cell count the total voltage is shown with a hint.
 - Drive tab: the power-vs-RPM chart shows an overall motor curve from the steady-state points of all flights (median per RPM class with 25–75 % band; run-ups and throttle changes, outliers and classes with too few data are left out). New column *P dev. curve %* (deviation of each flight from the curve) in the table, CSV, summary and single-flight details. Method in docs/methodology.md.
