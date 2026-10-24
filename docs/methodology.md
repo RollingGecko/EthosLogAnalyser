@@ -106,7 +106,7 @@ What it showed on the 2026 logs of the reference model (33 flights, aileron serv
 
 - Delay 0.75 s, fit quality R² 0.2–0.55: much of the receiver current is not explained by the sticks (air load grows with speed², the current is sampled coarsely).
 - Aileron and elevator could be separated statistically (|r| of the deflections ≤ 0.3), but **clean aileron events are rare** (median 7 per flight; the aileron is almost always moved together with the elevator). Elevator: about 50 per flight, rudder: about 2.
-- Rudder: used only about 17 s per flight, mostly together with the aileron; its value per 100 % is the largest and the most uncertain.
+- Rudder: used only about 14 s per flight (median), mostly together with the aileron; its value per 100 % is the largest and the most uncertain.
 - All receiver current spikes of 3 A and more (31) happened in combined full-deflection manoeuvres, with a flat 3.5–4.2 A from May to October. In April no such manoeuvre was flown, which alone explains the lower spike maxima of April.
 - Across 2026: base current 0.61 → 0.90 A (rising), aileron 0.30 → 0.43 A per 100 % (rising), elevator 0.16 → 0.28 A per 100 % (rising), rudder no confirmed change. The method shows a general rise of the receiver current, but does **not** single out the aileron.
 
