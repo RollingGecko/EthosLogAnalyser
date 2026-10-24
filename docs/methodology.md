@@ -86,6 +86,32 @@ Threshold = maximum of baseline + 4 · robust spread, 1.5 × baseline and baseli
 
 Without attitude data (sticks, rotation rate, g-load) the cause is “no attitude data” (`no_attitude`).
 
+## Receiver current per control surface (`analysis/rx_surfaces.py`)
+
+**Status: analysis module only, not shown in the app yet.** The log contains only the **total** current of the receiver (`RxCurrent`), not the current of a single servo. A current per control surface can therefore only be **estimated** from how the sticks were moved; every value below is an estimate with an uncertainty range, never a measurement, and does not diagnose a fault.
+
+Stick channels come from an assignment code → log column (`config.STICK_CHANNELS`, defaults `QR` aileron, `HR` elevator, `SR` rudder, `Gas` throttle; `Params.channels` can name other columns, e.g. for other transmitters). The stick inputs are logged, not the servo outputs: transmitter mixes (e.g. rudder → aileron) are invisible, and one channel may drive several servos (two aileron servos, a nose-wheel steering servo on the rudder channel).
+
+Steps per flight (airborne part only: without the first 30 s and the last 45 s, above 15 m):
+
+1. **Delay**: the receiver current is updated only about every 0.5 s and follows the stick with a delay. The delay (0–2 s) is chosen by the best fit; on the real logs it is 0.75 s in almost all flights.
+2. **Regression**: receiver current(t + delay) = base current + Σ per surface (a · |deflection| + b · |stick speed|), deflection in fractions of full travel. *a* is the estimated current per 100 % deflection (holding the surface against the air load), *b* the extra current per 100 %/s of stick speed, the intercept the current with all sticks at neutral (base current). 90 % ranges come from a moving-block bootstrap with 10 s blocks (neighbouring samples are not independent).
+3. **Combined manoeuvres**: periods in which all surfaces are at least 85 % deflected at the same time for 1 s or more (e.g. spins, snap rolls) are left out of the regression, including 4 s before and after – nothing in them separates the surfaces. They are reported separately with the receiver current during them, which makes them a repeated, comparable load across flights.
+4. **Status per surface**: “few data” with less than 10 s of use (deflection ≥ 25 %); “not separable” if its deflection correlates with that of another surface by |r| ≥ 0.7; otherwise “ok”.
+5. **Clean events** (plausibility check): periods of at least 0.75 s in which only this surface is deflected ≥ 25 % and all others are below 10 %. They are counted; an event-based value is only given from 5 events on.
+6. **Spike → probable surface**: for every receiver current spike the surface with the largest deflection in the window from 1 s before to 0.25 s after (spike time − delay); “several” if a second surface is deflected at least 80 % as much (and ≥ 30 %), “none” if no surface reaches 30 %.
+7. **Across flights**: a robust line (Huber weights as for battery ageing) through the per-flight values of one surface, weighted by the width of their 90 % range. A change is only reported when the 90 % range of the slope excludes zero **and** the change over the period is at least 0.1 A per 100 %.
+
+What it showed on the 2026 logs of the reference model (33 flights, aileron servo known to bind since about April 2026):
+
+- Delay 0.75 s, fit quality R² 0.2–0.55: much of the receiver current is not explained by the sticks (air load grows with speed², the current is sampled coarsely).
+- Aileron and elevator could be separated statistically (|r| of the deflections ≤ 0.3), but **clean aileron events are rare** (median 7 per flight; the aileron is almost always moved together with the elevator). Elevator: about 50 per flight, rudder: about 2.
+- Rudder: used only about 17 s per flight, mostly together with the aileron; its value per 100 % is the largest and the most uncertain.
+- All receiver current spikes of 3 A and more (31) happened in combined full-deflection manoeuvres, with a flat 3.5–4.2 A from May to October. In April no such manoeuvre was flown, which alone explains the lower spike maxima of April.
+- Across 2026: base current 0.61 → 0.90 A (rising), aileron 0.30 → 0.43 A per 100 % (rising), elevator 0.16 → 0.28 A per 100 % (rising), rudder no confirmed change. The method shows a general rise of the receiver current, but does **not** single out the aileron.
+
+Limits: no airspeed (throttle and RPM as a stand-in made the fit worse), no servo temperature, no receiver voltage effect modelled, mixes and servo count per channel unknown, current resolution 0.01 A at about 2 Hz.
+
 ## Anomalies (`analysis/evaluate.py`)
 
 Limits (deep discharge, voltage collapse under load, sensor deviation, spikes without cause) apply to every flight except for values that were recognised as measurement errors. Statistical outliers are only searched from 6 flights on: robust z-score above 3.5, for ageing metrics relative to the trend.

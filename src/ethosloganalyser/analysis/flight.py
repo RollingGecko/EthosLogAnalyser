@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from ..analysis.rx_spikes import rx_spike_analysis
-from ..config import Params, SPIKE_CAUSES, STEP
+from ..config import Params, SPIKE_CAUSES, STEP, channel_names
 from ..i18n import Msg
 from ..io.ethos_log import CURR_KEYS, VOLT_KEYS, _active_series, _exact_series, _file_datetime, _find_col, _first_series, _numeric_cols, _switch_columns, _time_seconds, _to_num, read_log
 from ..utils import _mmss, _nanmax, _nanmin, _rolling
@@ -31,8 +31,11 @@ def analyse_file(path, p: Params):
     # Ethos logs each sensor in its own rows -> fill gaps with the last value
     work = pd.DataFrame({"t": t, "u": _to_num(df[cv]).to_numpy(dtype=float),
                          "i": _to_num(df[ci]).to_numpy(dtype=float)}, index=df.index)
+    # throttle: the assigned column if there is one, otherwise the first column containing "gas"/"thr"
+    gas = (_exact_series(df, channel_names("throttle", p.channels)) if p.channels.get("throttle")
+           else _first_series(df, ["gas", "thr"]))
     extras = {
-        "gas": _first_series(df, ["gas", "thr"]),
+        "gas": gas,
         "rpm": (_first_series(df, ["esc rpm"]) if _first_series(df, ["esc rpm"]) is not None
                 else _first_series(df, ["rpm"])),
         "alt": _first_series(df, ["altitude", "höhe", "hoehe"]),
@@ -43,10 +46,10 @@ def analyse_file(path, p: Params):
         "rxu": _active_series(df, ["rxbatt", "rx batt", "rxbat"]),
         "roll": _first_series(df, ["roll", "r.angle"]),
         "pitch": _first_series(df, ["pitch", "nick", "p.angle"]),
-        # stick channels (Ethos sources, exact names): aileron, elevator, rudder
-        "qr": _exact_series(df, ["QR", "Quer", "Ail", "Aileron", "Querruder"]),
-        "hr": _exact_series(df, ["HR", "Ele", "Elevator", "Höhenruder"]),
-        "sr": _exact_series(df, ["SR", "Rud", "Rudder", "Seite", "Seitenruder"]),
+        # stick channels (Ethos sources, exact names; assignment in Params.channels, defaults in config)
+        "qr": _exact_series(df, channel_names("aileron", p.channels)),
+        "hr": _exact_series(df, channel_names("elevator", p.channels)),
+        "sr": _exact_series(df, channel_names("rudder", p.channels)),
     }
     switch_cols = _switch_columns(df)
     for k_, (name, sr) in enumerate(switch_cols):

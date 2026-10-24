@@ -3,7 +3,7 @@
 
 import os
 import numpy as np
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .i18n import N_, tr
 
@@ -56,6 +56,23 @@ CORR_LABELS = {"stick": N_("Knüppelaktivität"), "rate": N_("Drehrate"), "g": N
 STICK_LABELS = {"aileron": N_("Querruder"), "elevator": N_("Höhenruder"), "rudder": N_("Seitenruder")}
 
 
+# Default Ethos source names per stick channel (exact column names, case-insensitive). The first name is the
+# Ethos default (SR, HR, Gas, QR). Params.channels can name a different column per code, e.g. for transmitters
+# with other channel names (see TW-027); the defaults are then not used for that code.
+STICK_CHANNELS = {
+    "aileron": ("QR", "Quer", "Ail", "Aileron", "Querruder"),
+    "elevator": ("HR", "Ele", "Elevator", "Höhenruder"),
+    "rudder": ("SR", "Rud", "Rudder", "Seite", "Seitenruder"),
+    "throttle": ("Gas", "Thr", "Throttle"),
+}
+
+
+def channel_names(code, channels=None):
+    """Column names to look for for a stick channel: the user's assignment if there is one, else the defaults."""
+    own = (channels or {}).get(code)
+    return (own,) if own else STICK_CHANNELS[code]
+
+
 # where the resting voltage at the end of a flight comes from (column U_ende_Quelle)
 VOLTAGE_SOURCE_LABELS = {"measured": N_("gemessen"), "estimated": N_("geschätzt"), "": "–"}
 
@@ -86,6 +103,7 @@ class Params:
     col_current: str = ""
     date_from: str = ""            # optional period filter (YYYY-MM-DD, inclusive); empty = open
     date_to: str = ""
+    channels: dict = field(default_factory=dict)   # optional: stick channel code -> column name (STICK_CHANNELS)
 
 
 STEP = 0.25   # time series grid in s
