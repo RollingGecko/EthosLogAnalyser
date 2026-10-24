@@ -195,33 +195,6 @@ def _check_battery_hint(root, settings):
     assert h["state"]["battery_unset"]
 
 
-def test_gui_battery_hint_not_for_old_settings(monkeypatch, tmp_path):
-    """Battery settings from before models existed belong to the first model: no hint."""
-    if not REQUIRED and not _display_available():
-        pytest.skip("no display (DISPLAY) available")
-    import matplotlib
-    matplotlib.use("TkAgg", force=True)
-    from ethosloganalyser import config
-    from ethosloganalyser.gui import app
-
-    settings = tmp_path / "settings.json"
-    settings.write_text('{"language": "de", "chem": "Li-Ion", "cells": "13", "nominal_mah": "9000", "folder": "%s"}'
-                        % str(EXAMPLES).replace("\\", "/"), encoding="utf-8")
-    monkeypatch.setattr(config, "SETTINGS_FILE", str(settings))
-    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
-    root = app.run_gui()
-    try:
-        h = root._akku
-        h["run"]()
-        root.update()
-        assert "3 Flüge ausgewertet" in h["status"].get()
-        assert h["battery_hint"].winfo_manager() == ""
-        assert "Akku-Einstellungen" not in h["status"].get()
-        assert not h["summary"].get("1.0", "2.0").startswith("Für das Modell")
-    finally:
-        root.destroy()
-
-
 def _check_fullscreen(root):
     """Whole page and single charts open in a full-screen window with tooltip and toolbar; Esc closes it."""
     h = root._akku

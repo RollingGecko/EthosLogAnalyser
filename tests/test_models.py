@@ -10,7 +10,7 @@ import helpers
 from ethosloganalyser import Params, analyse_folder
 from ethosloganalyser.analysis.fleet import default_model, find_logs, models_in
 from ethosloganalyser.config import model_label
-from ethosloganalyser.gui.app import export_table
+from ethosloganalyser.gui.app import battery_unset_for, export_table
 from ethosloganalyser.i18n import set_language
 from ethosloganalyser.io.ethos_log import UNKNOWN_MODEL, model_from_filename
 
@@ -93,3 +93,19 @@ def test_single_model_folder_is_unchanged_and_export_has_model_column():
 def test_empty_folder():
     res = analyse_folder(helpers.tmpdir(), Params())
     assert res.df.empty and res.meta["model"] is None and res.meta["models"] == {}
+
+
+def test_battery_unset_only_without_stored_settings():
+    """The battery hint (TW-033) is shown only for a model whose battery fields hold just the defaults."""
+    old = {"language": "de", "chem": "Li-Ion", "cells": "13", "nominal_mah": "9000"}
+    # first model: settings from before models existed are taken over -> set up; none at all -> unset
+    assert not battery_unset_for("Viper-Jet", {}, old)
+    assert battery_unset_for("Viper-Jet", {}, {"language": "de"})
+    # another model without stored settings -> unset; stored models keep their flag
+    ms = {"Viper-Jet": {"chem": "Li-Ion", "cells": "13", "nominal_mah": "9000"}}
+    assert battery_unset_for("Edge-540", ms, old)
+    assert not battery_unset_for("Viper-Jet", ms, old)
+    ms["Edge-540"] = {"chem": "LiPo", "cells": "0", "nominal_mah": "0", "unset": True}
+    assert battery_unset_for("Edge-540", ms, old)
+    ms["Edge-540"] = {"chem": "LiPo", "cells": "0", "nominal_mah": "0"}       # chemistry chosen (LiPo)
+    assert not battery_unset_for("Edge-540", ms, old)

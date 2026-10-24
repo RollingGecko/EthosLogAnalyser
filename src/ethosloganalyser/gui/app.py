@@ -106,6 +106,19 @@ BATTERY_DEFAULTS = {"chem": "LiPo", "cells": "0", "nominal_mah": "0"}
 # key in the stored settings of a model whose battery fields still hold only the defaults (nobody has chosen
 # the cell chemistry or entered the capacity yet); see battery_unset in run_gui
 BATTERY_UNSET_KEY = "unset"
+
+
+def battery_unset_for(model, model_settings, saved):
+    """True if the battery settings of model would be only the defaults (no cell chemistry chosen, no capacity
+    entered): a model without stored settings while other models have some, a stored model still marked as
+    unset, or the very first model when the settings file has no battery settings from before models existed."""
+    if model in model_settings:
+        return bool(model_settings[model].get(BATTERY_UNSET_KEY))
+    if model_settings:
+        return True
+    return not any(k in saved for k in BATTERY_KEYS)
+
+
 BATTERY_HINT = N_("Für das Modell {model} sind noch keine Akku-Einstellungen gespeichert: Bitte im Reiter "
                   "„Daten & Einstellungen“ die Zellchemie auswählen und die Nennkapazität eintragen. Bis dahin "
                   "wird LiPo angenommen – Ladezustand, Alterung und Restkapazität können falsch sein.")
@@ -183,16 +196,14 @@ def run_gui():
         ms = state["model_settings"]
         if state["model"] is not None:
             ms[state["model"]] = model_battery()
+        unset = battery_unset_for(model, ms, saved)
         if model in ms:
             for k in BATTERY_KEYS:
                 V[k].set(ms[model].get(k, BATTERY_DEFAULTS[k]))
-            unset = bool(ms[model].get(BATTERY_UNSET_KEY))
         elif ms:
             for k in BATTERY_KEYS:
                 V[k].set(BATTERY_DEFAULTS[k])
-            unset = True
-        else:                    # first model: takes over the settings from before models existed, if any
-            unset = not any(k in saved for k in BATTERY_KEYS)
+        # else: the first model takes over the settings from before models existed, if any
         state["model"] = model
         state["battery_unset"] = unset
 
