@@ -12,8 +12,9 @@ import numpy as np
 from ..analysis.evaluate import FLAG_LABELS
 from ..buildinfo import about_lines, window_title
 from ..analysis.quality import QUALITY_LABELS
-from ..analysis.fleet import analyse_folder, parse_date
-from ..config import CHEM, SPIKE_LABELS, VOLTAGE_SOURCE_LABELS, Params, label, load_settings, save_settings
+from ..analysis.fleet import analyse_folder, default_model, find_logs, models_in, parse_date
+from ..config import (CHEM, MODEL_UNKNOWN_LABEL, SPIKE_LABELS, VOLTAGE_SOURCE_LABELS, Params, label, load_settings,
+                      model_label, save_settings)
 from ..gui.style import BG, _setup_style
 from ..i18n import LANGUAGES, Msg, N_, detect_language, fmt_datetime, get_language, set_language, tr
 from ..plots.flight import FLIGHT_VIEWS, VIEW_LABELS, draw_flight, figure_flight, fit_y
@@ -88,6 +89,8 @@ def export_table(df):
     for col in DURATION_COLS:
         if col in out:
             out.insert(out.columns.get_loc(col) + 1, col[:-2] + "_mmss", [fmt_duration(v, na="") for v in out[col]])
+    if "Modell" in out:
+        out["Modell"] = [model_label(v) for v in out["Modell"]]
     if "U_ende_Quelle" in out:
         out["U_ende_Quelle"] = [label(VOLTAGE_SOURCE_LABELS, v) for v in out["U_ende_Quelle"]]
     if "Auffaellig" in out:
@@ -95,6 +98,11 @@ def export_table(df):
     if "Datenfehler" in out:
         out["Datenfehler"] = [error_text(v) for v in out["Datenfehler"]]
     return out
+
+
+# battery settings that are kept per model, with their defaults for a model without stored settings
+BATTERY_KEYS = ("chem", "cells", "nominal_mah")
+BATTERY_DEFAULTS = {"chem": "LiPo", "cells": "0", "nominal_mah": "0"}
 
 
 def run_gui():
@@ -132,12 +140,38 @@ def run_gui():
         "date_to": tk.StringVar(value=saved.get("date_to", "")),
     }
     ui = {"frame": None}
+    # several aircraft: the logs of one folder are analysed per model (from the file name, see
+    # io.ethos_log.model_from_filename). The battery settings are kept per model.
+    state["models"] = {}                                   # {model: number of logs} of the last analysed folder
+    state["model"] = saved.get("model")                    # model the battery fields in V belong to
+    state["model_settings"] = dict(saved.get("models") or {})
 
     def store_settings():
         d = {k: v.get() for k, v in V.items()}
         d["folder"] = folder_var.get()
         d["language"] = get_language()
+        if state["model"] is not None:
+            state["model_settings"][state["model"]] = {k: V[k].get() for k in BATTERY_KEYS}
+            d["model"] = state["model"]
+        d["models"] = state["model_settings"]
         save_settings(d)
+
+    def use_model(model):
+        """Makes model the analysed one: the battery fields are kept for the old model and loaded for the new
+        one. The settings from before models existed stay with the first model; another model without stored
+        settings starts with the defaults."""
+        if model == state["model"]:
+            return
+        ms = state["model_settings"]
+        if state["model"] is not None:
+            ms[state["model"]] = {k: V[k].get() for k in BATTERY_KEYS}
+        if model in ms:
+            for k in BATTERY_KEYS:
+                V[k].set(ms[model].get(k, BATTERY_DEFAULTS[k]))
+        elif ms:
+            for k in BATTERY_KEYS:
+                V[k].set(BATTERY_DEFAULTS[k])
+        state["model"] = model
 
     def change_language(code):
         """Switches the language and builds the window content again (the analysis result is kept)."""
@@ -214,6 +248,37 @@ def run_gui():
         run_btn.grid(row=1, column=2, padx=(8, 0), pady=4)
         prog = ttk.Progressbar(lf, mode="determinate")
         prog.grid(row=2, column=0, columnspan=3, sticky="we", pady=(6, 0))
+        # selection bar: which part of the folder is analysed (model; later more selectors fit in this row)
+        selbar = ttk.Frame(lf)
+        selbar.grid(row=3, column=0, columnspan=3, sticky="w", pady=(8, 0))
+        ttk.Label(selbar, text=tr("Modell:")).pack(side="left")
+        model_var = tk.StringVar()
+        model_box = ttk.Combobox(selbar, textvariable=model_var, width=30, state="readonly")
+        model_box.pack(side="left", padx=(4, 8))
+        ttk.Label(selbar, text=tr("Im Ordner liegen Logs mehrerer Modelle; ausgewertet wird immer eines."),
+                  foreground="#666").pack(side="left")
+        model_keys = []
+
+        def update_model_box():
+            """Shows the model selector only if the folder holds logs of more than one model."""
+            models = state["models"]
+            model_keys[:] = sorted(models, key=lambda m: model_label(m).lower())
+            model_box["values"] = [tr("{model} ({n} Logs)", model=model_label(m), n=models[m]) for m in model_keys]
+            if state["model"] in model_keys:
+                model_box.current(model_keys.index(state["model"]))
+            if len(models) > 1:
+                selbar.grid()
+            else:
+                selbar.grid_remove()
+
+        def on_model(*_):
+            k = model_box.current()
+            if 0 <= k < len(model_keys) and model_keys[k] != state["model"]:
+                model = model_keys[k]
+                root.after_idle(lambda: (use_model(model), run()))
+
+        model_box.bind("<<ComboboxSelected>>", on_model)
+        update_model_box()
 
         def field(parent, row, text, key, hint="", combo=None):
             ttk.Label(parent, text=text).grid(row=row, column=0, sticky="w", pady=3)
@@ -686,6 +751,9 @@ def run_gui():
             if not folder or not os.path.isdir(folder):
                 messagebox.showwarning(tr("Ordner"), tr("Bitte zuerst einen gültigen Ordner wählen."))
                 return
+            groups = models_in(find_logs(folder))
+            model = state["model"] if state["model"] in groups else default_model(groups)
+            use_model(model)                              # battery settings of that model
             p = read_params()
             if p is None:
                 return
@@ -700,7 +768,7 @@ def run_gui():
                 root.update_idletasks()
 
             try:
-                res = analyse_folder(folder, p, cb)
+                res = analyse_folder(folder, p, cb, model=model)
             except Exception as e:                       # unexpected error: report it understandably
                 messagebox.showerror(tr("Fehler bei der Auswertung"), f"{type(e).__name__}: {e}")
                 set_status(Msg("Fehler bei der Auswertung."))
@@ -708,11 +776,19 @@ def run_gui():
             finally:
                 run_btn.state(["!disabled"])
             state["res"], state["p"], state["folder"] = res, p, folder
+            state["models"] = res.meta.get("models", {})
+            update_model_box()
             cells = res.meta.get("cells", p.cells)
             cap = f", {p.nominal_mah:.0f} mAh" if p.nominal_mah > 0 else Msg(", Kapazität unbekannt")
-            set_status(Msg("{folder}  ·  {n} Flüge ausgewertet, {skipped} von {total} Dateien übersprungen  ·  "
-                           "Akku {cells}S {chem}{cap}", folder=os.path.basename(os.path.normpath(folder)),
-                           n=len(res.df), skipped=len(res.skipped), total=res.total, cells=cells, chem=p.chem, cap=cap))
+            status_args = dict(folder=os.path.basename(os.path.normpath(folder)), n=len(res.df),
+                               skipped=len(res.skipped), total=res.total, cells=cells, chem=p.chem, cap=cap)
+            if len(state["models"]) > 1:
+                set_status(Msg("{folder}  ·  Modell {model}  ·  {n} Flüge ausgewertet, {skipped} von {total} Dateien "
+                               "übersprungen  ·  Akku {cells}S {chem}{cap}",
+                               model=model if model else Msg(MODEL_UNKNOWN_LABEL), **status_args))
+            else:
+                set_status(Msg("{folder}  ·  {n} Flüge ausgewertet, {skipped} von {total} Dateien übersprungen  ·  "
+                               "Akku {cells}S {chem}{cap}", **status_args))
             show_results()
             nb.select(tabs["summary"])
 
@@ -806,7 +882,7 @@ def run_gui():
         else:
             nb.select(tabs["settings"])
         # for tests
-        root._akku = dict(fbox=flight_box, run=run, folder_var=folder_var, params=V, status=status, nb=nb, tabs=tabs,
+        root._akku = dict(fbox=flight_box, run=run, model_box=model_box, model_bar=selbar, use_model=use_model, folder_var=folder_var, params=V, status=status, nb=nb, tabs=tabs,
                           flight_var=flight_var, view_var=view_var, select_flight=select_flight, redraw=redraw_flight,
                           set_xlim=set_xlim, goto_spike=goto_spike, spike_var=spike_var, lang_var=lang_var,
                           set_language=change_language, summary=txt, details=det_txt, table=tree,
