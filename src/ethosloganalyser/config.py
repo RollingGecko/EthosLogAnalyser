@@ -64,6 +64,15 @@ VOLTAGE_SOURCE_LABELS = {"measured": N_("gemessen"), "estimated": N_("geschätzt
 CAP_SOURCE_LABELS = {"nominal": N_("Nennkapazität"), "estimated": N_("geschätzte Kapazität")}
 
 
+# name shown for logs whose file name has no model part (io.ethos_log.UNKNOWN_MODEL)
+MODEL_UNKNOWN_LABEL = N_("(unbekannt)")
+
+
+def model_label(model):
+    """User-facing name of a model (file-name model, see io.ethos_log.model_from_filename)."""
+    return model if model else tr(MODEL_UNKNOWN_LABEL)
+
+
 def label(table, code):
     """User-facing label of a code from one of the label tables, in the current language."""
     return tr(table[code]) if table.get(code) else str(code)

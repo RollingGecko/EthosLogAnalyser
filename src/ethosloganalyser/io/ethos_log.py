@@ -141,6 +141,30 @@ def _file_datetime(path):
     return datetime.fromtimestamp(os.path.getmtime(path))
 
 
+# time stamp at the end of an Ethos log file name: <model>-YYYY-MM-DD-hh-mm-ss.csv
+_STAMP_END = re.compile(r"(\d{4})-(\d{2})-(\d{2})(?:[-_ T]?(\d{2})[-_:]?(\d{2})[-_:]?(\d{2}))?$")
+_STAMP_ANY = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
+
+UNKNOWN_MODEL = ""     # model of a file whose name has no model part (label "(unknown)" in the user interface)
+
+
+def model_from_filename(path):
+    """Model name from an Ethos log file name: the part before the time stamp.
+
+    "Viper-Jet-2026-04-19-13-25-36.csv" -> "Viper-Jet". Hyphens and digits in the model name are kept, a leading
+    "-" and separators before the time stamp are dropped. Without a model part or without a date in the name:
+    UNKNOWN_MODEL ("").
+    """
+    stem = os.path.splitext(os.path.basename(path))[0].strip()
+    m = _STAMP_END.search(stem)
+    if m is None:
+        found = list(_STAMP_ANY.finditer(stem))
+        m = found[-1] if found else None
+    if m is None:
+        return UNKNOWN_MODEL
+    return stem[:m.start()].strip(" -_.")
+
+
 def _clean_name(c):
     """Ethos mixes UTF-8 and code page characters in column names ('Â°', 'au›en') - make them readable."""
     c = str(c).strip()

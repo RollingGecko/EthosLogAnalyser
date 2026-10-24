@@ -715,4 +715,24 @@ CATALOG = {
         "Overall curve: {classes} RPM classes from {n} flights; flights deviate from it by {lo:+.1f} to {hi:+.1f} % (largest deviation: flight {no})",
     "Leistung gegenüber der Gesamtkennlinie aller Flüge: {dev:+.1f} % (Median bei gleicher Drehzahl)":
         "Power compared with the overall curve of all flights: {dev:+.1f} % (median at the same RPM)",
+    "(unbekannt)":
+        "(unknown)",
+    "{folder}  ·  Modell {model}  ·  {n} Flüge ausgewertet, {skipped} von {total} Dateien übersprungen  ·  Akku {cells}S {chem}{cap}":
+        "{folder}  ·  model {model}  ·  {n} flights analysed, {skipped} of {total} files skipped  ·  battery {cells}S {chem}{cap}",
+    "Modell:":
+        "Model:",
+    "Im Ordner liegen Logs mehrerer Modelle; ausgewertet wird immer eines.":
+        "The folder holds logs of several models; one model is analysed at a time.",
+    "Modell: {model} – weitere Modelle im Ordner (getrennt ausgewertet): {others}":
+        "Model: {model} – other models in the folder (analysed separately): {others}",
+    "{model} ({n} Logs)":
+        "{model} ({n} logs)",
+    "Für das Modell {model} sind noch keine Akku-Einstellungen gespeichert: Bitte im Reiter „Daten & Einstellungen“ die Zellchemie auswählen und die Nennkapazität eintragen. Bis dahin wird LiPo angenommen – Ladezustand, Alterung und Restkapazität können falsch sein.":
+        "No battery settings are stored for the model {model} yet: please choose the cell chemistry and enter the nominal capacity in the tab “Data & settings”. Until then LiPo is assumed – state of charge, ageing and remaining capacity may be wrong.",
+    "Für dieses Modell noch nicht eingestellt: bitte Zellchemie auswählen und Nennkapazität eintragen (bis dahin wird LiPo angenommen).":
+        "Not set up for this model yet: please choose the cell chemistry and enter the nominal capacity (until then LiPo is assumed).",
+    "Akku-Einstellungen für dieses Modell fehlen":
+        "Battery settings missing for this model",
+    "{status}  ·  {hint}":
+        "{status}  ·  {hint}",
 }

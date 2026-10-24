@@ -11,7 +11,7 @@ from ..analysis.ageing import MIN_TREND_SPAN, MIN_TREND_VALUES, MIN_VALUES, Z90,
 from ..analysis.evaluate import FLAG_LABELS, SEVERE_FLAGS, USAGE_LABELS
 from ..analysis.quality import QUALITY_LABELS, quality_messages
 from ..config import (CAP_SOURCE_LABELS, CHEM, CORR_LABELS, SOC_TOL_PCT, SPIKE_CAUSES, SPIKE_COLS, SPIKE_LABELS,
-                      VOLTAGE_SOURCE_LABELS, label)
+                      VOLTAGE_SOURCE_LABELS, label, model_label)
 from ..i18n import N_, fmt_date, fmt_datetime, tr
 from ..analysis.fleet import MIN_DEPTH_PCT, parse_date
 from ..utils import _f, _mmss, _ranges, _window_change, fmt_duration
@@ -56,6 +56,11 @@ def summary_lines(res, p):
     L.append(("info", tr("{n} Flüge ausgewertet ({first} – {last}), {skipped} Dateien übersprungen",
                          n=n, first=fmt_date(df["datum"].min()), last=fmt_date(df["datum"].max()),
                          skipped=len(res.skipped))))
+    models = meta.get("models") or {}
+    if len(models) > 1:          # several models in the folder: say which one is analysed (never mixed)
+        others = ", ".join(model_label(m) for m in sorted(models) if m != meta.get("model"))
+        L.append(("info", tr("Modell: {model} – weitere Modelle im Ordner (getrennt ausgewertet): {others}",
+                             model=model_label(meta.get("model")), others=others)))
     if p.date_from or p.date_to:
         L.append(("info", tr("Zeitraum-Filter: {start} – {end}; {n} Dateien außerhalb nicht ausgewertet",
                              start=fmt_date(parse_date(p.date_from)) if p.date_from else "…",
