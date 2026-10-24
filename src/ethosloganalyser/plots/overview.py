@@ -150,10 +150,23 @@ def figure_antrieb(res, p):
         if np.isfinite(r["P_n"]):
             rr = np.linspace(max(s["rpm"][m].min(), 1000) if m.any() else 1000, np.max(s["rpm"]), 50)
             a.plot(rr / 1000, np.exp(r["P_a"] + r["P_n"] * np.log(rr)) / 1000, "-", color=c, lw=1.2)
+    curve = meta.get("motor_curve")
+    if have and curve is not None:
+        import matplotlib.patheffects as pe
+        halo = [pe.withStroke(linewidth=4, foreground="white")]
+        xr = curve["rpm"] / 1000
+        a.fill_between(xr, curve["p25"] / 1000, curve["p75"] / 1000, color="black", alpha=0.18, lw=0, zorder=3)
+        for q in ("p25", "p75"):
+            a.plot(xr, curve[q] / 1000, "--", color="black", lw=1, zorder=4, path_effects=halo,
+                   label=tr("Streuband 25–75 %") if q == "p25" else None)
+        a.plot(xr, curve["p50"] / 1000, "o-", color="black", ms=4, lw=2.2, zorder=5, path_effects=halo,
+               label=tr("Gesamtkennlinie (Median aller Flüge)"))
+        a.legend(fontsize=7, loc="upper left")
     if not have:
         a.text(0.5, 0.5, tr("keine Drehzahl im Log"), transform=a.transAxes, ha="center", color="grey")
     a.set_title(tr("Kennlinie: Leistung gegen Drehzahl"), loc="left")
-    _note(a, tr("Farbe: frühe Flüge violett → späte gelb. Wandert die Kurve nach oben: Verschleiß/Fremdkörper."))
+    _note(a, tr("Farbe: frühe Flüge violett → späte gelb. Schwarz: Gesamtkennlinie aller Flüge mit Streuband. "
+                "Liegt ein Flug darüber, braucht er mehr Leistung bei gleicher Drehzahl: Verschleiß/Fremdkörper."))
     a.set_xlabel(tr("Drehzahl [1000 U/min]"), fontsize=8)
     a.set_ylabel(tr("Leistung [kW]"), fontsize=8)
     rr_txt = f"{meta['rpm_ref']:.0f}" if np.isfinite(meta["rpm_ref"]) else "–"

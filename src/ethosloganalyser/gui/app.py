@@ -37,6 +37,7 @@ TABLE_COLS = [
     ("U_min_Zelle_V", N_("U min V/Z"), 70), ("U_ende_Zelle_V", N_("U Ende V/Z"), 75),
     ("U_ende_Quelle", N_("U Ende Quelle"), 85), ("Reserve_Zelle_V", N_("Reserve V/Z"), 80),
     ("Timer_s", N_("Timer min:s"), 75), ("rpm_p90", N_("rpm P90"), 70), ("P_ref_W", N_("P Ref W"), 65),
+    ("P_Kurve_Abw_pct", N_("P Abw. Kurve %"), 95),
     ("Hoehe_max_m", N_("Höhe max"), 65), ("Wh_je_100m", N_("Wh/100m"), 65), ("g_max", N_("g max"), 50),
     ("RSSI_min", N_("RSSI min"), 65), ("VFR_min", N_("VFR min"), 60), ("RxBatt_min_V", N_("Rx V min"), 65),
     ("RxStrom_mittel_A", N_("Rx A Ø"), 55), ("RxStrom_max_A", N_("Rx A max"), 65),

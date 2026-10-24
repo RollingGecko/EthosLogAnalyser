@@ -135,6 +135,14 @@ def summary_lines(res, p):
         L.append((tag, line))
     elif np.isfinite(meta["rpm_ref"]):
         L.append(("info", tr("Antriebs-Trend: ab 4 Flügen verfügbar.")))
+    curve = meta.get("motor_curve")
+    devs = df["P_Kurve_Abw_pct"].dropna() if "P_Kurve_Abw_pct" in df else []
+    if curve is not None and len(devs):
+        i_hi = devs.abs().idxmax()
+        L.append(("info", tr("Gesamtkennlinie: {classes} Drehzahlklassen aus {n} Flügen; Flüge weichen {lo:+.1f} bis "
+                             "{hi:+.1f} % davon ab (größte Abweichung: Flug {no})", classes=len(curve["rpm"]),
+                             n=int(curve["flights"].max()), lo=devs.min(), hi=devs.max(),
+                             no=int(df.loc[i_hi, "Flug"]))))
     else:
         L.append(("info", tr("Antriebs-Kennlinie nicht verfügbar (keine Drehzahl im Log).")))
     sd = df["Sensor_Abw_pct"].dropna()
@@ -496,6 +504,11 @@ def flight_detail_lines(res, p, path):
     if np.isfinite(r["P_ref_W"]):
         line += tr("; Leistung bei {rpm:.0f} U/min: {value}", rpm=meta["rpm_ref"], value=cmp("P_ref_W", unit=" W"))
     L.append(("info", line))
+    dev = r.get("P_Kurve_Abw_pct", np.nan)
+    if np.isfinite(dev):
+        L.append(("ok" if abs(dev) <= 5 else "warn",
+                  tr("Leistung gegenüber der Gesamtkennlinie aller Flüge: {dev:+.1f} % (Median bei gleicher Drehzahl)",
+                     dev=dev)))
     if np.isfinite(r["Sensor_Abw_pct"]):
         tag = "ok" if abs(r["Sensor_Abw_pct"]) <= 5 else "warn"
         L.append((tag, tr("Eigene mAh-Berechnung gegen ESC-Zähler: {own:.0f} gegen {esc:.0f} mAh ({dev:+.1f} %)",

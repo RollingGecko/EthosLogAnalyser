@@ -49,9 +49,15 @@ def _note(ax, text):
 
 
 def _bottom_labels_only(ax):
-    """x label only in the bottom row - otherwise it overlaps the title below."""
+    """x label only in the bottom row - otherwise it overlaps the title below.
+
+    The label is kept in ax._hidden_xlabel, so a chart enlarged on its own shows it again (plots/single.py).
+    """
     for row in ax[:-1]:
         for a in row:
+            lbl = a.xaxis.label
+            if lbl.get_text():
+                a._hidden_xlabel = (lbl.get_text(), lbl.get_fontsize())
             a.set_xlabel("")
 
 

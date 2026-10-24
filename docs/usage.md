@@ -81,6 +81,8 @@ The same functions are available in every chart (built in one place, `plots/hove
 - **Double-click** (or right-click → *Enlarge this chart*) opens only the chart under the mouse full screen, with the time window shown in the tab, the min:s time axis, tooltip and vertical crosshair. *Whole flight* in that window shows the whole flight again. *Enlarge whole page* (button above the charts) opens all charts of the view.
 - Buttons for take-off/landing (60 s each), zoom and pan; all charts stay time-aligned.
 - **Current spike** (Stromspitze): jumps to a detected receiver current spike.
+- **Battery voltage per cell**: the battery voltage (measured and estimated resting voltage) is shown as mean cell voltage, total voltage / cell count, with the limit under load and the minimum resting voltage of the selected cell chemistry. The cell count is the one of the analysis (*Cell count* setting, or detected from the start voltage). If it is unknown, the chart shows the total voltage and says so. The receiver voltage is not converted.
+- **Attitude view** (Fluglage): roll angle with the aileron stick, pitch angle with the elevator stick (angle on the left axis in °, stick on the right axis in %, both centred on zero), throttle with the rudder stick, rotation rate and g-load. Stick values are the Ethos channel values QR, HR, SR scaled to ±100 % (±1024 = full deflection); throttle is 0–100 %. Channels that are missing in the log or not moved are left out and listed in a note.
 - The line above the charts shows all values at the time under the cursor; a vertical line marks that time in all charts.
 
 ## Export
