@@ -46,6 +46,16 @@ The result is `dist\EthosLogAnalyser.exe`. GitHub also builds a test EXE on ever
    - **Voltage / current column** – only needed if automatic detection picks the wrong column; part of the column name is enough.
 4. Click **Analyse** (Auswerten). Settings are saved to `%USERPROFILE%\.akku_analyse.json`.
 
+### Several aircraft in one folder
+
+The model is taken from the log file name: the part before the time stamp, e.g. `Viper-Jet` from `Viper-Jet-2026-04-19-13-25-36.csv` (hyphens and digits in the name are fine, a leading `-` is ignored; files without a model part count as “(unknown)”).
+
+- If the folder holds logs of **one** model, nothing changes.
+- If it holds logs of **several** models, they are never mixed: every analysis (all tabs, summary, table, export) covers exactly one model. By default it is the model with the newest log. Under the folder row of *Log data* a selector **Model** (Modell) appears – choosing another model analyses that one. The status line and the summary name the analysed model; the summary also lists the other models in the folder.
+- The **battery settings** (cell chemistry, cell count, nominal capacity) are remembered per model and loaded when the model changes. Settings from before this feature stay with the first model analysed; another model starts with the defaults.
+- The **period filter** applies within the selected model.
+- The CSV export has a column *Model* (Modell).
+
 ## Language
 
 The language is chosen under **Data & settings → Language** (Deutsch, English, Español). The window is rebuilt immediately in the new language; an existing analysis result, the selected flight, view and zoom are kept, so the logs do not have to be analysed again. The choice is saved together with the other settings and used at the next start. Without a saved choice, the app starts in the language of the operating system if it is supported, otherwise in English.

@@ -715,4 +715,16 @@ CATALOG = {
         "Overall curve: {classes} RPM classes from {n} flights; flights deviate from it by {lo:+.1f} to {hi:+.1f} % (largest deviation: flight {no})",
     "Leistung gegenüber der Gesamtkennlinie aller Flüge: {dev:+.1f} % (Median bei gleicher Drehzahl)":
         "Power compared with the overall curve of all flights: {dev:+.1f} % (median at the same RPM)",
+    "(unbekannt)":
+        "(unknown)",
+    "{folder}  ·  Modell {model}  ·  {n} Flüge ausgewertet, {skipped} von {total} Dateien übersprungen  ·  Akku {cells}S {chem}{cap}":
+        "{folder}  ·  model {model}  ·  {n} flights analysed, {skipped} of {total} files skipped  ·  battery {cells}S {chem}{cap}",
+    "Modell:":
+        "Model:",
+    "Im Ordner liegen Logs mehrerer Modelle; ausgewertet wird immer eines.":
+        "The folder holds logs of several models; one model is analysed at a time.",
+    "Modell: {model} – weitere Modelle im Ordner (getrennt ausgewertet): {others}":
+        "Model: {model} – other models in the folder (analysed separately): {others}",
+    "{model} ({n} Logs)":
+        "{model} ({n} logs)",
 }

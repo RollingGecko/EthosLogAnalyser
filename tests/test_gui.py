@@ -63,6 +63,7 @@ def test_gui_analyses_example_logs(monkeypatch, tmp_path):
         _check_whole_page_double_click(root)
         _check_language_switch(root, settings)
         _check_period_filter(root, errors)
+        _check_two_models(root, errors, settings, tmp_path)
     finally:
         root.destroy()
 
@@ -106,6 +107,58 @@ def _check_period_filter(root, errors):
     assert errors and "Datum" in errors[-1][1]
     errors.clear()
     h["params"]["date_from"].set("")
+
+
+def _check_two_models(root, errors, settings, tmp_path):
+    """A folder with two models: selector visible, status names the model, battery settings kept per model."""
+    import json
+    import shutil
+    h = root._akku
+    assert h["model_bar"].winfo_manager() == ""                       # one model so far: no selector
+    d = tmp_path / "two"
+    d.mkdir()
+    files = sorted(EXAMPLES.glob("*.csv"))
+    for f in files:
+        shutil.copy(f, d / f.name)
+    for f, stamp in zip(files[:2], ("2025-06-01-10-00-00", "2025-06-01-11-00-00")):
+        shutil.copy(f, d / f"Edge-540-{stamp}.csv")
+    h["params"]["nominal_mah"].set("9000")                          # settings before models existed ...
+    h["folder_var"].set(str(d))
+    h["run"]()
+    root.update()
+    h = root._akku
+    assert not errors, errors
+    assert h["model_bar"].winfo_manager() == "grid"
+    assert h["model_box"].get() == "Viper-Jet (3 Logs)"                   # newest model by default
+    assert "Modell Viper-Jet" in h["status"].get() and "3 Flüge ausgewertet" in h["status"].get()
+    assert "Modell: Viper-Jet – weitere Modelle im Ordner (getrennt ausgewertet): Edge-540" in \
+        h["summary"].get("1.0", "end")
+    assert h["params"]["nominal_mah"].get() == "9000"               # ... stay with the first model
+
+    h["model_box"].set("Edge-540 (2 Logs)")                               # switch the model
+    h["model_box"].event_generate("<<ComboboxSelected>>")
+    for _ in range(5):
+        root.update()
+    h = root._akku
+    assert "Modell Edge-540" in h["status"].get() and "2 Flüge ausgewertet" in h["status"].get()
+    assert h["params"]["nominal_mah"].get() == "0"                  # new model: default battery settings
+    h["params"]["nominal_mah"].set("2200")
+    h["params"]["chem"].set("LiPo")
+    h["run"]()
+    root.update()
+    stored = json.loads(settings.read_text(encoding="utf-8"))
+    assert stored["models"]["Edge-540"]["nominal_mah"] == "2200"
+    assert stored["models"]["Viper-Jet"]["nominal_mah"] == "9000"
+    assert stored["model"] == "Edge-540"
+
+    h["use_model"]("Viper-Jet")                                      # back: its own settings again
+    assert h["params"]["nominal_mah"].get() == "9000"
+    h["folder_var"].set(str(EXAMPLES))
+    h["run"]()
+    root.update()
+    h = root._akku
+    assert h["model_bar"].winfo_manager() == ""
+    assert "Modell" not in h["status"].get()                         # one model: status as before
 
 
 def _check_fullscreen(root):

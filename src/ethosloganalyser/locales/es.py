@@ -729,4 +729,16 @@ CATALOG = {
         "Curva global: {classes} clases de rpm de {n} vuelos; los vuelos se desvían de ella entre {lo:+.1f} y {hi:+.1f} % (mayor desviación: vuelo {no})",
     "Leistung gegenüber der Gesamtkennlinie aller Flüge: {dev:+.1f} % (Median bei gleicher Drehzahl)":
         "Potencia frente a la curva global de todos los vuelos: {dev:+.1f} % (mediana a las mismas rpm)",
+    "(unbekannt)":
+        "(desconocido)",
+    "{folder}  ·  Modell {model}  ·  {n} Flüge ausgewertet, {skipped} von {total} Dateien übersprungen  ·  Akku {cells}S {chem}{cap}":
+        "{folder}  ·  modelo {model}  ·  {n} vuelos analizados, {skipped} de {total} archivos omitidos  ·  batería {cells}S {chem}{cap}",
+    "Modell:":
+        "Modelo:",
+    "Im Ordner liegen Logs mehrerer Modelle; ausgewertet wird immer eines.":
+        "La carpeta contiene registros de varios modelos; se analiza siempre uno.",
+    "Modell: {model} – weitere Modelle im Ordner (getrennt ausgewertet): {others}":
+        "Modelo: {model} – otros modelos en la carpeta (se analizan por separado): {others}",
+    "{model} ({n} Logs)":
+        "{model} ({n} registros)",
 }
