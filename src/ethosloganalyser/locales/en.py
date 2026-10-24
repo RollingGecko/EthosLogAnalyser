@@ -727,4 +727,12 @@ CATALOG = {
         "Model: {model} – other models in the folder (analysed separately): {others}",
     "{model} ({n} Logs)":
         "{model} ({n} logs)",
+    "Für das Modell {model} sind noch keine Akku-Einstellungen gespeichert: Bitte im Reiter „Daten & Einstellungen“ die Zellchemie auswählen und die Nennkapazität eintragen. Bis dahin wird LiPo angenommen – Ladezustand, Alterung und Restkapazität können falsch sein.":
+        "No battery settings are stored for the model {model} yet: please choose the cell chemistry and enter the nominal capacity in the tab “Data & settings”. Until then LiPo is assumed – state of charge, ageing and remaining capacity may be wrong.",
+    "Für dieses Modell noch nicht eingestellt: bitte Zellchemie auswählen und Nennkapazität eintragen (bis dahin wird LiPo angenommen).":
+        "Not set up for this model yet: please choose the cell chemistry and enter the nominal capacity (until then LiPo is assumed).",
+    "Akku-Einstellungen für dieses Modell fehlen":
+        "Battery settings missing for this model",
+    "{status}  ·  {hint}":
+        "{status}  ·  {hint}",
 }

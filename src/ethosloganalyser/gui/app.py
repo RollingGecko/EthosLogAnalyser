@@ -103,6 +103,12 @@ def export_table(df):
 # battery settings that are kept per model, with their defaults for a model without stored settings
 BATTERY_KEYS = ("chem", "cells", "nominal_mah")
 BATTERY_DEFAULTS = {"chem": "LiPo", "cells": "0", "nominal_mah": "0"}
+# key in the stored settings of a model whose battery fields still hold only the defaults (nobody has chosen
+# the cell chemistry or entered the capacity yet); see battery_unset in run_gui
+BATTERY_UNSET_KEY = "unset"
+BATTERY_HINT = N_("Für das Modell {model} sind noch keine Akku-Einstellungen gespeichert: Bitte im Reiter "
+                  "„Daten & Einstellungen“ die Zellchemie auswählen und die Nennkapazität eintragen. Bis dahin "
+                  "wird LiPo angenommen – Ladezustand, Alterung und Restkapazität können falsch sein.")
 
 
 def run_gui():
@@ -145,13 +151,25 @@ def run_gui():
     state["models"] = {}                                   # {model: number of logs} of the last analysed folder
     state["model"] = saved.get("model")                    # model the battery fields in V belong to
     state["model_settings"] = dict(saved.get("models") or {})
+    # True while the battery fields of the current model hold only the defaults (LiPo, automatic cell count,
+    # capacity unknown): a model without stored settings, or a first start without any battery settings.
+    # The assumed LiPo does not count as a setting; the hint disappears once the user picks the cell chemistry
+    # or enters a capacity (confirm_battery).
+    state["battery_unset"] = bool(state["model_settings"].get(state["model"], {}).get(BATTERY_UNSET_KEY))
+
+    def model_battery():
+        """Battery settings of the current model as they are stored."""
+        d = {k: V[k].get() for k in BATTERY_KEYS}
+        if state["battery_unset"]:
+            d[BATTERY_UNSET_KEY] = True
+        return d
 
     def store_settings():
         d = {k: v.get() for k, v in V.items()}
         d["folder"] = folder_var.get()
         d["language"] = get_language()
         if state["model"] is not None:
-            state["model_settings"][state["model"]] = {k: V[k].get() for k in BATTERY_KEYS}
+            state["model_settings"][state["model"]] = model_battery()
             d["model"] = state["model"]
         d["models"] = state["model_settings"]
         save_settings(d)
@@ -164,14 +182,35 @@ def run_gui():
             return
         ms = state["model_settings"]
         if state["model"] is not None:
-            ms[state["model"]] = {k: V[k].get() for k in BATTERY_KEYS}
+            ms[state["model"]] = model_battery()
         if model in ms:
             for k in BATTERY_KEYS:
                 V[k].set(ms[model].get(k, BATTERY_DEFAULTS[k]))
+            unset = bool(ms[model].get(BATTERY_UNSET_KEY))
         elif ms:
             for k in BATTERY_KEYS:
                 V[k].set(BATTERY_DEFAULTS[k])
+            unset = True
+        else:                    # first model: takes over the settings from before models existed, if any
+            unset = not any(k in saved for k in BATTERY_KEYS)
         state["model"] = model
+        state["battery_unset"] = unset
+
+    def confirm_battery():
+        """The user chose the cell chemistry or entered a capacity: the battery hint is no longer needed."""
+        if state["battery_unset"]:
+            state["battery_unset"] = False
+            if ui.get("battery_hint"):
+                ui["battery_hint"]()
+
+    def on_capacity(*_):
+        try:
+            if float(V["nominal_mah"].get().replace(",", ".")) > 0:
+                confirm_battery()
+        except ValueError:
+            pass
+
+    V["nominal_mah"].trace_add("write", on_capacity)
 
     def change_language(code):
         """Switches the language and builds the window content again (the analysis result is kept)."""
@@ -289,12 +328,18 @@ def run_gui():
             w.grid(row=row, column=1, sticky="w", padx=8, pady=3)
             if hint:
                 ttk.Label(parent, text=hint, foreground="#666").grid(row=row, column=2, sticky="w")
+            return w
 
         lf = ttk.LabelFrame(st_tab, text=tr("Akku"), padding=10)
         lf.grid(row=1, column=0, sticky="nwe", padx=(0, 6))
-        field(lf, 0, tr("Zellchemie"), "chem", tr("LiPo, LiHV oder Li-Ion"), list(CHEM.keys()))
+        chem_box = field(lf, 0, tr("Zellchemie"), "chem", tr("LiPo, LiHV oder Li-Ion"), list(CHEM.keys()))
         field(lf, 1, tr("Zellenzahl"), "cells", tr("0 = automatisch aus der Startspannung"))
         field(lf, 2, tr("Nennkapazität [mAh]"), "nominal_mah", tr("0 = unbekannt (wird geschätzt)"))
+        chem_box.bind("<<ComboboxSelected>>", lambda _e: confirm_battery())
+        battery_hint = ttk.Label(lf, text=tr("Für dieses Modell noch nicht eingestellt: bitte Zellchemie auswählen "
+                                             "und Nennkapazität eintragen (bis dahin wird LiPo angenommen)."),
+                                 foreground="#b00020", wraplength=520, justify="left")
+        battery_hint.grid(row=3, column=0, columnspan=3, sticky="w", pady=(6, 0))
 
         lf = ttk.LabelFrame(st_tab, text=tr("Auswertung"), padding=10)
         lf.grid(row=1, column=1, sticky="nwe", padx=(6, 0))
@@ -767,6 +812,7 @@ def run_gui():
             groups = models_in(find_logs(folder))
             model = state["model"] if state["model"] in groups else default_model(groups)
             use_model(model)                              # battery settings of that model
+            show_battery_hint()
             p = read_params()
             if p is None:
                 return
@@ -796,14 +842,42 @@ def run_gui():
             status_args = dict(folder=os.path.basename(os.path.normpath(folder)), n=len(res.df),
                                skipped=len(res.skipped), total=res.total, cells=cells, chem=p.chem, cap=cap)
             if len(state["models"]) > 1:
-                set_status(Msg("{folder}  ·  Modell {model}  ·  {n} Flüge ausgewertet, {skipped} von {total} Dateien "
+                set_main_status(Msg("{folder}  ·  Modell {model}  ·  {n} Flüge ausgewertet, {skipped} von {total} Dateien "
                                "übersprungen  ·  Akku {cells}S {chem}{cap}",
                                model=model if model else Msg(MODEL_UNKNOWN_LABEL), **status_args))
             else:
-                set_status(Msg("{folder}  ·  {n} Flüge ausgewertet, {skipped} von {total} Dateien übersprungen  ·  "
-                               "Akku {cells}S {chem}{cap}", **status_args))
+                set_main_status(Msg("{folder}  ·  {n} Flüge ausgewertet, {skipped} von {total} Dateien "
+                                    "übersprungen  ·  Akku {cells}S {chem}{cap}", **status_args))
             show_results()
             nb.select(tabs["summary"])
+
+        def set_main_status(msg):
+            """Status line after an analysis; while the battery of the model is not set up it names that."""
+            state["status_main"] = msg
+            shown = Msg("{status}  ·  {hint}", status=msg, hint=Msg("Akku-Einstellungen für dieses Modell fehlen")) \
+                if state["battery_unset"] else msg
+            state["status_shown"] = shown
+            set_status(shown)
+
+        def summary_with_hint():
+            lines = summary_lines(state["res"], state["p"])
+            if state["battery_unset"]:
+                hint = tr(BATTERY_HINT, model=model_label(state["res"].meta.get("model", state["model"])))
+                lines = [("bad", hint)] + lines
+            return lines
+
+        def show_battery_hint():
+            """Shows or hides the battery hint next to the battery fields, in the status line and the summary."""
+            if state["battery_unset"]:
+                battery_hint.grid()
+            else:
+                battery_hint.grid_remove()
+            if state.get("status_shown") is not None and state["status"] is state["status_shown"]:
+                set_main_status(state["status_main"])          # still the status of the last analysis
+            if state["res"] is not None:
+                fill_text(txt, summary_with_hint())
+
+        ui["battery_hint"] = show_battery_hint
 
         def show_results():
             """Fills all tabs with the analysis result in the current language."""
@@ -812,7 +886,7 @@ def run_gui():
             skip_tree.delete(*skip_tree.get_children())
             for nme, msg in res.skipped:
                 skip_tree.insert("", "end", values=(nme, str(msg)))
-            fill_text(txt, summary_lines(res, p))
+            fill_text(txt, summary_with_hint())
             tree.delete(*tree.get_children())
             for _, r in df.iterrows():
                 tree.insert("", "end", values=[fmt_cell(k, r[k]) for k in cols])
@@ -885,6 +959,7 @@ def run_gui():
             nb.select(snap["tab"])
 
         ui["snapshot"] = snapshot
+        show_battery_hint()
         if state["res"] is not None:
             show_results()
         if snap is not None:
@@ -895,7 +970,8 @@ def run_gui():
         else:
             nb.select(tabs["settings"])
         # for tests
-        root._akku = dict(fbox=flight_box, run=run, model_box=model_box, model_bar=selbar, use_model=use_model, folder_var=folder_var, params=V, status=status, nb=nb, tabs=tabs,
+        root._akku = dict(fbox=flight_box, run=run, model_box=model_box, model_bar=selbar, use_model=use_model, folder_var=folder_var,
+                          battery_hint=battery_hint, chem_box=chem_box, state=state, params=V, status=status, nb=nb, tabs=tabs,
                           flight_var=flight_var, view_var=view_var, select_flight=select_flight, redraw=redraw_flight,
                           set_xlim=set_xlim, goto_spike=goto_spike, spike_var=spike_var, lang_var=lang_var,
                           set_language=change_language, summary=txt, details=det_txt, table=tree,

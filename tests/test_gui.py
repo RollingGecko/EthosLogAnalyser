@@ -52,6 +52,10 @@ def test_gui_analyses_example_logs(monkeypatch, tmp_path):
         root.update()
         assert not errors, errors
         assert "3 Flüge ausgewertet" in h["status"].get()       # status bar text (German UI)
+        # first start without any battery settings: the assumed LiPo is not a setting -> hint
+        assert h["battery_hint"].winfo_manager() == "grid"
+        assert "Akku-Einstellungen für dieses Modell fehlen" in h["status"].get()
+        assert h["summary"].get("1.0", "2.0").startswith("Für das Modell Viper-Jet sind noch keine Akku-Einst")
         assert len(h["fbox"]["values"]) == 3
         for view in FLIGHT_VIEWS:
             h["view_var"].set(view)
@@ -84,7 +88,7 @@ def _check_language_switch(root, settings):
         h = root._akku                                    # widgets were rebuilt
         assert get_language() == code
         assert status_text in h["status"].get()
-        assert h["summary"].get("1.0", "2.0").strip() == heading
+        assert heading in h["summary"].get("1.0", "3.0").splitlines()[:2]   # after the battery hint, if any
         assert h["flight_var"].get().split("|")[0] == flight.split("|")[0]     # same flight selected
         assert h["view_var"].get() == view
         assert h["nb"].index("current") == h["nb"].index(h["tabs"]["flight"])
@@ -142,23 +146,80 @@ def _check_two_models(root, errors, settings, tmp_path):
     h = root._akku
     assert "Modell Edge-540" in h["status"].get() and "2 Flüge ausgewertet" in h["status"].get()
     assert h["params"]["nominal_mah"].get() == "0"                  # new model: default battery settings
+    _check_battery_hint(root, settings)
     h["params"]["nominal_mah"].set("2200")
     h["params"]["chem"].set("LiPo")
     h["run"]()
     root.update()
     stored = json.loads(settings.read_text(encoding="utf-8"))
     assert stored["models"]["Edge-540"]["nominal_mah"] == "2200"
+    assert "unset" not in stored["models"]["Edge-540"]
     assert stored["models"]["Viper-Jet"]["nominal_mah"] == "9000"
     assert stored["model"] == "Edge-540"
 
     h["use_model"]("Viper-Jet")                                      # back: its own settings again
     assert h["params"]["nominal_mah"].get() == "9000"
+    assert not h["state"]["battery_unset"]                           # set-up model: no hint
     h["folder_var"].set(str(EXAMPLES))
     h["run"]()
     root.update()
     h = root._akku
     assert h["model_bar"].winfo_manager() == ""
     assert "Modell" not in h["status"].get()                         # one model: status as before
+
+
+def _check_battery_hint(root, settings):
+    """A model without stored battery settings shows a hint (settings tab, status line, summary) until the user
+    chooses the cell chemistry or enters a capacity; the hint is remembered until then."""
+    import json
+    h = root._akku
+    hint = "Für das Modell Edge-540 sind noch keine Akku-Einstellungen gespeichert"
+    assert h["battery_hint"].winfo_manager() == "grid"
+    assert "Akku-Einstellungen für dieses Modell fehlen" in h["status"].get()
+    assert h["summary"].get("1.0", "2.0").startswith(hint)
+    stored = json.loads(settings.read_text(encoding="utf-8"))
+    assert stored["models"]["Edge-540"]["unset"] is True              # kept across a restart
+    assert "unset" not in stored["models"]["Viper-Jet"]
+
+    h["chem_box"].event_generate("<<ComboboxSelected>>")            # cell chemistry chosen (even if LiPo)
+    root.update()
+    assert h["battery_hint"].winfo_manager() == ""
+    assert "Akku-Einstellungen" not in h["status"].get() and "Modell Edge-540" in h["status"].get()
+    assert hint not in h["summary"].get("1.0", "end")
+
+    h["state"]["battery_unset"] = True                               # again, now with the capacity
+    h["battery_hint"].grid()
+    h["params"]["nominal_mah"].set("abc")                            # no number: hint stays
+    assert h["state"]["battery_unset"]
+    h["params"]["nominal_mah"].set("0")
+    assert h["state"]["battery_unset"]
+
+
+def test_gui_battery_hint_not_for_old_settings(monkeypatch, tmp_path):
+    """Battery settings from before models existed belong to the first model: no hint."""
+    if not REQUIRED and not _display_available():
+        pytest.skip("no display (DISPLAY) available")
+    import matplotlib
+    matplotlib.use("TkAgg", force=True)
+    from ethosloganalyser import config
+    from ethosloganalyser.gui import app
+
+    settings = tmp_path / "settings.json"
+    settings.write_text('{"language": "de", "chem": "Li-Ion", "cells": "13", "nominal_mah": "9000", "folder": "%s"}'
+                        % str(EXAMPLES).replace("\\", "/"), encoding="utf-8")
+    monkeypatch.setattr(config, "SETTINGS_FILE", str(settings))
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
+    root = app.run_gui()
+    try:
+        h = root._akku
+        h["run"]()
+        root.update()
+        assert "3 Flüge ausgewertet" in h["status"].get()
+        assert h["battery_hint"].winfo_manager() == ""
+        assert "Akku-Einstellungen" not in h["status"].get()
+        assert not h["summary"].get("1.0", "2.0").startswith("Für das Modell")
+    finally:
+        root.destroy()
 
 
 def _check_fullscreen(root):
