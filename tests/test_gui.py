@@ -68,6 +68,7 @@ def test_gui_analyses_example_logs(monkeypatch, tmp_path):
         _check_logbook(root)
         _check_language_switch(root, settings)
         _check_period_filter(root, errors)
+        _check_year_month(root, errors)
         _check_two_models(root, errors, settings, tmp_path)
     finally:
         root.destroy()
@@ -114,6 +115,47 @@ def _check_period_filter(root, errors):
     h["params"]["date_from"].set("")
 
 
+def _pick(root, box, index):
+    """Chooses an entry of a readonly combobox like a user and lets the queued analysis run."""
+    box.current(index)
+    box.event_generate("<<ComboboxSelected>>")
+    for _ in range(5):
+        root.update()
+
+
+def _check_year_month(root, errors):
+    """Year/month selection: offers only months with flights, sets the period fields and analyses again."""
+    h = root._akku
+    h["run"]()                                                       # all flights (no period filter)
+    root.update()
+    assert h["period_bar"].winfo_manager() == "grid"
+    assert h["year_box"]["values"] == ("alle Jahre", "2026") and h["year_box"].get() == "alle Jahre"
+    assert h["month_box"].instate(["disabled"])
+    _pick(root, h["year_box"], 1)                                    # 2026
+    assert not errors, errors
+    assert (h["params"]["date_from"].get(), h["params"]["date_to"].get()) == ("01.01.2026", "31.12.2026")
+    assert "3 Flüge ausgewertet" in h["status"].get()
+    assert h["month_box"]["values"] == ("ganzes Jahr", "September", "Oktober")   # only months with flights
+    _pick(root, h["month_box"], 2)                                   # October
+    assert (h["params"]["date_from"].get(), h["params"]["date_to"].get()) == ("01.10.2026", "31.10.2026")
+    assert "1 Flüge ausgewertet" in h["status"].get()
+    assert h["year_box"].get() == "2026" and h["month_box"].get() == "Oktober"
+    # the logbook follows the selection (same flight table)
+    assert h["lb_scope"].get() == "Modell Viper-Jet  ·  Zeitraum: 01.10.2026 – 31.10.2026"
+    assert h["lb_totals"]["flights"].get().startswith("1  (18.10.2026")
+    assert [h["lb_month"].item(i)["values"][0] for i in h["lb_month"].get_children()] == ["10/2026"]
+    assert h["month_box"]["values"] == ("ganzes Jahr", "September", "Oktober")   # still all months of the year
+    h["params"]["date_from"].set("20.09.2026")                       # typed dates: custom period
+    h["params"]["date_to"].set("")
+    h["run"]()
+    root.update()
+    assert h["year_box"].get() == "eigener Zeitraum" and h["month_box"].instate(["disabled"])
+    _pick(root, h["year_box"], 0)                                    # all years: fields empty again
+    assert (h["params"]["date_from"].get(), h["params"]["date_to"].get()) == ("", "")
+    assert "3 Flüge ausgewertet" in h["status"].get()
+    assert not errors, errors
+
+
 def _check_two_models(root, errors, settings, tmp_path):
     """A folder with two models: selector visible, status names the model, battery settings kept per model."""
     import json
@@ -147,6 +189,7 @@ def _check_two_models(root, errors, settings, tmp_path):
     h = root._akku
     assert "Modell Edge-540" in h["status"].get() and "2 Flüge ausgewertet" in h["status"].get()
     assert h["params"]["nominal_mah"].get() == "0"                  # new model: default battery settings
+    assert h["year_box"]["values"] == ("alle Jahre", "2025")         # years of this model only
     _check_battery_hint(root, settings)
     h["params"]["nominal_mah"].set("2200")
     h["params"]["chem"].set("LiPo")

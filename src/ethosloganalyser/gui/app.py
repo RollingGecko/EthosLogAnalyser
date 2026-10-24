@@ -14,6 +14,8 @@ from ..analysis.evaluate import FLAG_LABELS
 from ..buildinfo import about_lines, window_title
 from ..analysis.quality import QUALITY_LABELS
 from ..analysis.fleet import analyse_folder, default_model, find_logs, models_in, parse_date
+from ..analysis.periods import months_of, period_fields, selection_of, years_months
+from ..io.ethos_log import _file_datetime
 from ..config import (CHEM, MODEL_UNKNOWN_LABEL, SPIKE_LABELS, VOLTAGE_SOURCE_LABELS, Params, label, load_settings,
                       model_label, save_settings)
 from ..gui.style import BG, _setup_style
@@ -50,6 +52,10 @@ TABLE_COLS = [
     ("fit_R2", N_("R² Fit"), 50), ("versatz_s", N_("Versatz s"), 60), ("Auffaellig", N_("Auffälligkeiten"), 260),
     ("Datenfehler", N_("Messfehler"), 260),
 ]
+
+
+MONTH_NAMES = [N_("Januar"), N_("Februar"), N_("März"), N_("April"), N_("Mai"), N_("Juni"), N_("Juli"),
+               N_("August"), N_("September"), N_("Oktober"), N_("November"), N_("Dezember")]
 
 
 def flag_text(codes):
@@ -270,6 +276,25 @@ def run_gui():
 
     V["nominal_mah"].trace_add("write", on_capacity)
 
+    # months with flights per (folder, model), for the year/month selection. An analysis without period
+    # filter sees all flights; with a filter only those inside, so the months seen before are kept. Without
+    # any analysis of all flights yet, the dates in the file names of the model's logs stand in.
+    state["flight_months"] = {}
+    state["period_key"] = None
+
+    def remember_flight_months(folder, model, groups, res, p):
+        key = (os.path.normcase(os.path.abspath(folder)), model)
+        seen = months_of(res.df["datum"]) if not res.df.empty else set()
+        if not (p.date_from or p.date_to):
+            months = seen
+        else:
+            months = state["flight_months"].get(key)
+            if months is None:
+                months = months_of(_file_datetime(f) for f in groups.get(model, {}).get("files", []))
+            months = months | seen
+        state["flight_months"][key] = months
+        state["period_key"] = key
+
     def change_language(code):
         """Switches the language and builds the window content again (the analysis result is kept)."""
         if code == get_language() or code not in LANGUAGES:
@@ -346,9 +371,12 @@ def run_gui():
         run_btn.grid(row=1, column=2, padx=(8, 0), pady=4)
         prog = ttk.Progressbar(lf, mode="determinate")
         prog.grid(row=2, column=0, columnspan=3, sticky="we", pady=(6, 0))
-        # selection bar: which part of the folder is analysed (model; later more selectors fit in this row)
-        selbar = ttk.Frame(lf)
-        selbar.grid(row=3, column=0, columnspan=3, sticky="w", pady=(8, 0))
+        # selection row: which part of the folder is analysed - model (only with several models) and the quick
+        # selection of a year or month (sets the period filter "from/to")
+        selrow = ttk.Frame(lf)
+        selrow.grid(row=3, column=0, columnspan=3, sticky="w", pady=(8, 0))
+        selbar = ttk.Frame(selrow)
+        selbar.grid(row=0, column=0, sticky="w", padx=(0, 24))
         ttk.Label(selbar, text=tr("Modell:")).pack(side="left")
         model_var = tk.StringVar()
         model_box = ttk.Combobox(selbar, textvariable=model_var, width=30, state="readonly")
@@ -377,6 +405,70 @@ def run_gui():
 
         model_box.bind("<<ComboboxSelected>>", on_model)
         update_model_box()
+
+        perbar = ttk.Frame(selrow)
+        perbar.grid(row=0, column=1, sticky="w")
+        ttk.Label(perbar, text=tr("Jahr:")).pack(side="left")
+        year_var, month_var = tk.StringVar(), tk.StringVar()
+        year_box = ttk.Combobox(perbar, textvariable=year_var, width=16, state="readonly")
+        year_box.pack(side="left", padx=(4, 8))
+        ttk.Label(perbar, text=tr("Monat:")).pack(side="left")
+        month_box = ttk.Combobox(perbar, textvariable=month_var, width=14, state="readonly")
+        month_box.pack(side="left", padx=(4, 8))
+        ttk.Label(perbar, text=tr("setzt „Zeitraum von/bis“ unter Auswertung"), foreground="#666").pack(side="left")
+        per_keys = {"years": [], "months": []}
+
+        def update_period_box():
+            """Years and months with flights of the analysed model; the boxes show the current from/to fields."""
+            ym = years_months(state["flight_months"].get(state["period_key"], set()))
+            if not ym:
+                perbar.grid_remove()
+                return
+            perbar.grid()
+            kind, y, m = selection_of(V["date_from"].get(), V["date_to"].get())
+            per_keys["years"] = [None] + list(ym)
+            year_box["values"] = [tr("alle Jahre")] + [str(v) for v in ym]
+            if kind == "custom":
+                year_var.set(tr("eigener Zeitraum"))
+            else:
+                year_box.current(per_keys["years"].index(y) if y in per_keys["years"] else 0)
+                if y is not None and y not in ym:            # selected year without flights of this model
+                    year_var.set(str(y))
+            months = ym.get(y, []) if kind in ("year", "month") else []
+            per_keys["months"] = [None] + months
+            month_box["values"] = [tr("ganzes Jahr")] + [tr(MONTH_NAMES[k - 1]) for k in months]
+            if kind == "month":
+                if m in months:
+                    month_box.current(per_keys["months"].index(m))
+                else:
+                    month_var.set(tr(MONTH_NAMES[m - 1]))
+            elif kind == "year":
+                month_box.current(0)
+            else:
+                month_var.set("")
+            month_box.state(["!disabled"] if kind in ("year", "month") else ["disabled"])
+
+        def select_period(year, month=None):
+            """Writes the from/to fields for the chosen year/month (None = no limit) and analyses again."""
+            d0, d1 = period_fields(year, month, fmt=fmt_date)       # date format of the current language
+            V["date_from"].set(d0)
+            V["date_to"].set(d1)
+            root.after_idle(run)
+
+        def on_year(*_):
+            k = year_box.current()
+            if 0 <= k < len(per_keys["years"]):
+                select_period(per_keys["years"][k])
+
+        def on_month(*_):
+            k = month_box.current()
+            kind, y, _m = selection_of(V["date_from"].get(), V["date_to"].get())
+            if y is not None and 0 <= k < len(per_keys["months"]):
+                select_period(y, per_keys["months"][k])
+
+        year_box.bind("<<ComboboxSelected>>", on_year)
+        month_box.bind("<<ComboboxSelected>>", on_month)
+        update_period_box()
 
         def field(parent, row, text, key, hint="", combo=None):
             ttk.Label(parent, text=text).grid(row=row, column=0, sticky="w", pady=3)
@@ -1010,6 +1102,8 @@ def run_gui():
             state["res"], state["p"], state["folder"] = res, p, folder
             state["models"] = res.meta.get("models", {})
             update_model_box()
+            remember_flight_months(folder, model, groups, res, p)
+            update_period_box()
             cells = res.meta.get("cells", p.cells)
             cap = f", {p.nominal_mah:.0f} mAh" if p.nominal_mah > 0 else Msg(", Kapazität unbekannt")
             status_args = dict(folder=os.path.basename(os.path.normpath(folder)), n=len(res.df),
@@ -1148,6 +1242,7 @@ def run_gui():
                           lb_totals=lb_totals, lb_scope=lb_scope, lb_missing=lb_missing, lb_year=lb_year,
                           lb_month=lb_month, lb_list=lb_list, lb_sort=lb_sort, lb_state=lb_state,
                           lb_canvas=lambda: page_canvases.get(str(lb_chart)),
+                          year_box=year_box, month_box=month_box, period_bar=perbar,
                           battery_hint=battery_hint, chem_box=chem_box, state=state, params=V, status=status, nb=nb, tabs=tabs,
                           flight_var=flight_var, view_var=view_var, select_flight=select_flight, redraw=redraw_flight,
                           set_xlim=set_xlim, goto_spike=goto_spike, spike_var=spike_var, lang_var=lang_var,

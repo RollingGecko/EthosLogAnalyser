@@ -787,4 +787,40 @@ CATALOG = {
         "Log duration per month [h:min:s]",
     "Summe der Log-Dauer (Motor scharf bis gesperrt).":
         "Sum of the log durations (motor armed to disarmed).",
+    "Januar":
+        "January",
+    "Februar":
+        "February",
+    "März":
+        "March",
+    "April":
+        "April",
+    "Mai":
+        "May",
+    "Juni":
+        "June",
+    "Juli":
+        "July",
+    "August":
+        "August",
+    "September":
+        "September",
+    "Oktober":
+        "October",
+    "November":
+        "November",
+    "Dezember":
+        "December",
+    "Jahr:":
+        "Year:",
+    "Monat:":
+        "Month:",
+    "alle Jahre":
+        "all years",
+    "eigener Zeitraum":
+        "custom period",
+    "ganzes Jahr":
+        "whole year",
+    "setzt „Zeitraum von/bis“ unter Auswertung":
+        "sets “Period from/to” under Analysis",
 }

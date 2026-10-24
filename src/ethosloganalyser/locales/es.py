@@ -801,4 +801,40 @@ CATALOG = {
         "Duración del registro por mes [h:min:s]",
     "Summe der Log-Dauer (Motor scharf bis gesperrt).":
         "Suma de las duraciones de registro (motor armado a bloqueado).",
+    "Januar":
+        "Enero",
+    "Februar":
+        "Febrero",
+    "März":
+        "Marzo",
+    "April":
+        "Abril",
+    "Mai":
+        "Mayo",
+    "Juni":
+        "Junio",
+    "Juli":
+        "Julio",
+    "August":
+        "Agosto",
+    "September":
+        "Septiembre",
+    "Oktober":
+        "Octubre",
+    "November":
+        "Noviembre",
+    "Dezember":
+        "Diciembre",
+    "Jahr:":
+        "Año:",
+    "Monat:":
+        "Mes:",
+    "alle Jahre":
+        "todos los años",
+    "eigener Zeitraum":
+        "periodo propio",
+    "ganzes Jahr":
+        "año completo",
+    "setzt „Zeitraum von/bis“ unter Auswertung":
+        "fija «Periodo desde/hasta» en Análisis",
 }

@@ -44,7 +44,18 @@ The result is `dist\EthosLogAnalyser.exe`. GitHub also builds a test EXE on ever
    - **Motor running from** – current above which the flight counts; default 1 A.
    - **Reserve at landing** – remaining charge the timer recommendation aims for; default 20 %.
    - **Voltage / current column** – only needed if automatic detection picks the wrong column; part of the column name is enough.
+   - **Period from / to** (Zeitraum von / bis) – only flights on these days (both inclusive); empty = no limit.
 4. Click **Analyse** (Auswerten). Settings are saved to `%USERPROFILE%\.akku_analyse.json`.
+
+### Year and month
+
+After the first analysis, the row under the folder (box *Log data*) shows two drop-downs, **Year** (Jahr) and **Month** (Monat). They are a quick way to fill in *Period from / to*:
+
+- **Year**: *all years* clears both fields; a year sets 1 January to 31 December of that year.
+- **Month** (active once a year is chosen): *whole year*, or one month, which sets its first and last day.
+- Choosing an entry analyses again at once. All tabs follow, exactly as if the dates had been typed in.
+- Only years and months with flights of the selected model are offered (newest year first). They come from the last analysis without a period filter; before that, the dates in the log file names of the model stand in.
+- Dates typed in by hand that are not exactly a year or a month show *custom period* (eigener Zeitraum).
 
 ### Several aircraft in one folder
 
