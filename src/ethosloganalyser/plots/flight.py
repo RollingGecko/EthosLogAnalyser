@@ -113,9 +113,8 @@ def _flight_panels(s, view, cells=None, chem=None):
             twin=dict(unit="%", lines=[stick("elevator", "tab:olive")], sym=True), sym=True)
         add(tr("Gas und Seitenruder"), "%", tr("Gas 0–100 %, Seitenruder-Knüppel ±100 %. Senkrechte Linien: Schalter."),
             [(tr("Gas"), s["gas"], "tab:green", {}), stick("rudder", "tab:red")], switches=True)
-        add(tr("Drehrate"), "°/s", tr("Wie schnell sich die Lage ändert (aus Roll und Nick)."),
-            [(tr("Drehrate"), s.get("rate"), "tab:purple", {})])
         add(tr("G-Last"), "g", tr("Beschleunigung, 1 g = Geradeausflug."), [(tr("G-Last"), s.get("g"), "tab:brown", {})])
+        add(tr("Höhe"), "m", tr("Relative Höhe über dem Startpunkt."), [alt])
         missing = [ch for key, ch in STICK_CHANNELS if key not in sticks] + ([] if s["gas"] is not None else ["Gas"])
         shown = [pp for pp in P if pp["lines"]]
         if missing and shown:

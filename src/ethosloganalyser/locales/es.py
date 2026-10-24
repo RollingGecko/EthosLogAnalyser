@@ -475,7 +475,6 @@ CATALOG = {
         "Si cae durante los picos de corriente, la alimentación es demasiado débil.",
     "Roll": "Alabeo",
     "Nick": "Cabeceo",
-    "Wie schnell sich die Lage ändert (aus Roll und Nick).": "Con qué rapidez cambia la actitud (según alabeo y cabeceo).",
     "Beschleunigung, 1 g = Geradeausflug.": "Aceleración, 1 g = vuelo recto y nivelado.",
 
     # ---------------- table headings ----------------

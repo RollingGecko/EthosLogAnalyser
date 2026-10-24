@@ -461,7 +461,6 @@ CATALOG = {
         "If it drops during current spikes, the supply is too weak.",
     "Roll": "Roll",
     "Nick": "Pitch",
-    "Wie schnell sich die Lage ändert (aus Roll und Nick).": "How fast the attitude changes (from roll and pitch).",
     "Beschleunigung, 1 g = Geradeausflug.": "Acceleration, 1 g = straight and level flight.",
 
     # ---------------- table headings ----------------

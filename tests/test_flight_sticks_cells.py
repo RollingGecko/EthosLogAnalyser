@@ -78,6 +78,7 @@ def _flight_log(folder, sticks=("QR", "HR", "SR"), gas=True, attitude=True):
     if attitude:
         extra["Roll(°)"] = np.round(60 * np.sin(2 * np.pi * t / 9), 1)
         extra["Pitch(°)"] = np.round(20 * np.sin(2 * np.pi * t / 13), 1)
+        extra["Altitude(m)"] = np.round(np.where(run, 80 + 40 * np.sin(2 * np.pi * t / 60), 0), 1)
     return helpers.write_ethos_csv(folder, "Model-2026-05-01-12-00-00.csv", t, u, i, extra)
 
 
@@ -114,8 +115,9 @@ def _attitude(res, p, path):
 def test_attitude_view_shows_sticks_with_angles():
     res, p, path = _result(_flight_log(helpers.tmpdir()))
     fig, charts = _attitude(res, p, path)
-    # (no acceleration in the synthetic log: no g-load chart)
-    assert list(charts) == ["Rollwinkel und Querruder", "Nickwinkel und Höhenruder", "Gas und Seitenruder", "Drehrate"]
+    # (no acceleration in the synthetic log: no g-load chart); altitude kept, rotation rate not shown here
+    assert list(charts) == ["Rollwinkel und Querruder", "Nickwinkel und Höhenruder", "Gas und Seitenruder", "Höhe"]
+    assert "Drehrate" not in charts
     roll = charts["Rollwinkel und Querruder"]
     twins = [a for a in fig.axes if a is not roll and a.get_subplotspec() == roll.get_subplotspec()]
     assert len(twins) == 1
