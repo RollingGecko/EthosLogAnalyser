@@ -749,4 +749,56 @@ CATALOG = {
         "Faltan los ajustes de batería de este modelo",
     "{status}  ·  {hint}":
         "{status}  ·  {hint}",
+    "Logbuch":
+        "Libro de vuelo",
+    "Summen":
+        "Totales",
+    "Je Jahr":
+        "Por año",
+    "Jahr":
+        "Año",
+    "Je Monat":
+        "Por mes",
+    "Monat":
+        "Mes",
+    "Flüge (Klick auf eine Spaltenüberschrift sortiert)":
+        "Vuelos (clic en el encabezado de una columna para ordenar)",
+    "Uhrzeit":
+        "Hora",
+    "Log-Dauer":
+        "Duración del registro",
+    "Modell {model}  ·  Zeitraum: {period}":
+        "Modelo {model}  ·  Periodo: {period}",
+    "{ah:.1f} Ah ({mah:.0f} mAh)":
+        "{ah:.1f} Ah ({mah:.0f} mAh)",
+    "Flüge":
+        "Vuelos",
+    "Flugtage":
+        "Días de vuelo",
+    "Log-Dauer gesamt":
+        "Duración total de registros",
+    "Längster Flug (Log-Dauer)":
+        "Vuelo más largo (duración del registro)",
+    "Kürzester Flug (Log-Dauer)":
+        "Vuelo más corto (duración del registro)",
+    "Entnommen gesamt":
+        "Total consumido",
+    "{n} Flüge ohne Datum oder Log-Dauer – in den Summen nicht enthalten.":
+        "{n} vuelos sin fecha o duración del registro – no incluidos en los totales.",
+    "{n}  ({first} – {last})":
+        "{n}  ({first} – {last})",
+    "  – ohne {n} Flüge mit ungültigen Akkuwerten":
+        "  – sin {n} vuelos con valores de batería no válidos",
+    "Log-Dauer = Zeit von „Motor scharf“ bis „Motor gesperrt“ im Log, nicht die reine Flugzeit.":
+        "Duración del registro = tiempo desde «motor armado» hasta «motor bloqueado» en el registro, no el tiempo de vuelo puro.",
+    "{dur}  (Flug {no}, {date})":
+        "{dur}  (vuelo {no}, {date})",
+    "Flüge je Monat":
+        "Vuelos por mes",
+    "Nur Monate mit Flügen.":
+        "Solo meses con vuelos.",
+    "Log-Dauer je Monat [h:min:s]":
+        "Duración del registro por mes [h:min:s]",
+    "Summe der Log-Dauer (Motor scharf bis gesperrt).":
+        "Suma de las duraciones de registro (motor armado a bloqueado).",
 }

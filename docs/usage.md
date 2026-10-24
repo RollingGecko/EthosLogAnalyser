@@ -74,6 +74,7 @@ The language applies to the whole user interface, the text reports, the charts a
 | Radio & onboard power (Funk & Bordnetz) | RSSI, VFR, receiver battery, receiver current and its spikes, transmitter battery |
 | Single flight (Einzelflug) | time series in four views, detail report compared with the median of all flights |
 | Table (Tabelle) | all metrics per flight |
+| Logbook (Logbuch) | flights, flying days, total log duration, longest/shortest flight, total drawn charge; tables and bar charts per year and month; sortable list of flights |
 
 ### Working with charts
 
@@ -95,6 +96,17 @@ The same functions are available in every chart (built in one place, `plots/hove
 - **Battery voltage per cell**: the battery voltage (measured and estimated resting voltage) is shown as mean cell voltage, total voltage / cell count, with the limit under load and the minimum resting voltage of the selected cell chemistry. The cell count is the one of the analysis (*Cell count* setting, or detected from the start voltage). If it is unknown, the chart shows the total voltage and says so. The receiver voltage is not converted.
 - **Attitude view** (Fluglage): roll angle with the aileron stick, pitch angle with the elevator stick (angle on the left axis in °, stick on the right axis in %, both centred on zero), throttle with the rudder stick, g-load and altitude. Stick values are the Ethos channel values QR, HR, SR scaled to ±100 % (±1024 = full deflection); throttle is 0–100 %. Channels that are missing in the log or not moved are left out and listed in a note.
 - The line above the charts shows all values at the time under the cursor; a vertical line marks that time in all charts.
+
+### Logbook
+
+The tab *Logbook* (Logbuch), the last tab, gives an overview of your flying. It covers the same flights as all other tabs: the selected model (see *Several aircraft in one folder*) within the period filter. From top to bottom:
+
+1. **Scope line**: model and period (“all flights” without a period filter). If some flights have no date or no log duration, a line below says how many; they are left out of all totals.
+2. **Totals**: number of flights with first and last date, flying days (different calendar days with at least one flight), total log duration, longest and shortest flight (with flight number and date) and the total drawn charge in Ah and mAh.
+3. **Per year** and **per month** tables (flights, log duration, flying days, drawn mAh) and two bar charts: flights per month and log duration per month (only months with flights). The charts have the usual tooltip, double-click to enlarge and *Enlarge whole page*.
+4. **Flights**: flight number, date, time, log duration and drawn mAh. A click on a column heading sorts by that column, a second click reverses the order (▲/▼); empty values stay at the end.
+
+**Log duration** is the time from *motor armed* to *motor disarmed* in the log (column `dauer_s`), not the pure airborne time. The **drawn charge** follows the same rule as *Total drawn* in the summary: flights whose battery values are invalid (measurement errors) are not counted; the line says how many were left out. The totals are computed in `analysis/logbook.py` from the flight table.
 
 ## Export
 
