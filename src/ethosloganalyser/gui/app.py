@@ -8,6 +8,7 @@ and tab are kept, so the logs do not have to be analysed again.
 
 import os
 import numpy as np
+import pandas as pd
 
 from ..analysis.evaluate import FLAG_LABELS
 from ..buildinfo import about_lines, window_title
@@ -16,10 +17,12 @@ from ..analysis.fleet import analyse_folder, default_model, find_logs, models_in
 from ..config import (CHEM, MODEL_UNKNOWN_LABEL, SPIKE_LABELS, VOLTAGE_SOURCE_LABELS, Params, label, load_settings,
                       model_label, save_settings)
 from ..gui.style import BG, _setup_style
-from ..i18n import LANGUAGES, Msg, N_, detect_language, fmt_datetime, get_language, set_language, tr
+from ..i18n import LANGUAGES, Msg, N_, detect_language, fmt_date, fmt_datetime, get_language, set_language, tr
 from ..plots.flight import FLIGHT_VIEWS, VIEW_LABELS, draw_flight, figure_flight, fit_y
 from ..plots.overview import figure_akku, figure_antrieb, figure_belastung, figure_funk
 from ..report.text import flight_detail_lines, summary_lines
+from ..analysis.logbook import logbook
+from ..plots.logbook import figure_logbook, month_label
 from ..plots.hover import Hover
 from ..plots.single import chart_index, chart_title, single_chart
 from ..utils import _mmss, fmt_duration
@@ -77,6 +80,50 @@ def fmt_cell(key, v):
     if isinstance(v, (float, np.floating)):
         return "–" if not np.isfinite(v) else f"{v:.5g}"
     return "" if v is None else str(v)
+
+
+def sort_key(v):
+    """Sort key for a table cell: missing values (None, NaN) always last, otherwise the raw value."""
+    missing = v is None or (isinstance(v, (float, np.floating)) and not np.isfinite(v))
+    return (missing, 0 if missing else v)
+
+
+def sortable_tree(tree, cols):
+    """Makes a ttk.Treeview sortable: a click on a column heading sorts by it, a second click reverses.
+
+    cols: [(key, heading, width)]. Rows are given as (raw values, shown texts) through the returned
+    set_rows(rows); sorting uses the raw values (numbers, dates), so "10" sorts after "9". The heading of the
+    sorted column shows ▲/▼. Returns {"set_rows", "sort", "state"} (also used by tests).
+    """
+    st = {"rows": [], "col": None, "desc": False}
+    heads = {key: head for key, head, _w in cols}
+    keys = [key for key, _h, _w in cols]
+
+    def fill():
+        tree.delete(*tree.get_children())
+        rows = st["rows"]
+        if st["col"] is not None:
+            i = keys.index(st["col"])
+            ok = [r for r in rows if not sort_key(r[0][i])[0]]
+            missing = [r for r in rows if sort_key(r[0][i])[0]]
+            rows = sorted(ok, key=lambda r: r[0][i], reverse=st["desc"]) + missing
+        for _raw, shown in rows:
+            tree.insert("", "end", values=shown)
+        for key in keys:
+            mark = (" ▼" if st["desc"] else " ▲") if key == st["col"] else ""
+            tree.heading(key, text=heads[key] + mark, command=lambda k=key: sort(k))
+
+    def sort(key):
+        st["desc"] = (not st["desc"]) if key == st["col"] else False
+        st["col"] = key
+        fill()
+
+    def set_rows(rows):
+        st["rows"] = list(rows)
+        fill()
+
+    fill()
+    return {"set_rows": set_rows, "sort": sort, "state": st}
 
 
 def export_table(df):
@@ -255,7 +302,8 @@ def run_gui():
         page_canvases = {}
         for key, title in [("settings", tr("Daten & Einstellungen")), ("summary", tr("Zusammenfassung")),
                            ("akku", tr("Akku")), ("belastung", tr("Belastung & Flugprofil")), ("antrieb", tr("Antrieb")),
-                           ("funk", tr("Funk & Bordnetz")), ("flight", tr("Einzelflug")), ("table", tr("Tabelle"))]:
+                           ("funk", tr("Funk & Bordnetz")), ("flight", tr("Einzelflug")), ("table", tr("Tabelle")),
+                           ("logbook", tr("Logbuch"))]:
             fr = ttk.Frame(nb)
             nb.add(fr, text=title)
             tabs[key] = fr
@@ -505,6 +553,120 @@ def run_gui():
         ysb.pack(side="right", fill="y")
         xsb.pack(side="bottom", fill="x")
         tree.pack(fill="both", expand=True)
+
+        # ---------------- tab: logbook ----------------
+        # from top to bottom: scope (model, period), totals, tables per year and month with a bar chart,
+        # list of all flights (sortable by a click on a column heading)
+        lb_tab = ttk.Frame(tabs["logbook"], padding=(10, 8))
+        lb_tab.pack(fill="both", expand=True)
+        lb_scope = tk.StringVar()
+        lb_missing = tk.StringVar()
+        ttk.Label(lb_tab, textvariable=lb_scope, font=(fam, 10, "bold")).pack(anchor="w")
+        ttk.Label(lb_tab, textvariable=lb_missing, foreground="#b36b00").pack(anchor="w")
+        lf = ttk.LabelFrame(lb_tab, text=tr("Summen"), padding=(10, 4))
+        lf.pack(fill="x", pady=(4, 6))
+        lb_totals = {}
+        for k, (key, text) in enumerate([
+                ("flights", tr("Flüge")), ("days", tr("Flugtage")), ("total", tr("Log-Dauer gesamt")),
+                ("longest", tr("Längster Flug (Log-Dauer)")), ("shortest", tr("Kürzester Flug (Log-Dauer)")),
+                ("mah", tr("Entnommen gesamt"))]):
+            ttk.Label(lf, text=text + ":").grid(row=k // 3, column=2 * (k % 3), sticky="w", padx=(0, 6), pady=2)
+            lb_totals[key] = tk.StringVar(value="–")
+            ttk.Label(lf, textvariable=lb_totals[key], font=(fam, 10, "bold")).grid(
+                row=k // 3, column=2 * (k % 3) + 1, sticky="w", padx=(0, 30), pady=2)
+        ttk.Label(lf, text=tr("Log-Dauer = Zeit von „Motor scharf“ bis „Motor gesperrt“ im Log, nicht die reine "
+                              "Flugzeit."), foreground="#666").grid(row=2, column=0, columnspan=6, sticky="w",
+                                                                   pady=(2, 0))
+
+        mid = ttk.Frame(lb_tab)
+        mid.pack(fill="x")
+
+        def period_tree(parent, first, height):
+            heads = [first, ("Fluege", tr("Flüge"), 50), ("dauer_s", tr("Log-Dauer"), 75),
+                     ("Flugtage", tr("Flugtage"), 60), ("entnommen_mAh", tr("entnommen mAh"), 100)]
+            t_ = ttk.Treeview(parent, columns=[c for c, _h, _w in heads], show="headings", height=height)
+            for key, head, w in heads:
+                t_.heading(key, text=head)
+                t_.column(key, width=w, anchor="center", stretch=False)
+            return t_
+
+        lf = ttk.LabelFrame(mid, text=tr("Je Jahr"), padding=4)
+        lf.pack(side="left", fill="y", padx=(0, 6))
+        lb_year = period_tree(lf, ("Jahr", tr("Jahr"), 55), 9)
+        lb_year.pack(fill="y", expand=True)
+        lf = ttk.LabelFrame(mid, text=tr("Je Monat"), padding=4)
+        lf.pack(side="left", fill="y", padx=(0, 6))
+        lb_month = period_tree(lf, ("Monat", tr("Monat"), 70), 9)
+        ysb = ttk.Scrollbar(lf, orient="vertical", command=lb_month.yview)
+        lb_month.configure(yscrollcommand=ysb.set)
+        ysb.pack(side="right", fill="y")
+        lb_month.pack(fill="y", expand=True)
+        lb_chart = ttk.Frame(mid, height=300)
+        lb_chart.pack(side="left", fill="both", expand=True)
+        lb_chart.pack_propagate(False)
+
+        lf = ttk.LabelFrame(lb_tab, text=tr("Flüge (Klick auf eine Spaltenüberschrift sortiert)"), padding=4)
+        lf.pack(fill="both", expand=True, pady=(6, 0))
+        lb_cols = [("Flug", tr("Flug"), 60), ("datum", tr("Datum"), 100), ("zeit", tr("Uhrzeit"), 80),
+                   ("dauer_s", tr("Log-Dauer"), 90), ("entnommen_mAh", tr("entnommen mAh"), 110)]
+        lb_list = ttk.Treeview(lf, columns=[c for c, _h, _w in lb_cols], show="headings")
+        for key, _head, w in lb_cols:
+            lb_list.column(key, width=w, anchor="center", stretch=False)
+        lb_sort = sortable_tree(lb_list, lb_cols)
+        ysb = ttk.Scrollbar(lf, orient="vertical", command=lb_list.yview)
+        lb_list.configure(yscrollcommand=ysb.set)
+        ysb.pack(side="right", fill="y")
+        lb_list.pack(fill="both", expand=True)
+        lb_state = {"book": None}
+
+        def show_logbook():
+            """Fills the logbook tab from the flight table of the current analysis (one model, period filter)."""
+            res, p = state["res"], state["p"]
+            lb = logbook(res.df)
+            lb_state["book"] = lb
+            period = tr("alle Flüge")
+            if p.date_from or p.date_to:
+                period = "{} – {}".format(fmt_date(parse_date(p.date_from)) if p.date_from else "…",
+                                          fmt_date(parse_date(p.date_to)) if p.date_to else "…")
+            lb_scope.set(tr("Modell {model}  ·  Zeitraum: {period}", model=model_label(res.meta.get("model")),
+                            period=period))
+            lb_missing.set(tr("{n} Flüge ohne Datum oder Log-Dauer – in den Summen nicht enthalten.",
+                              n=lb.n_missing) if lb.n_missing else "")
+            T = lb_totals
+            for v in T.values():
+                v.set("–")
+            T["flights"].set(str(lb.n_counted))
+            if lb.n_counted:
+                T["flights"].set(tr("{n}  ({first} – {last})", n=lb.n_counted, first=fmt_date(lb.first),
+                                    last=fmt_date(lb.last)))
+                T["days"].set(str(lb.flight_days))
+                T["total"].set(fmt_duration(lb.total_s))
+                for key in ("longest", "shortest"):
+                    r = getattr(lb, key)
+                    T[key].set(tr("{dur}  (Flug {no}, {date})", dur=fmt_duration(r["dauer_s"]), no=r["Flug"],
+                                  date=fmt_date(r["datum"])))
+                mah = tr("{ah:.1f} Ah ({mah:.0f} mAh)", ah=lb.mah_total / 1000, mah=lb.mah_total)
+                if lb.n_mah < lb.n_counted:
+                    mah += tr("  – ohne {n} Flüge mit ungültigen Akkuwerten", n=lb.n_counted - lb.n_mah)
+                T["mah"].set(mah)
+            mah_txt = lambda v: "–" if not np.isfinite(v) else f"{v:.0f}"
+            for t_, table, first in ((lb_year, lb.per_year, lambda k: str(k)),
+                                     (lb_month, lb.per_month, lambda k: month_label(int(k[0]), int(k[1])))):
+                t_.delete(*t_.get_children())
+                for k, r in table.iterrows():
+                    t_.insert("", "end", values=(first(k), int(r["Fluege"]), fmt_duration(r["dauer_s"]),
+                                                 int(r["Flugtage"]), mah_txt(float(r["entnommen_mAh"]))))
+            rows = []
+            for _, r in lb.flights.iterrows():
+                d = r["datum"]
+                has_d = not pd.isna(d)
+                rows.append(((int(r["Flug"]), d if has_d else None, d.strftime("%H:%M:%S") if has_d else None,
+                              float(r["dauer_s"]), float(r["entnommen_mAh"])),
+                             (int(r["Flug"]), fmt_date(d) if has_d else "–", f"{d:%H:%M}" if has_d else "–",
+                              fmt_duration(r["dauer_s"]), mah_txt(float(r["entnommen_mAh"])))))
+            lb_sort["set_rows"](rows)
+            show_fig(lb_chart, figure_logbook(lb), builder=lambda: figure_logbook(lb_state["book"]),
+                     title=tab_titles["logbook"])
 
         # ---------------- functions ----------------
         def choose():
@@ -898,6 +1060,7 @@ def run_gui():
             for nme, msg in res.skipped:
                 skip_tree.insert("", "end", values=(nme, str(msg)))
             fill_text(txt, summary_with_hint())
+            show_logbook()
             tree.delete(*tree.get_children())
             for _, r in df.iterrows():
                 tree.insert("", "end", values=[fmt_cell(k, r[k]) for k in cols])
@@ -982,6 +1145,9 @@ def run_gui():
             nb.select(tabs["settings"])
         # for tests
         root._akku = dict(fbox=flight_box, run=run, model_box=model_box, model_bar=selbar, use_model=use_model, folder_var=folder_var,
+                          lb_totals=lb_totals, lb_scope=lb_scope, lb_missing=lb_missing, lb_year=lb_year,
+                          lb_month=lb_month, lb_list=lb_list, lb_sort=lb_sort, lb_state=lb_state,
+                          lb_canvas=lambda: page_canvases.get(str(lb_chart)),
                           battery_hint=battery_hint, chem_box=chem_box, state=state, params=V, status=status, nb=nb, tabs=tabs,
                           flight_var=flight_var, view_var=view_var, select_flight=select_flight, redraw=redraw_flight,
                           set_xlim=set_xlim, goto_spike=goto_spike, spike_var=spike_var, lang_var=lang_var,

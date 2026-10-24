@@ -65,6 +65,7 @@ def test_gui_analyses_example_logs(monkeypatch, tmp_path):
         root.update()
         _check_fullscreen(root)
         _check_whole_page_double_click(root)
+        _check_logbook(root)
         _check_language_switch(root, settings)
         _check_period_filter(root, errors)
         _check_two_models(root, errors, settings, tmp_path)
@@ -193,6 +194,31 @@ def _check_battery_hint(root, settings):
     assert h["state"]["battery_unset"]
     h["params"]["nominal_mah"].set("0")
     assert h["state"]["battery_unset"]
+
+
+def _check_logbook(root):
+    """Logbook tab: scope line, totals, tables per year/month, sortable flight list and the chart page."""
+    h = root._akku
+    nb, tabs = h["nb"], h["tabs"]
+    assert nb.index(tabs["logbook"]) == nb.index("end") - 1             # last tab, after the analysis tabs
+    nb.select(tabs["logbook"])
+    root.update()
+    assert h["lb_scope"].get().startswith("Modell Viper-Jet  ·  Zeitraum: alle Flüge")
+    assert h["lb_totals"]["flights"].get().startswith("3  (")
+    assert h["lb_missing"].get() == ""
+    years = [h["lb_year"].item(i)["values"] for i in h["lb_year"].get_children()]
+    assert len(years) == 1 and years[0][1] == 3
+    lst = h["lb_list"]
+    first_col = lambda: [lst.item(i)["values"][0] for i in lst.get_children()]
+    assert first_col() == [1, 2, 3]
+    h["lb_sort"]["sort"]("dauer_s")                                   # shortest first
+    durations = [h["lb_state"]["book"].flights.set_index("Flug").loc[no, "dauer_s"] for no in first_col()]
+    assert durations == sorted(durations)
+    h["lb_sort"]["sort"]("dauer_s")                                   # second click: longest first
+    assert first_col()[0] == h["lb_state"]["book"].longest["Flug"]
+    assert lst.heading("dauer_s")["text"].endswith("▼")
+    canvas = h["lb_canvas"]()
+    assert canvas is not None and len(canvas.figure.axes) == 2
 
 
 def _check_fullscreen(root):

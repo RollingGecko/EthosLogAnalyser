@@ -735,4 +735,56 @@ CATALOG = {
         "Battery settings missing for this model",
     "{status}  ·  {hint}":
         "{status}  ·  {hint}",
+    "Logbuch":
+        "Logbook",
+    "Summen":
+        "Totals",
+    "Je Jahr":
+        "Per year",
+    "Jahr":
+        "Year",
+    "Je Monat":
+        "Per month",
+    "Monat":
+        "Month",
+    "Flüge (Klick auf eine Spaltenüberschrift sortiert)":
+        "Flights (click a column heading to sort)",
+    "Uhrzeit":
+        "Time",
+    "Log-Dauer":
+        "Log duration",
+    "Modell {model}  ·  Zeitraum: {period}":
+        "Model {model}  ·  Period: {period}",
+    "{ah:.1f} Ah ({mah:.0f} mAh)":
+        "{ah:.1f} Ah ({mah:.0f} mAh)",
+    "Flüge":
+        "Flights",
+    "Flugtage":
+        "Flying days",
+    "Log-Dauer gesamt":
+        "Total log duration",
+    "Längster Flug (Log-Dauer)":
+        "Longest flight (log duration)",
+    "Kürzester Flug (Log-Dauer)":
+        "Shortest flight (log duration)",
+    "Entnommen gesamt":
+        "Total drawn",
+    "{n} Flüge ohne Datum oder Log-Dauer – in den Summen nicht enthalten.":
+        "{n} flights without date or log duration – not included in the totals.",
+    "{n}  ({first} – {last})":
+        "{n}  ({first} – {last})",
+    "  – ohne {n} Flüge mit ungültigen Akkuwerten":
+        "  – without {n} flights with invalid battery values",
+    "Log-Dauer = Zeit von „Motor scharf“ bis „Motor gesperrt“ im Log, nicht die reine Flugzeit.":
+        "Log duration = time from “motor armed” to “motor disarmed” in the log, not the pure flight time.",
+    "{dur}  (Flug {no}, {date})":
+        "{dur}  (flight {no}, {date})",
+    "Flüge je Monat":
+        "Flights per month",
+    "Nur Monate mit Flügen.":
+        "Only months with flights.",
+    "Log-Dauer je Monat [h:min:s]":
+        "Log duration per month [h:min:s]",
+    "Summe der Log-Dauer (Motor scharf bis gesperrt).":
+        "Sum of the log durations (motor armed to disarmed).",
 }
