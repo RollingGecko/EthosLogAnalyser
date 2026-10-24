@@ -68,10 +68,6 @@ CATALOG = {
     "später ›": "later ›",
     "Stromspitze:": "Current spike:",
     "keine Spitzen": "no spikes",
-    "Maus über das Diagramm bewegen: Werte zum Zeitpunkt.   Mausrad: zoomen  ·  Ziehen mit linker Maustaste: "
-    "verschieben  ·  Doppelklick: ganzer Flug":
-        "Move the mouse over the chart: values at that time.   Mouse wheel: zoom  ·  Drag with left mouse button: "
-        "pan  ·  Double-click: whole flight",
 
     # ---------------- messages ----------------
     "Werte aus …": "Analysing …",
@@ -100,7 +96,6 @@ CATALOG = {
     "nur Nullwerte in {cv}/{ci} (Bodenlog ohne Akku-Telemetrie)": "only zero values in {cv}/{ci} (ground log without battery telemetry)",
     "zu wenige Datenpunkte": "too few data points",
     "kein Motorstrom erkannt": "no motor current detected",
-    "zu kurz ({dur:.0f} s < {min:.0f} s)": "too short ({dur:.0f} s < {min:.0f} s)",
 
     # ---------------- labels: spike causes, signals, sticks, sources ----------------
     "Schalter": "Switch",
@@ -292,8 +287,6 @@ CATALOG = {
     "BELASTUNG UND FLUGPROFIL": "LOAD AND FLIGHT PROFILE",
     "C-Rate Spitze {value}": "Peak C-rate {value}",
     "Spitzenleistung {value}": "Peak power {value}",
-    "Mittlere Leistung {value}, {t80:.0f} s über 80 % des Spitzenstroms, mittleres Gas {gas} %":
-        "Mean power {value}, {t80:.0f} s above 80 % of the peak current, mean throttle {gas} %",
     "Energie nach Phase: Steigflug {up:.0f} Wh ({pct:.0f} %), Reise {cr:.0f} Wh, Sinkflug {dn:.0f} Wh":
         "Energy by phase: climb {up:.0f} Wh ({pct:.0f} %), cruise {cr:.0f} Wh, descent {dn:.0f} Wh",
     "Max. Höhe {value}": "Max. altitude {value}",
@@ -317,10 +310,6 @@ CATALOG = {
     "Zusammenhang mit dem Empfängerstrom: {values}": "Relation to the receiver current: {values}",
     "EMPFÄNGERSTROM-SPITZEN ({n})": "RECEIVER CURRENT SPIKES ({n})",
     "Keine Spitzen über der Schwelle.": "No spikes above the threshold.",
-    "  t = {t:6.1f} s  {peak:.2f} A, {dur:.1f} s  →  {why}:  Knüppel {stick} %/s, Drehrate {rate} °/s, {g} g, "
-    "Gas {gas} %, Höhe {alt} m":
-        "  t = {t:6.1f} s  {peak:.2f} A, {dur:.1f} s  →  {why}:  stick {stick} %/s, rotation rate {rate} °/s, {g} g, "
-        "throttle {gas} %, altitude {alt} m",
     "Kein Empfängerstrom im Log.": "No receiver current in the log.",
     "SCHALTERBETÄTIGUNGEN ({n})": "SWITCH OPERATIONS ({n})",
 
@@ -386,7 +375,6 @@ CATALOG = {
     "95. Perzentil": "95th percentile",
     "Flugzeit": "Flight time",
     "Timer für {reserve:.0f} % Rest": "Timer for {reserve:.0f} % remaining",
-    "Flugzeit und Timer-Empfehlung [s]": "Flight time and timer recommendation [s]",
     "Balken über dem roten Punkt: länger geflogen als für die Reserve empfohlen.":
         "Bar above the red dot: flown longer than recommended for the reserve.",
 
@@ -440,7 +428,6 @@ CATALOG = {
     "Ri {ri:.2f} mΩ/Zelle": "Ri {ri:.2f} mΩ/cell",
     "Flug {no} – {date} – {dur} – {drawn:.0f} mAh – {ri}": "Flight {no} – {date} – {dur} – {drawn:.0f} mAh – {ri}",
     "Für diese Ansicht sind keine Daten im Log.": "The log contains no data for this view.",
-    "Zeit seit Motorstart [s]": "Time since motor start [s]",
     " Timer-Empfehlung": " timer recommendation",
     "entnommen": "drawn",
     "Leistung": "Power",
@@ -483,7 +470,6 @@ CATALOG = {
 
     # ---------------- table headings ----------------
     "Datum": "Date",
-    "Dauer s": "Duration s",
     "entnommen mAh": "drawn mAh",
     "ESC mAh": "ESC mAh",
     "Abw. %": "Dev. %",
@@ -505,7 +491,6 @@ CATALOG = {
     "U Ende V/Z": "V end V/c",
     "U Ende Quelle": "V end source",
     "Reserve V/Z": "Reserve V/c",
-    "Timer s": "Timer s",
     "rpm P90": "rpm P90",
     "P Ref W": "P ref W",
     "Höhe max": "Alt. max",
@@ -661,4 +646,36 @@ CATALOG = {
         "Source code, releases and documentation: github.com/RollingGecko/EthosLogAnalyser",
     "Über":
         "About",
+    "  t = {t}  {peak:.2f} A, {dur:.1f} s  →  {why}:  Knüppel {stick} %/s, Drehrate {rate} °/s, {g} g, Gas {gas} %, Höhe {alt} m":
+        "  t = {t}  {peak:.2f} A, {dur:.1f} s  →  {why}:  stick {stick} %/s, rotation rate {rate} °/s, {g} g, throttle {gas} %, altitude {alt} m",
+    "Mittlere Leistung {value}, {t80} über 80 % des Spitzenstroms, mittleres Gas {gas} %":
+        "Mean power {value}, {t80} above 80 % of the peak current, mean throttle {gas} %",
+    "zu kurz ({dur} < {min})":
+        "too short ({dur} < {min})",
+    "Zeit seit Motorstart [min:s]":
+        "Time since motor start [min:s]",
+    "Flugzeit und Timer-Empfehlung [min:s]":
+        "Flight time and timer recommendation [min:s]",
+    "Dauer min:s":
+        "Duration min:s",
+    "Timer min:s":
+        "Timer min:s",
+    "Flug {no} – {date}":
+        "Flight {no} – {date}",
+    "Flug {no}":
+        "Flight {no}",
+    "Schließen (Esc)":
+        "Close (Esc)",
+    "{title} – Vollbild (Esc schließt)":
+        "{title} – full screen (Esc closes)",
+    "Maus über einen Datenpunkt: Wert.  Werkzeugleiste unten: zoomen, verschieben, speichern.":
+        "Mouse over a data point: its value.  Toolbar below: zoom, pan, save.",
+    "Maus über das Diagramm bewegen: Werte zum Zeitpunkt.   Mausrad: zoomen  ·  Ziehen mit linker Maustaste: verschieben  ·  Doppelklick oder Rechtsklick: Diagramm vergrößern":
+        "Move the mouse over the chart: values at that time.   Mouse wheel: zoom  ·  drag with the left mouse button: pan  ·  double-click or right-click: enlarge the chart",
+    "Ganze Seite vergrößern":
+        "Enlarge whole page",
+    "Dieses Diagramm vergrößern":
+        "Enlarge this chart",
+    "Doppelklick oder Rechtsklick auf ein Diagramm: allein vergrößern":
+        "Double-click or right-click a chart to enlarge it on its own",
 }

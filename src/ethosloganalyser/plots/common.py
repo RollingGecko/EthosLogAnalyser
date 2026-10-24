@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from ..i18n import tr
+from ..i18n import fmt_datetime, tr
 from ..utils import _trend
 
 
@@ -41,8 +41,10 @@ def _note(ax, text):
     if text:
         import textwrap
         lines = textwrap.wrap(text.strip(), NOTE_WIDTH) or [""]
-        ax.text(0, 1.012, "\n".join(lines), transform=ax.transAxes, fontsize=7.5, color="#555555", va="bottom",
-                ha="left")
+        # fixed offset in points (not a fraction of the axes height): the note keeps its place below the title
+        # also when the chart is enlarged on its own (plots/single.py)
+        ax.annotate("\n".join(lines), xy=(0, 1), xycoords="axes fraction", xytext=(0, 2.5), textcoords="offset points",
+                    fontsize=7.5, color="#555555", va="bottom", ha="left")
         ax.set_title(ax.get_title(loc="left"), loc="left", pad=14 + 10 * (len(lines) - 1))
 
 
@@ -81,6 +83,7 @@ def _plot_trend(ax, df, col, color, title, flags=None, flag_label=None, hlines=(
     x = df["Flug"].to_numpy(dtype=float)
     y = df[col].to_numpy(dtype=float)
     good = np.isfinite(y)
+    flight_hover(ax, df)
     if not good.any():
         ax.text(0.5, 0.5, tr("keine Daten"), transform=ax.transAxes, ha="center", va="center", color="grey")
     else:
@@ -111,3 +114,65 @@ def flag_note():
 
 def trend_note():
     return tr(" Linie gestrichelt: kein gesicherter Trend (Mittelwert).")
+
+
+# ---------------------------------------------------------------- time axes and hover metadata
+
+TIME_STEPS = (1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 18000, 36000)
+
+
+def time_ticks(lo, hi, max_ticks=11):
+    """Tick positions [s] on round time steps (1 s ... 10 h) with at most max_ticks ticks in [lo, hi]."""
+    if not (np.isfinite(lo) and np.isfinite(hi)) or hi <= lo:
+        return np.array([])
+    span = hi - lo
+    step = next((st for st in TIME_STEPS if span / st <= max_ticks - 1), TIME_STEPS[-1] * np.ceil(span / TIME_STEPS[-1] / 8))
+    first = np.ceil(lo / step) * step
+    return np.arange(first, hi + step * 1e-9, step)
+
+
+def time_axis(ax, which="x"):
+    """Formats an axis that holds seconds as min:s / h:min:s with ticks on round times (see utils.fmt_duration)."""
+    from matplotlib.ticker import FuncFormatter, Locator
+    from ..utils import fmt_duration
+
+    class TimeLocator(Locator):
+        def __call__(self):
+            lo, hi = self.axis.get_view_interval()
+            return self.tick_values(lo, hi)
+
+        def tick_values(self, vmin, vmax):
+            return time_ticks(min(vmin, vmax), max(vmin, vmax))
+
+    axis = ax.xaxis if which == "x" else ax.yaxis
+    axis.set_major_locator(TimeLocator())
+    axis.set_major_formatter(FuncFormatter(lambda v, _pos: fmt_duration(v)))
+    if which == "x":
+        hover_info(ax, x=lambda v: "t = " + fmt_duration(v))
+    else:
+        hover_info(ax, y=lambda v: fmt_duration(v, unit=True))
+
+
+def hover_info(ax, x=None, y=None, name=None):
+    """Tells the mouse-over tooltip (plots/hover.py) how to show the values of this chart.
+
+    x, y: functions value -> text (e.g. flight number -> "Flight 12 – 19/04/2026", seconds -> "8:58");
+    name: series name if the artists have no label. Unset parts are shown with the axis unit.
+    """
+    info = getattr(ax, "_hover", {})
+    info.update({k: v for k, v in (("x", x), ("y", y), ("name", name)) if v is not None})
+    ax._hover = info
+
+
+def flight_hover(ax, df):
+    """Tooltip x value of charts over the flight number: "Flight 12 – 19/04/2026 12:05"."""
+    if df is None or "Flug" not in df or "datum" not in df:
+        return
+    dates = dict(zip(df["Flug"].astype(int), df["datum"]))
+
+    def fmt(v):
+        no = int(round(v))
+        if no in dates:
+            return tr("Flug {no} – {date}", no=no, date=fmt_datetime(dates[no]))
+        return tr("Flug {no}", no=no)
+    hover_info(ax, x=fmt)

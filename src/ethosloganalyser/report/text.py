@@ -14,7 +14,7 @@ from ..config import (CAP_SOURCE_LABELS, CHEM, CORR_LABELS, SOC_TOL_PCT, SPIKE_C
                       VOLTAGE_SOURCE_LABELS, label)
 from ..i18n import N_, fmt_date, fmt_datetime, tr
 from ..analysis.fleet import MIN_DEPTH_PCT, parse_date
-from ..utils import _f, _mmss, _ranges, _window_change
+from ..utils import _f, _mmss, _ranges, _window_change, fmt_duration
 
 
 def soc_lines(r, meta):
@@ -464,8 +464,8 @@ def flight_detail_lines(res, p, path):
     if np.isfinite(r["C_peak"]):
         line = tr("C-Rate Spitze {value}", value=cmp("C_peak", "{:.1f}", " C")) + ", " + line
     L.append(("info", line))
-    L.append(("info", tr("Mittlere Leistung {value}, {t80:.0f} s über 80 % des Spitzenstroms, mittleres Gas {gas} %",
-                         value=cmp("P_mittel_W", unit=" W"), t80=r["Zeit_80_s"], gas=_f(r["Gas_mittel_pct"]))))
+    L.append(("info", tr("Mittlere Leistung {value}, {t80} über 80 % des Spitzenstroms, mittleres Gas {gas} %",
+                         value=cmp("P_mittel_W", unit=" W"), t80=_mmss(r["Zeit_80_s"]), gas=_f(r["Gas_mittel_pct"]))))
     if np.isfinite(r["E_steig_Wh"]):
         tot = r["E_steig_Wh"] + r["E_reise_Wh"] + r["E_sink_Wh"]
         L.append(("info", tr("Energie nach Phase: Steigflug {up:.0f} Wh ({pct:.0f} %), Reise {cr:.0f} Wh, "
@@ -518,15 +518,15 @@ def flight_detail_lines(res, p, path):
         for sp in rx["spikes"]:
             tag = "warn" if sp["anlass"] == "no_cause" else "info"
             why = label(SPIKE_LABELS, sp["anlass"]) + (f" ({sp['schalter']})" if sp["schalter"] else "")
-            L.append((tag, tr("  t = {t:6.1f} s  {peak:.2f} A, {dur:.1f} s  →  {why}:  Knüppel {stick} %/s, "
+            L.append((tag, tr("  t = {t}  {peak:.2f} A, {dur:.1f} s  →  {why}:  Knüppel {stick} %/s, "
                               "Drehrate {rate} °/s, {g} g, Gas {gas} %, Höhe {alt} m",
-                              t=sp["t"], peak=sp["peak"], dur=sp["dauer"], why=why, stick=_f(sp["stick"]),
+                              t=fmt_duration(sp["t"]), peak=sp["peak"], dur=sp["dauer"], why=why, stick=_f(sp["stick"]),
                               rate=_f(sp["rate"]), g=_f(sp["g"], "{:.1f}"), gas=_f(sp["gas"]), alt=_f(sp["alt"]))))
     else:
         L.append(("info", tr("Kein Empfängerstrom im Log.")))
     sw = s.get("switches") or []
     if sw:
         L.append(("h", tr("SCHALTERBETÄTIGUNGEN ({n})", n=len(sw))))
-        txt = "; ".join(f"{t_:.0f} s {name} {a:+.0f}→{b:+.0f}" for t_, name, a, b in sw[:40])
+        txt = "; ".join(f"{fmt_duration(t_)} {name} {a:+.0f}→{b:+.0f}" for t_, name, a, b in sw[:40])
         L.append(("info", txt + (" …" if len(sw) > 40 else "")))
     return L

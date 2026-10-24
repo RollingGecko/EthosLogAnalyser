@@ -72,7 +72,7 @@ def test_tr_translates_and_falls_back_to_german():
     assert tr("Zusammenfassung") == "Zusammenfassung"
     i18n.set_language("en")
     assert tr("Zusammenfassung") == "Summary"
-    assert tr("zu kurz ({dur:.0f} s < {min:.0f} s)", dur=12.3, min=120) == "too short (12 s < 120 s)"
+    assert tr("zu kurz ({dur} < {min})", dur="0:12 min", min="2:00 min") == "too short (0:12 min < 2:00 min)"
     assert tr("Text, den es im Katalog nicht gibt") == "Text, den es im Katalog nicht gibt"
     i18n.set_language("es")
     assert tr("Zusammenfassung") == "Resumen"

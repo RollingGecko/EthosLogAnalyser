@@ -64,13 +64,25 @@ The language applies to the whole user interface, the text reports, the charts a
 | Single flight (Einzelflug) | time series in four views, detail report compared with the median of all flights |
 | Table (Tabelle) | all metrics per flight |
 
+### Working with charts
+
+The same functions are available in every chart (built in one place, `plots/hover.py`, `plots/common.py` and `gui/app.py`, so new charts get them automatically):
+
+- **Mouse-over**: a tooltip shows the data point nearest to the pointer – series name, x value (flight number and date, or the time) and y value with its unit. In stacked bars it shows the value of the segment.
+- **Enlarge one chart**: a **double-click** into a chart, or **right-click → Enlarge this chart** (Dieses Diagramm vergrößern), opens just that chart in a window of its own that fills the screen – with its title, explanation line, axis labels, legend, helper lines (e.g. nominal capacity, 80 %), red circles, trend lines and secondary y axis. Example: in the *Load* tab, double-click *Peak C-rate per flight [C]*.
+- **Enlarge the whole page**: the button *Enlarge whole page* (Ganze Seite vergrößern) in the toolbar below the charts, or the same entry in the right-click menu, opens all charts of the tab in one full-screen window.
+- In both windows zoom, pan and save with the toolbar; the tooltip works there as well. **Esc** or *Close (Esc)* closes the window. While the toolbar's zoom or pan mode is active, double-click and right-click belong to that mode.
+- **Time format**: all times are shown as min:s (`8:58`), from one hour on as h:min:s (`1:02:05`), rounded to whole seconds – in charts, tables, the summary and the timer.
+
 ### Single-flight view
 
-- **Mouse wheel**: zoom around the cursor; **drag**: pan; **double-click**: whole flight.
+
+- **Mouse wheel**: zoom around the cursor; **drag**: pan; *Whole flight* (Ganzer Flug) resets the zoom.
+- **Double-click** (or right-click → *Enlarge this chart*) opens only the chart under the mouse full screen, with the time window shown in the tab, the min:s time axis, tooltip and vertical crosshair. *Whole flight* in that window shows the whole flight again. *Enlarge whole page* (button above the charts) opens all charts of the view.
 - Buttons for take-off/landing (60 s each), zoom and pan; all charts stay time-aligned.
 - **Current spike** (Stromspitze): jumps to a detected receiver current spike.
-- The line above the charts shows all values at the time under the cursor.
+- The line above the charts shows all values at the time under the cursor; a vertical line marks that time in all charts.
 
 ## Export
 
-Under **Data & settings → Export**: the table as CSV (semicolon separator, decimal comma – opens directly in a German or Spanish Excel) or report, table and all charts into a folder. Report texts, chart labels and file names are in the selected language.
+Under **Data & settings → Export**: the table as CSV (semicolon separator, decimal comma – opens directly in a German or Spanish Excel) or report, table and all charts into a folder. Durations stay in seconds in the CSV (columns `…_s`, e.g. `dauer_s`), each followed by the same value as min:s text (`…_mmss`, e.g. `dauer_mmss`). Report texts, chart labels and file names are in the selected language.

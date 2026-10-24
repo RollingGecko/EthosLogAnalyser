@@ -69,10 +69,6 @@ CATALOG = {
     "später ›": "después ›",
     "Stromspitze:": "Pico de corriente:",
     "keine Spitzen": "sin picos",
-    "Maus über das Diagramm bewegen: Werte zum Zeitpunkt.   Mausrad: zoomen  ·  Ziehen mit linker Maustaste: "
-    "verschieben  ·  Doppelklick: ganzer Flug":
-        "Mueva el ratón sobre el gráfico: valores en ese instante.   Rueda: zoom  ·  Arrastrar con botón izquierdo: "
-        "desplazar  ·  Doble clic: vuelo completo",
 
     # ---------------- messages ----------------
     "Werte aus …": "Analizando …",
@@ -102,7 +98,6 @@ CATALOG = {
         "solo valores cero en {cv}/{ci} (log en tierra sin telemetría de batería)",
     "zu wenige Datenpunkte": "muy pocos puntos de datos",
     "kein Motorstrom erkannt": "no se detectó corriente de motor",
-    "zu kurz ({dur:.0f} s < {min:.0f} s)": "demasiado corto ({dur:.0f} s < {min:.0f} s)",
 
     # ---------------- labels: spike causes, signals, sticks, sources ----------------
     "Schalter": "Interruptor",
@@ -304,8 +299,6 @@ CATALOG = {
     "BELASTUNG UND FLUGPROFIL": "CARGA Y PERFIL DE VUELO",
     "C-Rate Spitze {value}": "Tasa C de pico {value}",
     "Spitzenleistung {value}": "Potencia de pico {value}",
-    "Mittlere Leistung {value}, {t80:.0f} s über 80 % des Spitzenstroms, mittleres Gas {gas} %":
-        "Potencia media {value}, {t80:.0f} s por encima del 80 % de la corriente de pico, gas medio {gas} %",
     "Energie nach Phase: Steigflug {up:.0f} Wh ({pct:.0f} %), Reise {cr:.0f} Wh, Sinkflug {dn:.0f} Wh":
         "Energía por fase: ascenso {up:.0f} Wh ({pct:.0f} %), crucero {cr:.0f} Wh, descenso {dn:.0f} Wh",
     "Max. Höhe {value}": "Altura máx. {value}",
@@ -329,10 +322,6 @@ CATALOG = {
     "Zusammenhang mit dem Empfängerstrom: {values}": "Relación con la corriente del receptor: {values}",
     "EMPFÄNGERSTROM-SPITZEN ({n})": "PICOS DE CORRIENTE DEL RECEPTOR ({n})",
     "Keine Spitzen über der Schwelle.": "Ningún pico por encima del umbral.",
-    "  t = {t:6.1f} s  {peak:.2f} A, {dur:.1f} s  →  {why}:  Knüppel {stick} %/s, Drehrate {rate} °/s, {g} g, "
-    "Gas {gas} %, Höhe {alt} m":
-        "  t = {t:6.1f} s  {peak:.2f} A, {dur:.1f} s  →  {why}:  sticks {stick} %/s, velocidad de giro {rate} °/s, "
-        "{g} g, gas {gas} %, altura {alt} m",
     "Kein Empfängerstrom im Log.": "Sin corriente del receptor en el log.",
     "SCHALTERBETÄTIGUNGEN ({n})": "ACCIONAMIENTOS DE INTERRUPTORES ({n})",
 
@@ -400,7 +389,6 @@ CATALOG = {
     "95. Perzentil": "Percentil 95",
     "Flugzeit": "Tiempo de vuelo",
     "Timer für {reserve:.0f} % Rest": "Temporizador para {reserve:.0f} % restante",
-    "Flugzeit und Timer-Empfehlung [s]": "Tiempo de vuelo y recomendación de temporizador [s]",
     "Balken über dem roten Punkt: länger geflogen als für die Reserve empfohlen.":
         "Barra por encima del punto rojo: se voló más tiempo del recomendado para la reserva.",
 
@@ -454,7 +442,6 @@ CATALOG = {
     "Ri {ri:.2f} mΩ/Zelle": "Ri {ri:.2f} mΩ/celda",
     "Flug {no} – {date} – {dur} – {drawn:.0f} mAh – {ri}": "Vuelo {no} – {date} – {dur} – {drawn:.0f} mAh – {ri}",
     "Für diese Ansicht sind keine Daten im Log.": "El log no contiene datos para esta vista.",
-    "Zeit seit Motorstart [s]": "Tiempo desde el arranque del motor [s]",
     " Timer-Empfehlung": " recomendación de temporizador",
     "entnommen": "consumido",
     "Leistung": "Potencia",
@@ -497,7 +484,6 @@ CATALOG = {
 
     # ---------------- table headings ----------------
     "Datum": "Fecha",
-    "Dauer s": "Duración s",
     "entnommen mAh": "consumido mAh",
     "ESC mAh": "ESC mAh",
     "Abw. %": "Desv. %",
@@ -519,7 +505,6 @@ CATALOG = {
     "U Ende V/Z": "U final V/c",
     "U Ende Quelle": "Origen U final",
     "Reserve V/Z": "Reserva V/c",
-    "Timer s": "Temp. s",
     "rpm P90": "rpm P90",
     "P Ref W": "P ref W",
     "Höhe max": "Altura máx",
@@ -675,4 +660,36 @@ CATALOG = {
         "Código fuente, versiones y documentación: github.com/RollingGecko/EthosLogAnalyser",
     "Über":
         "Acerca de",
+    "  t = {t}  {peak:.2f} A, {dur:.1f} s  →  {why}:  Knüppel {stick} %/s, Drehrate {rate} °/s, {g} g, Gas {gas} %, Höhe {alt} m":
+        "  t = {t}  {peak:.2f} A, {dur:.1f} s  →  {why}:  sticks {stick} %/s, velocidad de giro {rate} °/s, {g} g, gas {gas} %, altura {alt} m",
+    "Mittlere Leistung {value}, {t80} über 80 % des Spitzenstroms, mittleres Gas {gas} %":
+        "Potencia media {value}, {t80} por encima del 80 % de la corriente de pico, gas medio {gas} %",
+    "zu kurz ({dur} < {min})":
+        "demasiado corto ({dur} < {min})",
+    "Zeit seit Motorstart [min:s]":
+        "Tiempo desde el arranque del motor [min:s]",
+    "Flugzeit und Timer-Empfehlung [min:s]":
+        "Tiempo de vuelo y recomendación de temporizador [min:s]",
+    "Dauer min:s":
+        "Duración min:s",
+    "Timer min:s":
+        "Temp. min:s",
+    "Flug {no} – {date}":
+        "Vuelo {no} – {date}",
+    "Flug {no}":
+        "Vuelo {no}",
+    "Schließen (Esc)":
+        "Cerrar (Esc)",
+    "{title} – Vollbild (Esc schließt)":
+        "{title} – pantalla completa (Esc cierra)",
+    "Maus über einen Datenpunkt: Wert.  Werkzeugleiste unten: zoomen, verschieben, speichern.":
+        "Ratón sobre un punto: su valor.  Barra de herramientas abajo: zoom, desplazar, guardar.",
+    "Maus über das Diagramm bewegen: Werte zum Zeitpunkt.   Mausrad: zoomen  ·  Ziehen mit linker Maustaste: verschieben  ·  Doppelklick oder Rechtsklick: Diagramm vergrößern":
+        "Mueva el ratón sobre el gráfico: valores en ese instante.   Rueda del ratón: zoom  ·  arrastrar con el botón izquierdo: desplazar  ·  doble clic o clic derecho: ampliar el gráfico",
+    "Ganze Seite vergrößern":
+        "Ampliar página completa",
+    "Dieses Diagramm vergrößern":
+        "Ampliar este gráfico",
+    "Doppelklick oder Rechtsklick auf ein Diagramm: allein vergrößern":
+        "Doble clic o clic derecho en un gráfico: ampliarlo solo",
 }
