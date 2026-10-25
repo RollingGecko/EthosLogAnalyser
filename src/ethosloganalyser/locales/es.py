@@ -765,8 +765,6 @@ CATALOG = {
         "Hora",
     "Log-Dauer":
         "Duración del registro",
-    "Modell {model}  ·  Zeitraum: {period}":
-        "Modelo {model}  ·  Periodo: {period}",
     "{ah:.1f} Ah ({mah:.0f} mAh)":
         "{ah:.1f} Ah ({mah:.0f} mAh)",
     "Flüge":
@@ -785,8 +783,6 @@ CATALOG = {
         "{n} vuelos sin fecha o duración del registro – no incluidos en los totales.",
     "{n}  ({first} – {last})":
         "{n}  ({first} – {last})",
-    "  – ohne {n} Flüge mit ungültigen Akkuwerten":
-        "  – sin {n} vuelos con valores de batería no válidos",
     "Log-Dauer = Zeit von „Motor scharf“ bis „Motor gesperrt“ im Log, nicht die reine Flugzeit.":
         "Duración del registro = tiempo desde «motor armado» hasta «motor bloqueado» en el registro, no el tiempo de vuelo puro.",
     "{dur}  (Flug {no}, {date})":
@@ -899,8 +895,6 @@ CATALOG = {
     # ---------------- areas, single flight from the database ----------------
     "Statistik":
         "Estadísticas",
-    "Dieser Flug ist nicht in der Flug-Datenbank. Bitte den Log-Ordner unter „Daten & Einstellungen“ → „Datenbank“ importieren.":
-        "Este vuelo no está en la base de datos de vuelos. Importa la carpeta de logs en «Datos y ajustes» → «Base de datos».",
     "Noch keine Flüge in der Datenbank.\n\nLogs importieren: „Daten & Einstellungen“ → Bereich „Datenbank“ → „Ordner importieren …“ oder „Dateien importieren …“.":
         "Todavía no hay vuelos en la base de datos.\n\nImportar logs: «Datos y ajustes» → sección «Base de datos» → «Importar carpeta …» o «Importar archivos …».",
     "Für diesen Flug sind keine Spannungs- und Stromdaten des Flugakkus im Log.\nDie Einzelflug-Ansichten brauchen sie bisher.":
@@ -917,4 +911,50 @@ CATALOG = {
         "‹ Libro de vuelo",
     "Flüge (Klick auf eine Spaltenüberschrift sortiert, Doppelklick öffnet den Einzelflug)":
         "Vuelos (clic en un encabezado para ordenar, doble clic abre el vuelo individual)",
+    "Flug-Datenbank  ·  {flights} Flüge, {aircraft} Flugzeuge  ·  {first} – {last}":
+        "Base de datos de vuelos  ·  {flights} vuelos, {aircraft} aeronaves  ·  {first} – {last}",
+    "Die Flug-Datenbank enthält noch keine Flüge – Logs unter „Daten & Einstellungen“ → „Datenbank“ importieren.":
+        "La base de datos aún no tiene vuelos: importe registros en «Datos y ajustes» → «Base de datos».",
+    "  ·  {n} Logs ohne Flug":
+        "  ·  {n} registros que no son vuelos",
+    "Dieser Log ist nicht als Flug gezählt. Zum Ansehen im Logbuch in der Spalte „Flug“ auf ☑ umschalten.":
+        "Este registro no cuenta como vuelo. Para verlo, cámbielo a ☑ en la columna «Vuelo» del libro de vuelos.",
+    "alle":
+        "todos",
+    "Flugzeug":
+        "Aeronave",
+    "von":
+        "desde",
+    "bis":
+        "hasta",
+    "Zurücksetzen":
+        "Restablecer",
+    "Filter:":
+        "Filtro:",
+    "Nr.":
+        "N.º",
+    "Mögliches Duplikat: gleiches Flugzeug und gleiche Startzeit wie ein anderer Flug":
+        "Posible duplicado: misma aeronave y misma hora de inicio que otro vuelo",
+    "Gruppieren nach":
+        "Agrupar por",
+    "Zeit (Jahr, Monat, Flugzeug)":
+        "Tiempo (año, mes, aeronave)",
+    "Flugzeug (Jahr, Monat)":
+        "Aeronave (año, mes)",
+    "Gruppe":
+        "Grupo",
+    "Summe":
+        "Total",
+    "{n} von {total} Flügen der Datenbank":
+        "{n} de {total} vuelos de la base de datos",
+    "  – ohne {n} Flüge ohne gültige Akkuwerte":
+        "  – sin {n} vuelos sin valores de batería válidos",
+    "Nicht-Flüge anzeigen":
+        "Mostrar registros que no son vuelos",
+    "{dur}  (Flug {no} der {aircraft}, {date})":
+        "{dur}  (vuelo {no} de {aircraft}, {date})",
+    "  ·  Filter aktiv":
+        "  ·  filtro activo",
+    "Noch keine Flüge in der Datenbank. Logs importieren: „Daten & Einstellungen“ → „Datenbank“ → „Ordner importieren …“ oder „Dateien importieren …“.":
+        "Aún no hay vuelos en la base de datos. Importe registros: «Datos y ajustes» → «Base de datos» → «Importar carpeta …» o «Importar archivos …».",
 }

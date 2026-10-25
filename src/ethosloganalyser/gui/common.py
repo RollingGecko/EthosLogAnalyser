@@ -74,8 +74,9 @@ def sortable_tree(tree, cols):
     """Makes a ttk.Treeview sortable: a click on a column heading sorts by it, a second click reverses.
 
     cols: [(key, heading, width)]. Rows are given as (raw values, shown texts) through the returned
-    set_rows(rows); sorting uses the raw values (numbers, dates), so "10" sorts after "9". The heading of the
-    sorted column shows ▲/▼. Returns {"set_rows", "sort", "state"} (also used by tests).
+    set_rows(rows), optionally followed by the tags of the row; sorting uses the raw values (numbers, dates),
+    so "10" sorts after "9". The heading of the sorted column shows ▲/▼.
+    Returns {"set_rows", "sort", "state"} (also used by tests).
     """
     st = {"rows": [], "col": None, "desc": False}
     heads = {key: head for key, head, _w in cols}
@@ -89,8 +90,8 @@ def sortable_tree(tree, cols):
             ok = [r for r in rows if not sort_key(r[0][i])[0]]
             missing = [r for r in rows if sort_key(r[0][i])[0]]
             rows = sorted(ok, key=lambda r: r[0][i], reverse=st["desc"]) + missing
-        for _raw, shown in rows:
-            tree.insert("", "end", values=shown)
+        for _raw, shown, *tags in rows:
+            tree.insert("", "end", values=shown, tags=tags[0] if tags else ())
         for key in keys:
             mark = (" ▼" if st["desc"] else " ▲") if key == st["col"] else ""
             tree.heading(key, text=heads[key] + mark, command=lambda k=key: sort(k))

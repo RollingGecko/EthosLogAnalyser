@@ -751,8 +751,6 @@ CATALOG = {
         "Time",
     "Log-Dauer":
         "Log duration",
-    "Modell {model}  ·  Zeitraum: {period}":
-        "Model {model}  ·  Period: {period}",
     "{ah:.1f} Ah ({mah:.0f} mAh)":
         "{ah:.1f} Ah ({mah:.0f} mAh)",
     "Flüge":
@@ -771,8 +769,6 @@ CATALOG = {
         "{n} flights without date or log duration – not included in the totals.",
     "{n}  ({first} – {last})":
         "{n}  ({first} – {last})",
-    "  – ohne {n} Flüge mit ungültigen Akkuwerten":
-        "  – without {n} flights with invalid battery values",
     "Log-Dauer = Zeit von „Motor scharf“ bis „Motor gesperrt“ im Log, nicht die reine Flugzeit.":
         "Log duration = time from “motor armed” to “motor disarmed” in the log, not the pure flight time.",
     "{dur}  (Flug {no}, {date})":
@@ -885,8 +881,6 @@ CATALOG = {
     # ---------------- areas, single flight from the database ----------------
     "Statistik":
         "Statistics",
-    "Dieser Flug ist nicht in der Flug-Datenbank. Bitte den Log-Ordner unter „Daten & Einstellungen“ → „Datenbank“ importieren.":
-        "This flight is not in the flight database. Please import the log folder under “Data & settings” → “Database”.",
     "Noch keine Flüge in der Datenbank.\n\nLogs importieren: „Daten & Einstellungen“ → Bereich „Datenbank“ → „Ordner importieren …“ oder „Dateien importieren …“.":
         "No flights in the database yet.\n\nImport logs: “Data & settings” → section “Database” → “Import folder …” or “Import files …”.",
     "Für diesen Flug sind keine Spannungs- und Stromdaten des Flugakkus im Log.\nDie Einzelflug-Ansichten brauchen sie bisher.":
@@ -903,4 +897,50 @@ CATALOG = {
         "‹ Logbook",
     "Flüge (Klick auf eine Spaltenüberschrift sortiert, Doppelklick öffnet den Einzelflug)":
         "Flights (click a column heading to sort, double-click opens the single flight)",
+    "Flug-Datenbank  ·  {flights} Flüge, {aircraft} Flugzeuge  ·  {first} – {last}":
+        "Flight database  ·  {flights} flights, {aircraft} aircraft  ·  {first} – {last}",
+    "Die Flug-Datenbank enthält noch keine Flüge – Logs unter „Daten & Einstellungen“ → „Datenbank“ importieren.":
+        "The flight database has no flights yet – import logs under “Data & settings” → “Database”.",
+    "  ·  {n} Logs ohne Flug":
+        "  ·  {n} logs that are not flights",
+    "Dieser Log ist nicht als Flug gezählt. Zum Ansehen im Logbuch in der Spalte „Flug“ auf ☑ umschalten.":
+        "This log is not counted as a flight. To look at it, switch it to ☑ in the “Flight” column of the logbook.",
+    "alle":
+        "all",
+    "Flugzeug":
+        "Aircraft",
+    "von":
+        "from",
+    "bis":
+        "to",
+    "Zurücksetzen":
+        "Reset",
+    "Filter:":
+        "Filter:",
+    "Nr.":
+        "No.",
+    "Mögliches Duplikat: gleiches Flugzeug und gleiche Startzeit wie ein anderer Flug":
+        "Possible duplicate: same aircraft and start time as another flight",
+    "Gruppieren nach":
+        "Group by",
+    "Zeit (Jahr, Monat, Flugzeug)":
+        "Time (year, month, aircraft)",
+    "Flugzeug (Jahr, Monat)":
+        "Aircraft (year, month)",
+    "Gruppe":
+        "Group",
+    "Summe":
+        "Total",
+    "{n} von {total} Flügen der Datenbank":
+        "{n} of {total} flights of the database",
+    "  – ohne {n} Flüge ohne gültige Akkuwerte":
+        "  – without {n} flights without valid battery values",
+    "Nicht-Flüge anzeigen":
+        "Show non-flights",
+    "{dur}  (Flug {no} der {aircraft}, {date})":
+        "{dur}  (flight {no} of {aircraft}, {date})",
+    "  ·  Filter aktiv":
+        "  ·  filter active",
+    "Noch keine Flüge in der Datenbank. Logs importieren: „Daten & Einstellungen“ → „Datenbank“ → „Ordner importieren …“ oder „Dateien importieren …“.":
+        "No flights in the database yet. Import logs: “Data & settings” → “Database” → “Import folder …” or “Import files …”.",
 }

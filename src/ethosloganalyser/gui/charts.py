@@ -148,6 +148,27 @@ class ChartManager:
             except tk.TclError:
                 win.geometry(f"{self.root.winfo_screenwidth()}x{self.root.winfo_screenheight()}+0+0")
 
+    def replace_fig(self, frame, fig):
+        """Shows another figure in the canvas already in frame (False if there is none yet).
+
+        Much faster than show_fig because the canvas and the toolbar stay; used by pages that redraw often
+        (the logbook, when the filter changes). The builder given to show_fig keeps working.
+        """
+        canvas = self.page_canvases.get(str(frame))
+        if canvas is None or not canvas.get_tk_widget().winfo_exists():
+            return False
+        widget = canvas.get_tk_widget()
+        old_figure = canvas.figure
+        canvas._hover.disconnect()
+        fig.set_dpi(old_figure.dpi)
+        fig.set_size_inches(old_figure.get_size_inches())            # the size the canvas has been resized to
+        canvas.figure = fig
+        fig.set_canvas(canvas)
+        canvas._hover = Hover(canvas)
+        canvas.draw()
+        old_figure.clear()
+        return widget.winfo_exists()
+
     def show_fig(self, frame, fig, builder=None, title=""):
         """Shows fig as the chart page in frame (replaces what was there)."""
         for widget in frame.winfo_children():

@@ -217,6 +217,11 @@ class DatabaseController:
         self.last_report = None
         self._changed()
 
+    def flights_changed(self):
+        """Tells the views that flights were changed in place (e.g. a log switched between flight and no flight)."""
+        self.generation += 1
+        self._changed()
+
     def start(self, saved, offer_import):
         """At program start: opens the last database; without one the default database is created and
         offer_import(folder) is called with the last used log folder (if any) so it can be imported."""
