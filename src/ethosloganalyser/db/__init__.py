@@ -14,6 +14,7 @@ Modules:
   reanalysis        calculating flights again after an analysis change
   signal_metrics    values from the time series of every log (receiver voltage) for the anomaly rules
   annotations       notes and anomalies of flights, acknowledgements, recalculation of the anomalies
+  flight_preparation  per-flight analysis stored for the statistics (worked out once per flight)
 """
 
 from .database import DatabaseError, DatabaseStats, FlightDatabase  # noqa: F401

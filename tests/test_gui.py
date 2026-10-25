@@ -403,10 +403,27 @@ def _check_database(root, errors, settings, tmp_path, monkeypatch):
     _check_empty_flight_page(root)
     check_empty_logbook(root)
 
-    # open the copy: it still has the flights
+    # open the copy: it still has the flights. Its prepared values for the statistics are missing (as after the
+    # update from schema version 2): they are worked out once in the background, with progress
+    import sqlite3
+    from ethosloganalyser.db import flight_preparation
+    copy_connection = sqlite3.connect(str(copy_path))
+    copy_connection.execute("DELETE FROM flight_preparation")
+    copy_connection.commit()
+    copy_connection.close()
+    progress_texts = []
+
+    def record_progress():
+        if database.progress is not None:
+            progress_texts.append(database.progress[2])
+
+    database.add_listener(record_progress)
     monkeypatch.setattr("tkinter.filedialog.askopenfilename", lambda **k: str(copy_path))
     panel.actions["open"].invoke()
-    root.update()
+    _wait_for_database(root)
+    database.remove_listener(record_progress)
+    assert "Auswertungswerte für die Statistik werden vorbereitet" in progress_texts
+    assert flight_preparation.outdated_log_ids(database.database.connection) == []
     assert database.path == str(copy_path) and database.stats().flight_count == 4
     assert len(h["fbox"]["values"]) == 4
     assert h["lb_scope"].get() == "4 von 4 Flügen der Datenbank"       # the logbook shows the opened database

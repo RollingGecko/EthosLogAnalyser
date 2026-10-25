@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 """Keeps the database flights ready for the single-flight page.
 
-Preparing an aircraft (analysing the stored time series of all its flights, database_flights.prepare_aircraft)
-takes a few seconds, so it runs in the background, once per aircraft until the database changes. The
-cross-flight result is then calculated on demand for the current battery settings (fast).
+Preparing an aircraft (reading the stored per-flight analysis of all its flights, database_flights.prepare_aircraft)
+runs in the background, once per aircraft until the database changes; it is quick, unless the stored values are
+still being worked out (then the flights are analysed from their time series). The cross-flight result is then
+calculated on demand for the current battery settings (fast). The single flight adds the time series only its
+charts draw for the one flight it shows (result_with_all_series).
 """
 
 import dataclasses
 
-from ..db import flight_store
+from ..db import flight_preparation, flight_store
 from . import database_flights
 from .database_panel import BackgroundTask
 
@@ -22,7 +24,8 @@ class FlightCache:
         self.params_for = params_for          # aircraft -> config.Params (battery settings of that aircraft)
         self.generation = None
         self.flights = []
-        self.prepared = {}                    # aircraft -> {log_id: (row, series)}
+        self.prepared = {}                    # aircraft -> {log_id: (row, series)}; series: statistics series only,
+        #                                       or all of them once the flight was shown (result_with_all_series)
         self.results = {}                     # aircraft -> (params, Result)
         self.failed = set()                   # aircraft whose preparation raised an error (not tried again)
         self.task = None
@@ -71,6 +74,27 @@ class FlightCache:
             self.results[aircraft] = cached
         return cached[1], params
 
+    def result_with_all_series(self, aircraft, log_id):
+        """Like result(), with all time series of this one flight (the single-flight charts draw them); None if the
+        aircraft is not prepared yet or the flight has no analysis result. Analyses the flight once (quick)."""
+        found = self.result(aircraft)
+        if found is None:
+            return None
+        result, params = found
+        path = database_flights.flight_path(log_id)
+        series = result.series.get(path)
+        if series is None:
+            return None
+        if not flight_preparation.has_all_series(series):
+            complete = database_flights.complete_flight(self._connection(), log_id)
+            if complete is None:
+                return None
+            series = complete[1]
+            result.series[path] = series
+            row, _statistics_series = self.prepared[aircraft][log_id]
+            self.prepared[aircraft][log_id] = (row, series)
+        return result, params
+
     def prepare(self, aircraft):
         """Starts preparing an aircraft in the background (nothing happens if it is ready or running)."""
         if (aircraft in self.prepared or aircraft in self.failed or self.task_aircraft == aircraft
@@ -80,11 +104,10 @@ class FlightCache:
             self.pending = aircraft
             return
         self._cancel_task()
-        params = self.params_for(aircraft)
         generation = self.generation
 
         def work(database, progress, should_cancel):
-            return database_flights.prepare_aircraft(database.connection, aircraft, params, progress=progress,
+            return database_flights.prepare_aircraft(database.connection, aircraft, progress=progress,
                                                      should_cancel=should_cancel)
 
         def on_progress(done, total, *_):

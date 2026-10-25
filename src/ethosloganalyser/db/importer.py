@@ -14,7 +14,7 @@ from typing import List, Optional
 
 from ..i18n import Msg
 from ..io.ethos_log import _file_datetime, model_from_filename
-from . import flight_store
+from . import flight_preparation, flight_store
 from .log_analysis import UnreadableLog, analyse_log_content
 
 NEW = "new"
@@ -99,9 +99,10 @@ def import_file(database, path, params):
     with connection:                      # one transaction per file: a broken import leaves nothing behind
         aircraft = flight_store.aircraft_id(connection, model)
         same_start = flight_store.find_flight_at(connection, aircraft, start_time)
-        flight_store.insert_log(connection, sha256=sha256, original_name=file_name,
-                                source_path=os.path.abspath(path), content=content, model=model,
-                                analysed=analysed, possible_duplicate=same_start is not None)
+        log_id = flight_store.insert_log(connection, sha256=sha256, original_name=file_name,
+                                         source_path=os.path.abspath(path), content=content, model=model,
+                                         analysed=analysed, possible_duplicate=same_start is not None)
+        flight_preparation.store_for_new_analysis(connection, log_id, file_name, analysed)
     outcome = SUSPICIOUS if same_start is not None else NEW
     return ImportEntry(file_name, path, outcome, other_file=same_start or "",
                        is_flight=analysed.detection.is_flight)

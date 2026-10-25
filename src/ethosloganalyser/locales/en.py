@@ -828,6 +828,8 @@ CATALOG = {
         "Last import: {summary}",
     "Ethos-Logs":
         "Ethos logs",
+    "Auswertungswerte für die Statistik werden vorbereitet":
+        "Preparing the values for the statistics",
     "Neuberechnung":
         "Recalculation",
 

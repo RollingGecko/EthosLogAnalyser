@@ -106,8 +106,8 @@ class FlightDatabase:
     def clear(self):
         """Deletes all imported logs and flights and shrinks the file (VACUUM). The tables stay."""
         with self.connection:
-            for table in ("anomaly_acknowledgement", "anomaly", "flight_note", "series", "sensor", "flight",
-                          "log_raw", "log_file", "aircraft"):
+            for table in ("flight_preparation", "anomaly_acknowledgement", "anomaly", "flight_note", "series",
+                          "sensor", "flight", "log_raw", "log_file", "aircraft"):
                 self.connection.execute(f"DELETE FROM {table}")
         self.connection.execute("VACUUM")
 

@@ -56,12 +56,11 @@ class DatabaseFlightArea:
         flight = self.cache.flight(log_id)
         if flight is None or not flight.has_metrics:
             return None
-        prepared = self.cache.result(flight.aircraft)
+        prepared = self.cache.result_with_all_series(flight.aircraft, log_id)
         if prepared is None:
             return None
         result, params = prepared
-        path = flight_path(log_id)
-        return (result, params, path) if path in result.series else None
+        return result, params, flight_path(log_id)
 
     def _before_select(self, log_id):
         self.waiting_for = None

@@ -12,12 +12,15 @@ import queue
 import threading
 
 from ..config import Params, default_database_path
-from ..db import DatabaseError, FlightDatabase, import_paths
+from ..db import DatabaseError, FlightDatabase, flight_preparation, import_paths
 from ..db.reanalysis import outdated_log_ids, reanalyse_outdated
-from ..i18n import tr
+from ..i18n import N_, tr
 from .import_report import report_summary, show_import_report
 
 POLL_MS = 100
+
+# progress text while the prepared values for the statistics are worked out (once after an update)
+PREPARING_STATISTICS = N_("Auswertungswerte für die Statistik werden vorbereitet")
 
 
 def format_size(size_bytes):
@@ -159,8 +162,10 @@ class DatabaseController:
             self.database.close()
         self.database = database
         self.generation += 1
+        # before the listeners hear of the new database: one of them would otherwise start a pending recalculation of
+        # the anomalies first, and the stored values would not be brought up to date until the database is opened again
+        self._update_stored_values_if_needed()
         self._changed()
-        self._reanalyse_if_needed()
         self._content_changed()
 
     def open_path(self, path):
@@ -291,13 +296,23 @@ class DatabaseController:
         self._run_in_background(work, on_finished or (lambda _result: None), changes_flights=False)
         return True
 
-    def _reanalyse_if_needed(self):
-        """Flights stored with an older analysis version are calculated again in the background."""
-        if self.busy or self.database is None or not outdated_log_ids(self.database.connection):
+    def _update_stored_values_if_needed(self):
+        """Brings the stored values of the open database up to date in the background: flights stored with an older
+        analysis version are calculated again (reanalysis.py), missing or outdated prepared values for the
+        statistics are worked out (flight_preparation.py; e.g. once after the update to schema version 3)."""
+        if self.busy or self.database is None:
             return
-        self._run_in_background(lambda database, progress, should_cancel: reanalyse_outdated(
-            database, Params(), progress=lambda done, total: progress(done, total, tr("Neuberechnung")),
-            should_cancel=should_cancel), lambda _count: None)
+        connection = self.database.connection
+        if not outdated_log_ids(connection) and not flight_preparation.outdated_log_ids(connection):
+            return
+
+        def work(database, progress, should_cancel):
+            reanalyse_outdated(database, Params(), progress=lambda done, total: progress(done, total, tr(
+                "Neuberechnung")), should_cancel=should_cancel)
+            flight_preparation.prepare_outdated(database.connection, progress=lambda done, total: progress(
+                done, total, tr(PREPARING_STATISTICS)), should_cancel=should_cancel)
+
+        self._run_in_background(work, lambda _result: None)
 
     def close(self):
         """At program end: stops a running import after the current file and closes the database."""
