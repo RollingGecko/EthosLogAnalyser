@@ -37,6 +37,7 @@ def test_gui_analyses_example_logs(monkeypatch, tmp_path):
     settings = tmp_path / "settings.json"
     settings.write_text('{"language": "de"}', encoding="utf-8")
     monkeypatch.setattr(config, "SETTINGS_FILE", str(settings))
+    monkeypatch.setattr(config, "DEFAULT_DATABASE_FILE", str(tmp_path / "db" / "flugbuch.db"))
     errors = []
     monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: errors.append(a))
     monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: errors.append(a))
@@ -69,6 +70,7 @@ def test_gui_analyses_example_logs(monkeypatch, tmp_path):
         _check_language_switch(root, settings)
         _check_period_filter(root, errors)
         _check_two_models(root, errors, settings, tmp_path)
+        _check_database(root, errors, settings, tmp_path, monkeypatch)
     finally:
         root.destroy()
 
@@ -381,3 +383,79 @@ def _close(root, win):
     win.event_generate("<Escape>", when="tail")
     root.update()
     assert h["fullscreen"] == []
+
+
+def _wait_for_database(root):
+    import time
+    deadline = time.time() + 120
+    while root._akku["database"].busy and time.time() < deadline:
+        root.update()
+        time.sleep(0.02)
+    root.update()
+    assert not root._akku["database"].busy
+
+
+def _check_database(root, errors, settings, tmp_path, monkeypatch):
+    """Section Database: default database at start, import with report, duplicates, empty, save as, open."""
+    import json
+    import shutil
+
+    h = root._akku
+    database, panel = h["database"], h["db_panel"]
+    assert database.path == str(tmp_path / "db" / "flugbuch.db")      # created at the first start
+    assert json.loads(settings.read_text(encoding="utf-8"))["database"] == database.path
+    assert panel["path"].get() == database.path
+
+    panel["run_import"]([str(EXAMPLES)])
+    assert database.busy                                               # runs in the background
+    _wait_for_database(root)
+    assert not errors, errors
+    assert database.stats().flight_count == 3
+    assert panel["stats"].get().startswith("3 Logs: 3 Flüge, 0 ohne Flug")
+    report_tree = panel["handles"]["report_window"]["tree"]
+    assert len(report_tree.get_children()) == 3
+    assert "3 neu (davon 3 Flüge)" in panel["progress"].get()
+    panel["handles"]["report_window"]["window"].destroy()
+
+    # the same folder again, and a renamed copy: everything is a duplicate
+    copy = tmp_path / "renamed"
+    copy.mkdir()
+    shutil.copy(next(EXAMPLES.glob("*.csv")), copy / "Copy-2030-01-01-10-00-00.csv")
+    panel["run_import"]([str(EXAMPLES), str(copy)])
+    _wait_for_database(root)
+    rows = [panel["handles"]["report_window"]["tree"].item(item, "values")
+            for item in panel["handles"]["report_window"]["tree"].get_children()]
+    assert [row[1] for row in rows] == ["doppelt"] * 4
+    assert database.stats().log_count == 3
+    panel["handles"]["report_window"]["window"].destroy()
+
+    # the section survives a language switch (the database stays open)
+    h["set_language"]("en")
+    root.update()
+    panel = root._akku["db_panel"]
+    assert panel["stats"].get().startswith("3 logs: 3 flights")
+    h["set_language"]("de")
+    root.update()
+    panel = root._akku["db_panel"]
+
+    # save as: a copy, the open database stays
+    copy_path = tmp_path / "copy.db"
+    monkeypatch.setattr("tkinter.filedialog.asksaveasfilename", lambda **k: str(copy_path))
+    monkeypatch.setattr("tkinter.messagebox.showinfo", lambda *a, **k: None)
+    panel["actions"]["save_as"].invoke()
+    assert copy_path.exists() and database.path == str(tmp_path / "db" / "flugbuch.db")
+
+    # empty (after the question)
+    monkeypatch.setattr("tkinter.messagebox.askyesno", lambda *a, **k: True)
+    panel["actions"]["clear"].invoke()
+    root.update()
+    assert database.stats().log_count == 0
+    assert panel["stats"].get().startswith("0 Logs")
+
+    # open the copy: it still has the three flights
+    monkeypatch.setattr("tkinter.filedialog.askopenfilename", lambda **k: str(copy_path))
+    panel["actions"]["open"].invoke()
+    root.update()
+    assert database.path == str(copy_path) and database.stats().flight_count == 3
+    assert not errors, errors
+

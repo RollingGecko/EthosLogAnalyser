@@ -57,6 +57,26 @@ The model is taken from the log file name: the part before the time stamp, e.g. 
 - The **period filter** applies within the selected model.
 - The CSV export has a column *Model* (Modell).
 
+## Flight database
+
+The section **Database** (Datenbank) at the top of *Data & settings* manages the flight database, the future
+basis of logbook, single flight and statistics (they still work on the log folder for now):
+
+- The line below the file name shows how many logs the database holds, how many of them are flights, how many
+  aircraft and how large the file is.
+- **New …**, **Open …**, **Save as …** (writes a copy; the open database stays the same) and **Empty …** (after
+  a question; the log files themselves stay untouched). Every change is stored at once.
+- **Import files …** and **Import folder …** (with all subfolders, e.g. the transmitter's SD card). The import
+  runs in the background with a progress bar; afterwards the **import report** lists every file as *new*,
+  *duplicate* (same content already in the database, also under another name – skipped), *possible duplicate*
+  (same aircraft and start time, other content – imported and marked) or *unreadable* (with the reason). New
+  logs are marked as flight or not a flight.
+- Every log is imported, also ground logs and short motor tests; they are only marked as not a flight.
+- At program start the database used last is opened. On the very first start the database
+  `Documents\EthosLogAnalyser\flugbuch.db` is created and the app offers to import the log folder used so far.
+
+Details (detection, storage, schema): [Flight database](database.md).
+
 ## Language
 
 The language is chosen under **Data & settings → Language** (Deutsch, English, Español). The window is rebuilt immediately in the new language; an existing analysis result, the selected flight, view and zoom are kept, so the logs do not have to be analysed again. The choice is saved together with the other settings and used at the next start. Without a saved choice, the app starts in the language of the operating system if it is supported, otherwise in English.

@@ -16,6 +16,7 @@ from ..analysis.quality import QUALITY_LABELS
 from ..analysis.fleet import analyse_folder, default_model, find_logs, models_in, parse_date
 from ..config import (CHEM, MODEL_UNKNOWN_LABEL, SPIKE_LABELS, VOLTAGE_SOURCE_LABELS, Params, label, load_settings,
                       model_label, save_settings)
+from ..gui.database_panel import DatabaseController, build_database_panel
 from ..gui.style import BG, _setup_style
 from ..i18n import LANGUAGES, Msg, N_, detect_language, fmt_date, fmt_datetime, get_language, set_language, tr
 from ..plots.flight import FLIGHT_VIEWS, VIEW_LABELS, draw_flight, figure_flight, fit_y
@@ -206,6 +207,7 @@ def run_gui():
         "date_to": tk.StringVar(value=saved.get("date_to", "")),
     }
     ui = {"frame": None}
+    database = DatabaseController(root, messagebox)        # flight database (section "Database")
     # several aircraft: the logs of one folder are analysed per model (from the file name, see
     # io.ethos_log.model_from_filename). The battery settings are kept per model.
     state["models"] = {}                                   # {model: number of logs} of the last analysed folder
@@ -232,6 +234,8 @@ def run_gui():
             state["model_settings"][state["model"]] = model_battery()
             d["model"] = state["model"]
         d["models"] = state["model_settings"]
+        if database.path:
+            d["database"] = database.path
         save_settings(d)
 
     def use_model(model):
@@ -335,8 +339,12 @@ def run_gui():
         st_tab.columnconfigure(0, weight=1)
         st_tab.columnconfigure(1, weight=1)
 
+        db_panel = build_database_panel(st_tab, database, lambda: read_params(), filedialog, messagebox)
+        db_panel["frame"].grid(row=0, column=0, columnspan=2, sticky="we", pady=(0, 10))
+        ui["db_panel"] = db_panel
+
         lf = ttk.LabelFrame(st_tab, text=tr("Logdaten"), padding=10)
-        lf.grid(row=0, column=0, columnspan=2, sticky="we", pady=(0, 10))
+        lf.grid(row=1, column=0, columnspan=2, sticky="we", pady=(0, 10))
         lf.columnconfigure(1, weight=1)
         ttk.Label(lf, text=tr("Ordner mit Ethos-CSV-Logs (Unterordner werden mit durchsucht):")).grid(
             row=0, column=0, columnspan=3, sticky="w")
@@ -390,7 +398,7 @@ def run_gui():
             return w
 
         lf = ttk.LabelFrame(st_tab, text=tr("Akku"), padding=10)
-        lf.grid(row=1, column=0, sticky="nwe", padx=(0, 6))
+        lf.grid(row=2, column=0, sticky="nwe", padx=(0, 6))
         chem_box = field(lf, 0, tr("Zellchemie"), "chem", tr("LiPo, LiHV oder Li-Ion"), list(CHEM.keys()))
         field(lf, 1, tr("Zellenzahl"), "cells", tr("0 = automatisch aus der Startspannung"))
         field(lf, 2, tr("Nennkapazität [mAh]"), "nominal_mah", tr("0 = unbekannt (wird geschätzt)"))
@@ -401,7 +409,7 @@ def run_gui():
         battery_hint.grid(row=3, column=0, columnspan=3, sticky="w", pady=(6, 0))
 
         lf = ttk.LabelFrame(st_tab, text=tr("Auswertung"), padding=10)
-        lf.grid(row=1, column=1, sticky="nwe", padx=(6, 0))
+        lf.grid(row=2, column=1, sticky="nwe", padx=(6, 0))
         field(lf, 0, tr("Min. Flugdauer [s]"), "min_flight_s", tr("kürzere Logs werden übersprungen"))
         field(lf, 1, tr("Motor aktiv ab [A]"), "active_current_a", tr("Strom, ab dem der Flug zählt"))
         field(lf, 2, tr("Reserve bei Landung [%]"), "reserve_pct", tr("für die Timer-Empfehlung"))
@@ -411,7 +419,7 @@ def run_gui():
         field(lf, 6, tr("Zeitraum bis"), "date_to", tr("z. B. nur die Flüge eines Akkus"))
 
         lf = ttk.LabelFrame(st_tab, text=tr("Sprache (Language)"), padding=10)
-        lf.grid(row=2, column=0, sticky="nwe", padx=(0, 6), pady=10)
+        lf.grid(row=3, column=0, sticky="nwe", padx=(0, 6), pady=10)
         names = list(LANGUAGES.values())
         lang_var = tk.StringVar(value=LANGUAGES[get_language()])
         lang_box = ttk.Combobox(lf, textvariable=lang_var, values=names, width=14, state="readonly")
@@ -427,20 +435,20 @@ def run_gui():
         lang_box.bind("<<ComboboxSelected>>", on_language)
 
         lf = ttk.LabelFrame(st_tab, text=tr("Export"), padding=10)
-        lf.grid(row=2, column=1, sticky="nwe", padx=(6, 0), pady=10)
+        lf.grid(row=3, column=1, sticky="nwe", padx=(6, 0), pady=10)
         ttk.Button(lf, text=tr("Tabelle als CSV speichern …"), command=lambda: export_csv()).pack(side="left", padx=(0, 8))
         ttk.Button(lf, text=tr("Bericht + alle Diagramme speichern …"), command=lambda: export_all()).pack(side="left")
 
         # about: version, and a clear marker on test builds from a pull request (see buildinfo.py)
         lf = ttk.LabelFrame(st_tab, text=tr("Über"), padding=10)
-        lf.grid(row=4, column=0, columnspan=2, sticky="we", pady=(10, 0))
+        lf.grid(row=5, column=0, columnspan=2, sticky="we", pady=(10, 0))
         for kind, text in about_lines():
             ttk.Label(lf, text=text, wraplength=900, foreground={"test": "#b00020", "info": "#666"}.get(kind),
                       font=(fam, 10, "bold") if kind != "info" else None).pack(anchor="w")
 
         lf = ttk.LabelFrame(st_tab, text=tr("Übersprungene Dateien"), padding=6)
-        lf.grid(row=3, column=0, columnspan=2, sticky="nsew")
-        st_tab.rowconfigure(3, weight=1)
+        lf.grid(row=4, column=0, columnspan=2, sticky="nsew")
+        st_tab.rowconfigure(4, weight=1)
         skip_tree = ttk.Treeview(lf, columns=("datei", "grund"), show="headings", height=8)
         skip_tree.heading("datei", text=tr("Datei"))
         skip_tree.heading("grund", text=tr("Grund"))
@@ -1144,7 +1152,7 @@ def run_gui():
         else:
             nb.select(tabs["settings"])
         # for tests
-        root._akku = dict(fbox=flight_box, run=run, model_box=model_box, model_bar=selbar, use_model=use_model, folder_var=folder_var,
+        root._akku = dict(database=database, db_panel=db_panel, fbox=flight_box, run=run, model_box=model_box, model_bar=selbar, use_model=use_model, folder_var=folder_var,
                           lb_totals=lb_totals, lb_scope=lb_scope, lb_missing=lb_missing, lb_year=lb_year,
                           lb_month=lb_month, lb_list=lb_list, lb_sort=lb_sort, lb_state=lb_state,
                           lb_canvas=lambda: page_canvases.get(str(lb_chart)),
@@ -1160,10 +1168,20 @@ def run_gui():
 
     def on_close():
         store_settings()
+        database.close()
         root.destroy()
+
+    def offer_folder_import(folder):
+        """First start with the database: offer to import the log folder used so far."""
+        if messagebox.askyesno(tr("Datenbank"), tr("Es wurde eine neue Flug-Datenbank angelegt:\n{path}\n\n"
+                                                   "Sollen die Logs aus dem bisher genutzten Ordner importiert "
+                                                   "werden?\n{folder}", path=database.path, folder=folder)):
+            ui["db_panel"]["run_import"]([folder])
 
     root.protocol("WM_DELETE_WINDOW", on_close)
     build()
+    database.start(saved, offer_folder_import)
+    store_settings()
     return root
 
 

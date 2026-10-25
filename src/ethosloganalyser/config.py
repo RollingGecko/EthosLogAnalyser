@@ -2,6 +2,7 @@
 """Basic configuration: cell chemistry curves, analysis parameters, thresholds and saved settings."""
 
 import os
+import sys
 import numpy as np
 from dataclasses import dataclass
 
@@ -101,6 +102,42 @@ STEP = 0.25   # time series grid in s
 
 
 SETTINGS_FILE = os.path.join(os.path.expanduser("~"), ".akku_analyse.json")
+
+# flight database: Documents\EthosLogAnalyser\flugbuch.db unless another one was opened (setting "database")
+DATABASE_FOLDER_NAME = "EthosLogAnalyser"
+DATABASE_FILE_NAME = "flugbuch.db"
+DEFAULT_DATABASE_FILE = None          # tests set a path here instead of the real Documents folder
+
+
+def documents_folder():
+    """The user's Documents folder (on Windows also when it has been moved, e.g. into OneDrive)."""
+    if sys.platform.startswith("win"):
+        try:
+            import ctypes
+            from ctypes import wintypes
+            from uuid import UUID
+
+            class GUID(ctypes.Structure):
+                _fields_ = [("data", ctypes.c_byte * 16)]
+
+            documents_id = GUID()
+            documents_id.data[:] = UUID("FDD39AD0-238F-46AF-ADB4-6C85480369C7").bytes_le   # FOLDERID_Documents
+            path_pointer = wintypes.LPWSTR()
+            if ctypes.windll.shell32.SHGetKnownFolderPath(ctypes.byref(documents_id), 0, None,
+                                                          ctypes.byref(path_pointer)) == 0:
+                path = path_pointer.value
+                ctypes.windll.ole32.CoTaskMemFree(path_pointer)
+                return path
+        except Exception:
+            pass
+    return os.path.join(os.path.expanduser("~"), "Documents")
+
+
+def default_database_path():
+    """Where the flight database is created when none has been opened yet."""
+    if DEFAULT_DATABASE_FILE:
+        return DEFAULT_DATABASE_FILE
+    return os.path.join(documents_folder(), DATABASE_FOLDER_NAME, DATABASE_FILE_NAME)
 
 
 def load_settings():
