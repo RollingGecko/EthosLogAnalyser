@@ -127,9 +127,12 @@ def prepare_aircraft(connection, aircraft, base_params, progress=None, should_ca
     return prepared
 
 
-def aircraft_result(prepared, params, aircraft):
-    """Analysis result of all prepared flights of an aircraft (as analyse_folder gives it for one model)."""
-    rows = [dict(row) for row, _series in prepared.values()]
-    series = {row["pfad"]: flight_series for row, flight_series in prepared.values()}
+def aircraft_result(prepared, params, aircraft, log_ids=None):
+    """Analysis result of the prepared flights of an aircraft: all of them, or only those in log_ids (e.g. the
+    flights that pass the filter of the statistics). The cross-flight part (cell count, trends, flight numbers
+    1, 2, ...) covers exactly these flights, as the folder analysis did for a period."""
+    chosen = prepared.values() if log_ids is None else [prepared[log_id] for log_id in log_ids if log_id in prepared]
+    rows = [dict(row) for row, _series in chosen]
+    series = {row["pfad"]: flight_series for row, flight_series in chosen}
     meta = {"model": aircraft, "models": {aircraft: len(rows)}}
     return analyse_flights(rows, series, params, meta)

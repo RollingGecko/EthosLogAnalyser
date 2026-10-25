@@ -35,7 +35,8 @@ from ..gui.flight_page import FlightPage
 from ..gui.logbook_model import LogbookModel
 from ..gui.logbook_page import LogbookPage
 from ..gui.settings_page import SettingsPage
-from ..gui.statistics_page import CHART_PAGES, PAGE_KEYS, StatisticsPages, page_title
+from ..gui.statistics_model import READY, StatisticsModel, filter_description
+from ..gui.statistics_page import CHART_PAGES, PAGE_KEYS, StatisticsPages, page_title, report_lines
 from ..gui.style import BG, _setup_style
 from ..i18n import LANGUAGES, Msg, detect_language, fmt_date, get_language, set_language, tr
 from ..plots.flight import FLIGHT_VIEWS, figure_flight
@@ -56,6 +57,12 @@ def tab_title(key):
     titles = {"logbook": tr("Logbuch"), "flight": tr("Einzelflug"), "statistics": tr("Statistik"),
               "settings": tr("Daten & Einstellungen")}
     return titles[key] if key in titles else page_title(key)
+
+
+def _view_key(view, lines):
+    """What a statistics view shows; the pages are drawn again only when it changed."""
+    return (view.state, view.aircraft, view.n_flights, view.n_total, id(view.result), view.params,
+            view.aircraft_names, tuple(lines))
 
 
 class MainWindow:
@@ -88,7 +95,12 @@ class MainWindow:
         self.filter_state = FilterState()                  # the flight filter, shared by the pages that use it
         self.logbook_model = LogbookModel(self.database, self.settings.params_for_model)
         self.logbook_page = None
+        # statistics: the database flights that pass the shared filter, one aircraft at a time
+        self.statistics_model = StatisticsModel(self.flight_cache, self.filter_state, self.settings.params_for_model)
+        self.statistics = None
         self.database.add_listener(self._on_database_changed)
+        self.flight_cache.add_listener(self.refresh_statistics)
+        self.filter_state.add_listener(self.refresh_statistics)
         # result of the folder analysis
         self.res, self.params, self.folder = None, None, ""
         self.models = {}                                   # {model: number of logs} of the last analysed folder
@@ -113,6 +125,8 @@ class MainWindow:
         self.notebook = ttk.Notebook(self.content)
         self.notebook.pack(fill="both", expand=True, padx=6, pady=(4, 6))
         self.tabs = self._add_tabs(self.notebook, AREA_KEYS)
+        statistics_header = ttk.Frame(self.tabs["statistics"], padding=(10, 8, 10, 0))
+        statistics_header.pack(fill="x")
         self.statistics_notebook = ttk.Notebook(self.tabs["statistics"], style="Pages.TNotebook")
         self.statistics_notebook.pack(fill="both", expand=True, pady=(4, 0))
         self.tabs.update(self._add_tabs(self.statistics_notebook, PAGE_KEYS))
@@ -122,8 +136,9 @@ class MainWindow:
             "run": self.run_analysis, "choose_folder": self.choose_folder, "model_chosen": self.choose_model,
             "language": self.change_language, "export_csv": self.export_csv, "export_all": self.export_all})
         self.settings_page.update_model_box(self.models, self.settings.model)
-        self.statistics = StatisticsPages({key: self.tabs[key] for key in ("summary", "table", *CHART_PAGES)},
-                                          self.charts, self.family)
+        self.statistics = StatisticsPages(statistics_header, self.statistics_notebook,
+                                          {key: self.tabs[key] for key in PAGE_KEYS}, self.charts, self.family,
+                                          self.filter_state)
         self.flight_page = FlightPage(self.tabs["flight"], self.charts, self.family, self.filedialog,
                                       back=lambda: self.select_page("logbook"))
         self.flight_annotations = FlightAnnotationsPanel(self.flight_page.side_frame, self.database)
@@ -139,8 +154,6 @@ class MainWindow:
             self.logbook_page.show()
 
         self.show_battery_hint()
-        if self.res is not None:
-            self.show_results()
         if snap is not None:
             self.flight_page.restore(snap["flight_page"])
             self.notebook.select(snap["tab"])
@@ -149,6 +162,7 @@ class MainWindow:
             self.select_page("logbook")
         self.root._akku = self.test_handles()
         self.notebook.bind("<<NotebookTabChanged>>", self._on_area_changed)
+        self.refresh_statistics()
         self._show_status()
 
     @staticmethod
@@ -183,7 +197,9 @@ class MainWindow:
     def _show_status(self):
         """Status line: the state of the flight database on the logbook and single-flight areas, otherwise the
         result of the last folder analysis."""
-        if self.current_area() in DATABASE_STATUS_AREAS:
+        if self.current_area() == "statistics" and self.statistics is not None:
+            self.status.set(self.statistics_status_text())
+        elif self.current_area() in DATABASE_STATUS_AREAS:
             self.status.set(self.database_status_text())
         else:
             self.status.set(str(self.status_msg))
@@ -208,6 +224,7 @@ class MainWindow:
         if self.current_area() == "logbook":
             self.logbook_page.refresh()
         self.anomalies.check_settings()
+        self.refresh_statistics()                  # battery settings may have changed; prepares the aircraft
         self._show_status()
 
     # ---------------- folder analysis ----------------
@@ -280,12 +297,43 @@ class MainWindow:
         self.status_shown = shown
         self.set_status(shown)
 
-    def summary_with_hint(self):
-        lines = summary_lines(self.res, self.params)
-        if self.settings.battery_unset:
-            hint = tr(BATTERY_HINT, model=model_label(self.res.meta.get("model", self.settings.model)))
-            lines = [("bad", hint)] + lines
-        return lines
+    # ---------------- statistics ----------------
+    def statistics_lines(self, view):
+        """Summary of the statistics: experimental notice, battery hint for the aircraft if its battery settings
+        are missing, the summary of the analysis."""
+        hint = None
+        if view.state == READY and not self.settings.battery_chosen(view.aircraft):
+            hint = tr(BATTERY_HINT, model=model_label(view.aircraft))
+        return report_lines(view, hint)
+
+    def refresh_statistics(self):
+        """Shows the statistics for the current filter (only what changed is drawn again)."""
+        if self.statistics is None or not self.statistics.frames["summary"].winfo_exists():
+            return
+        view = self.statistics_model.view(prepare=self.current_area() == "statistics")
+        lines = self.statistics_lines(view)
+        if self.statistics.view is None or _view_key(view, lines) != _view_key(self.statistics.view,
+                                                                                self.statistics.lines):
+            self.statistics.show(view, lines)
+        if self.current_area() == "statistics":
+            self._show_status()
+
+    def statistics_status_text(self):
+        """Status line on the statistics: flights of the filter, aircraft and period."""
+        view = self.statistics.view
+        if view is None or not view.n_total:
+            return self.database_status_text()
+        text = tr("Statistik  ·  {n} von {total} Flügen der Datenbank", n=view.n_flights, total=view.n_total)
+        if view.aircraft is not None:
+            text += "  ·  " + model_label(view.aircraft)
+        if view.first is not None:
+            text += f"  ·  {fmt_date(view.first)} – {fmt_date(view.last)}"
+        described = filter_description(self.filter_state.value)
+        if described:
+            text += "  ·  " + tr("Filter: {filter}", filter=described)
+        if view.state == READY and not self.settings.battery_chosen(view.aircraft):
+            text += "  ·  " + tr("Akku-Einstellungen für dieses Modell fehlen")
+        return text
 
     def show_battery_hint(self):
         """Shows or hides the battery hint next to the battery fields, in the status line and the summary."""
@@ -294,15 +342,11 @@ class MainWindow:
         self.settings_page.show_battery_hint(self.settings.battery_unset)
         if self.status_shown is not None and self.status_msg is self.status_shown:
             self.set_main_status(self.status_main)          # still the status of the last analysis
-        if self.res is not None:
-            self.statistics.show_summary(self.summary_with_hint())
+        self.refresh_statistics()
 
     def show_results(self):
-        """Fills all pages with the analysis result in the current language."""
-        res = self.res
-        self.settings_page.show_skipped(res.skipped)
-        self.statistics.show_summary(self.summary_with_hint())
-        self.statistics.show(res, self.params, lambda: (self.res, self.params))
+        """Shows the skipped files of the folder analysis."""
+        self.settings_page.show_skipped(self.res.skipped)
 
     # ---------------- single flight from the database ----------------
     def _on_database_changed(self):
@@ -310,6 +354,7 @@ class MainWindow:
             self.flight_area.reload()
         if self.logbook_page is not None:
             self.logbook_page.refresh()
+        self.refresh_statistics()
         self._show_status()
 
     def open_logbook_flight(self, log_id):
@@ -326,30 +371,40 @@ class MainWindow:
             self.database.flights_changed()
 
     # ---------------- export ----------------
+    def _exportable_view(self):
+        """The statistics view to export, or None after telling the user why there is nothing to export."""
+        view = self.statistics_model.view(prepare=False)
+        if view.state != READY or view.result.df.empty:
+            self.messagebox.showinfo(tr("Export"), tr("Die Statistik zeigt gerade keine Flüge:\n{reason}",
+                                                      reason=view.message or tr("Kein Flug passt zum Filter.")))
+            return None
+        return view
+
     def export_csv(self):
-        if self.res is None or self.res.df.empty:
-            self.messagebox.showinfo(tr("Export"), tr("Bitte zuerst auswerten."))
+        """The table of the statistics (filtered flights of one aircraft) as CSV."""
+        view = self._exportable_view()
+        if view is None:
             return
         path = self.filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV", "*.csv")])
         if path:
-            export_table(self.res.df).to_csv(path, index=False, sep=";", decimal=",", encoding="utf-8-sig")
+            export_table(view.result.df).to_csv(path, index=False, sep=";", decimal=",", encoding="utf-8-sig")
 
     def export_all(self):
-        res = self.res
-        if res is None or res.df.empty:
-            self.messagebox.showinfo(tr("Export"), tr("Bitte zuerst auswerten."))
+        """Summary, all statistics charts, the table and the selected single flight into a folder."""
+        view = self._exportable_view()
+        if view is None:
             return
         folder = self.filedialog.askdirectory(title=tr("Zielordner für Bericht und Diagramme"))
         if not folder:
             return
         with open(os.path.join(folder, tr("zusammenfassung.txt")), "w", encoding="utf-8") as handle:
-            for _, line in summary_lines(res, self.params):
+            for _, line in self.statistics_lines(view):
                 handle.write(line + "\n")
-        for name, fig in self.statistics.figures.items():
-            fig.savefig(os.path.join(folder, f"{name}.png"), dpi=150)
+        for name, draw in CHART_PAGES.items():
+            draw(view.result, view.params).savefig(os.path.join(folder, f"{name}.png"), dpi=150)
         self._export_flight(folder)
-        export_table(res.df).to_csv(os.path.join(folder, tr("fluege.csv")), index=False, sep=";", decimal=",",
-                                    encoding="utf-8-sig")
+        export_table(view.result.df).to_csv(os.path.join(folder, tr("fluege.csv")), index=False, sep=";",
+                                            decimal=",", encoding="utf-8-sig")
         self.messagebox.showinfo(tr("Gespeichert"), tr("Bericht, Tabelle und Diagramme wurden in\n{folder}\n"
                                                        "gespeichert.", folder=folder))
 
@@ -435,7 +490,8 @@ class MainWindow:
             anomalies=self.anomalies, anomaly_settings=settings_page.anomaly_panel,
             fullscreen=self.charts.fullscreen, open_fullscreen=self.charts.open_fullscreen,
             open_chart=self.charts.open_chart, tab_canvas=self.statistics.chart_canvas,
-            tab_builder=lambda key: (lambda: CHART_PAGES[key](self.res, self.params)))
+            tab_builder=lambda key: (lambda: self.statistics.figure(key)), statistics=self.statistics,
+            statistics_model=self.statistics_model, stats_filter=self.statistics.filter_bar)
 
 
 def run_gui():

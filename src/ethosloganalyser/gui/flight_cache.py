@@ -28,7 +28,7 @@ class FlightCache:
         self.task = None
         self.task_aircraft = None
         self.progress = None                  # (aircraft, done, total) while an aircraft is prepared
-        self.on_change = None                 # called when flights were reloaded or an aircraft became ready
+        self.listeners = []                   # called when an aircraft is being prepared or became ready
         # while paused (program start), a preparation is only noted and starts on resume(): the background
         # work would otherwise slow down drawing the window for the first time
         self.paused = False
@@ -127,6 +127,14 @@ class FlightCache:
             self.task.cancel_and_wait()
         self.task = None
 
+    def add_listener(self, listener):
+        """listener() is called while an aircraft is prepared and when it became ready."""
+        self.listeners.append(listener)
+
+    def remove_listener(self, listener):
+        if listener in self.listeners:
+            self.listeners.remove(listener)
+
     def _notify(self):
-        if self.on_change is not None:
-            self.on_change()
+        for listener in list(self.listeners):
+            listener()

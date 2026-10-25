@@ -24,7 +24,9 @@ class DatabaseFlightArea:
         self.waiting_for = None           # aircraft whose preparation the page is waiting for
         page.before_select = self._before_select
         page.message_for = self._message_for
-        cache.on_change = self._on_cache_change
+        cache.add_listener(self._on_cache_change)
+        page.frame.bind("<Destroy>", lambda event: cache.remove_listener(self._on_cache_change)
+                        if event.widget is page.frame else None, add="+")
 
     def reload(self, force=False):
         """Fills the flight selector from the database (if it changed or force); keeps the selected flight."""
