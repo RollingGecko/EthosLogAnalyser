@@ -11,8 +11,6 @@ CATALOG = {
     "flug{no}_{view}.png": "flight{no}_{view}.png",
 
     # ---------------- window, tabs, settings ----------------
-    "Noch nicht ausgewertet – Ordner und Akku im Reiter „Daten & Einstellungen“ festlegen.":
-        "Not analysed yet – choose the folder and battery in the \"Data & settings\" tab.",
     "Daten & Einstellungen": "Data & settings",
     "Zusammenfassung": "Summary",
     "Akku": "Battery",
@@ -21,10 +19,6 @@ CATALOG = {
     "Funk & Bordnetz": "Radio & onboard power",
     "Einzelflug": "Single flight",
     "Tabelle": "Table",
-    "Logdaten": "Log data",
-    "Ordner mit Ethos-CSV-Logs (Unterordner werden mit durchsucht):": "Folder with Ethos CSV logs (subfolders are included):",
-    "Ordner wählen …": "Choose folder …",
-    "Auswerten": "Analyse",
     "Auswertung": "Analysis",
     "Zellchemie": "Cell chemistry",
     "LiPo, LiHV oder Li-Ion": "LiPo, LiHV or Li-Ion",
@@ -46,9 +40,7 @@ CATALOG = {
     "Export": "Export",
     "Tabelle als CSV speichern …": "Save table as CSV …",
     "Bericht + alle Diagramme speichern …": "Save report + all charts …",
-    "Übersprungene Dateien": "Skipped files",
     "Datei": "File",
-    "Grund": "Reason",
 
     # ---------------- single-flight tab ----------------
     "Flug:": "Flight:",
@@ -70,19 +62,9 @@ CATALOG = {
     "keine Spitzen": "no spikes",
 
     # ---------------- messages ----------------
-    "Werte aus …": "Analysing …",
-    ", Kapazität unbekannt": ", capacity unknown",
-    "{folder}  ·  {n} Flüge ausgewertet, {skipped} von {total} Dateien übersprungen  ·  Akku {cells}S {chem}{cap}":
-        "{folder}  ·  {n} flights analysed, {skipped} of {total} files skipped  ·  battery {cells}S {chem}{cap}",
     "Eingabefehler": "Input error",
     "Bitte gültige Zahlen in den Einstellungen eintragen.": "Please enter valid numbers in the settings.",
-    "Ordner": "Folder",
-    "Bitte zuerst einen gültigen Ordner wählen.": "Please choose a valid folder first.",
-    "Fehler bei der Auswertung": "Analysis error",
-    "Fehler bei der Auswertung.": "Analysis error.",
-    "Bitte zuerst auswerten.": "Please analyse first.",
     "Zielordner für Bericht und Diagramme": "Target folder for report and charts",
-    "Ordner mit Ethos-Logfiles wählen": "Choose folder with Ethos log files",
     "Gespeichert": "Saved",
     "Bericht, Tabelle und Diagramme wurden in\n{folder}\ngespeichert.":
         "Report, table and charts were saved in\n{folder}",
@@ -163,8 +145,6 @@ CATALOG = {
     # ---------------- summary report ----------------
     "Keine auswertbaren Flüge gefunden.": "No flights that could be analysed were found.",
     "ÜBERSICHT": "OVERVIEW",
-    "{n} Flüge ausgewertet ({first} – {last}), {skipped} Dateien übersprungen":
-        "{n} flights analysed ({first} – {last}), {skipped} files skipped",
     "Akku: {cells}S {chem}": "Battery: {cells}S {chem}",
     "  (Zellenzahl automatisch erkannt)": "  (cell count detected automatically)",
     ", Nennkapazität {cap:.0f} mAh": ", nominal capacity {cap:.0f} mAh",
@@ -250,7 +230,6 @@ CATALOG = {
         "operates e.g. the landing gear; it shows the name of the Ethos source.",
     "Flugphasen und Wh je 100 m Steigen sind indikativ (Höhenwerte geglättet).":
         "Flight phases and Wh per 100 m climb are indicative (altitude values smoothed).",
-    "ÜBERSPRUNGENE DATEIEN": "SKIPPED FILES",
 
     # ---------------- state of charge lines ----------------
     "Ladezustand: Start ≈ {start} %, Ende ≈ {end:.0f} %  (Ladungszählung: {drawn:.0f} mAh entnommen von {cap:.0f} mAh "
@@ -529,18 +508,6 @@ CATALOG = {
         "Capacity normalised",
     "Messfehler":
         "Measurement errors",
-    "Zeitraum von":
-        "Period from",
-    "TT.MM.JJJJ, leer = ohne Grenze":
-        "DD/MM/YYYY, empty = no limit",
-    "Zeitraum bis":
-        "Period to",
-    "z. B. nur die Flüge eines Akkus":
-        "e.g. only the flights of one battery",
-    "Der Beginn des Zeitraums liegt nach dem Ende.":
-        "The start of the period is after its end.",
-    "Bitte ein gültiges Datum eintragen (TT.MM.JJJJ) oder das Feld leer lassen.":
-        "Please enter a valid date (DD/MM/YYYY) or leave the field empty.",
     "Auf {depth:.0f} % Entladetiefe bezogen.":
         "Referred to {depth:.0f} % depth of discharge.",
     "80 % der Nennkapazität":
@@ -571,8 +538,6 @@ CATALOG = {
         "Remaining capacity (SoH): approx. {soh:.0f} % of the initial capacity  (currently ≈ {cur:.0f} ± {err} mAh, initial value ≈ {start:.0f} mAh; nominal capacity not entered)",
     "Restlebensdauer: ca. {n:.0f} Flüge (90 %-Bereich {lo:.0f}–{hi:.0f}) – das frühere der Kriterien 80 % SoH und +50 % Ri":
         "Remaining life: approx. {n:.0f} flights (90 % range {lo:.0f}–{hi:.0f}) – the earlier of the criteria 80 % SoH and +50 % Ri",
-    "Zeitraum-Filter: {start} – {end}; {n} Dateien außerhalb nicht ausgewertet":
-        "Period filter: {start} – {end}; {n} files outside not analysed",
     "Hinweis auf mehrere Akkus: Die Kapazitätswerte bilden zwei Gruppen (≈ {low:.0f} mAh in {n_low} Flügen, ≈ {high:.0f} mAh in {n_high} Flügen). Alterungsaussagen über diesen Zeitraum gelten dann für keinen einzelnen Akku. Zeitraum auf einen Akku eingrenzen (Daten & Einstellungen → Zeitraum).":
         "Sign of several batteries: the capacity values form two groups (≈ {low:.0f} mAh in {n_low} flights, ≈ {high:.0f} mAh in {n_high} flights). Statements about ageing over this period then apply to no single battery. Limit the period to one battery (Data & settings → Period).",
     "Kapazitäts-SoH nicht bestimmbar: zu wenige Flüge mit gültiger Kapazitätsschätzung (≥ 40 % Entladetiefe; vorhanden {n}, nötig {min}).":
@@ -717,24 +682,12 @@ CATALOG = {
         "Power compared with the overall curve of all flights: {dev:+.1f} % (median at the same RPM)",
     "(unbekannt)":
         "(unknown)",
-    "{folder}  ·  Modell {model}  ·  {n} Flüge ausgewertet, {skipped} von {total} Dateien übersprungen  ·  Akku {cells}S {chem}{cap}":
-        "{folder}  ·  model {model}  ·  {n} flights analysed, {skipped} of {total} files skipped  ·  battery {cells}S {chem}{cap}",
-    "Modell:":
-        "Model:",
-    "Im Ordner liegen Logs mehrerer Modelle; ausgewertet wird immer eines.":
-        "The folder holds logs of several models; one model is analysed at a time.",
-    "Modell: {model} – weitere Modelle im Ordner (getrennt ausgewertet): {others}":
-        "Model: {model} – other models in the folder (analysed separately): {others}",
-    "{model} ({n} Logs)":
-        "{model} ({n} logs)",
     "Für das Modell {model} sind noch keine Akku-Einstellungen gespeichert: Bitte im Reiter „Daten & Einstellungen“ die Zellchemie auswählen und die Nennkapazität eintragen. Bis dahin wird LiPo angenommen – Ladezustand, Alterung und Restkapazität können falsch sein.":
         "No battery settings are stored for the model {model} yet: please choose the cell chemistry and enter the nominal capacity in the tab “Data & settings”. Until then LiPo is assumed – state of charge, ageing and remaining capacity may be wrong.",
     "Für dieses Modell noch nicht eingestellt: bitte Zellchemie auswählen und Nennkapazität eintragen (bis dahin wird LiPo angenommen).":
         "Not set up for this model yet: please choose the cell chemistry and enter the nominal capacity (until then LiPo is assumed).",
     "Akku-Einstellungen für dieses Modell fehlen":
         "Battery settings missing for this model",
-    "{status}  ·  {hint}":
-        "{status}  ·  {hint}",
     "Logbuch":
         "Logbook",
     "Summen":
@@ -996,4 +949,14 @@ CATALOG = {
     'OK': 'OK',
     'Abbrechen': 'Cancel',
     'nur mit Notiz oder Auffälligkeit': 'only with note or anomaly',
+    # statistics from the flight database (WP-19)
+    'Statistik  ·  {n} von {total} Flügen der Datenbank': 'Statistics  ·  {n} of {total} flights of the database',
+    'Filter: {filter}': 'Filter: {filter}',
+    'Die Statistik zeigt gerade keine Flüge:\n{reason}': 'The statistics show no flights at the moment:\n{reason}',
+    'Kein Flug passt zum Filter.': 'No flight matches the filter.',
+    'Dieser Bereich ist noch experimentell: Werte und Auswertungen können sich ändern.': 'This area is still experimental: values and analyses may change.',
+    'Bitte im Filter ein Flugzeug wählen: Die Statistik wertet immer genau ein Flugzeug aus (gefiltert sind Flüge von {aircraft}).': 'Please choose an aircraft in the filter: the statistics always analyse exactly one aircraft (the filtered flights belong to {aircraft}).',
+    'Für diese Flüge von {aircraft} sind keine Spannungs- und Stromdaten des Flugakkus im Log. Die Statistik-Seiten brauchen sie bisher.': 'These flights of {aircraft} have no flight battery voltage and current in the log. The statistics pages need them so far.',
+    'Monat {month:02d}': 'month {month:02d}',
+    '{aircraft}: {n} Flüge ausgewertet ({first} – {last})': '{aircraft}: {n} flights analysed ({first} – {last})',
 }

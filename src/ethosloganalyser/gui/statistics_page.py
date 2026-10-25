@@ -27,10 +27,13 @@ def page_title(key):
             "antrieb": tr("Antrieb"), "funk": tr("Funk & Bordnetz"), "table": tr("Tabelle")}[key]
 
 
-def report_lines(view, battery_hint=None):
+def report_lines(view, battery_hint=None, filter_text=""):
     """The summary of a statistics view as report lines [(tag, text)]: the notice that the area is experimental
-    first, then the battery hint (if the battery settings are missing) and the summary of the analysis."""
+    first, then the filter (if one is set besides the aircraft), the battery hint (if the battery settings are
+    missing) and the summary of the analysis."""
     lines = [("notice", tr(EXPERIMENTAL_NOTICE))]
+    if filter_text:
+        lines.append(("info", tr("Filter: {filter}", filter=filter_text)))
     if view.state != READY:
         return lines + [("info", view.message)]
     if battery_hint:

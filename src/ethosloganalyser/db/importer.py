@@ -6,12 +6,12 @@ folder. A file with other content but the same aircraft and start time as a stor
 marked as a possible duplicate. The files themselves are only read, never changed or deleted.
 """
 
+import glob
 import hashlib
 import os
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from ..analysis.fleet import find_logs
 from ..i18n import Msg
 from ..io.ethos_log import _file_datetime, model_from_filename
 from . import flight_store
@@ -50,6 +50,11 @@ class ImportReport:
     def flight_count(self):
         """Imported logs (new or suspicious) that are flights."""
         return sum(1 for entry in self.entries if entry.outcome in (NEW, SUSPICIOUS) and entry.is_flight)
+
+
+def find_logs(folder):
+    """All CSV files in folder and its subfolders, sorted."""
+    return sorted(glob.glob(os.path.join(folder, "**", "*.csv"), recursive=True))
 
 
 def collect_log_files(paths):

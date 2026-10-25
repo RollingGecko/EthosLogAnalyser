@@ -187,11 +187,7 @@ def _read_csv_any_encoding(open_source):
     raise last_error
 
 
-def read_log(path):
-    """Reads an Ethos log file (CSV) into a DataFrame; the encoding and the separator are detected."""
-    return _read_csv_any_encoding(lambda: path)
-
-
 def read_log_bytes(content):
-    """Reads an Ethos log from its file content (bytes), e.g. a raw log stored in the flight database."""
+    """Reads an Ethos log from its file content (bytes) into a DataFrame; the encoding and the separator are
+    detected. Used by the import of the flight database."""
     return _read_csv_any_encoding(lambda: io.BytesIO(content))

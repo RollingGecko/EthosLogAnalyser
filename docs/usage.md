@@ -40,46 +40,45 @@ The window has four areas, shown as tabs at the top:
 |---|---|
 | Logbook (Logbuch) | start page: totals, tables per year and month, list of flights (see *Logbook* below) |
 | Single flight (Einzelflug) | one flight from the flight database: time series in four views and the detail report |
-| Statistics (Statistik) | pages over all flights of the analysed model: Summary, Battery, Load & flight profile, Drive, Radio & onboard power, Table (smaller tabs inside the area) |
-| Data & settings (Daten & Einstellungen) | flight database, log folder, battery and analysis settings, language, export |
+| Statistics (Statistik) | the filter and pages over the filtered flights of one aircraft: Summary, Battery, Load & flight profile, Drive, Radio & onboard power, Table (smaller tabs inside the area); see *Statistics* below |
+| Data & settings (Daten & Einstellungen) | flight database, battery settings per aircraft, analysis settings, anomaly rules, language, export |
 
-*Logbook* and *Single flight* show the flights of the flight database. *Statistics* still shows the result of the
-folder analysis (*Analyse* under *Log data*) and will work on the database later.
+All areas show the flights of the flight database; there is no separate analysis of a log folder any more.
 
-The **status line** at the bottom shows the state of the flight database (flights, aircraft, first and last
-flight, and how many logs are not counted as flights) in the areas *Logbook* and *Single flight*. In the
-*Statistics* pages it shows the result of the analysis, as before.
+The **status line** at the top shows the state of the flight database (flights, aircraft, first and last flight,
+and how many logs are not counted as flights). In *Statistics* it shows the flights of the filter instead:
+“n of N flights of the database · aircraft · first – last flight · Filter: …”, and whether the battery settings
+of the aircraft are missing.
 
 ## Workflow
 
-1. Area **Data & settings** (Daten & Einstellungen): import the logs into the flight database (*Import folder …*) for the single flight, and choose the folder with the Ethos CSV logs for the logbook and statistics. Subfolders are included.
-2. **Battery** (Akku):
+1. Area **Data & settings** (Daten & Einstellungen): import the logs into the flight database (*Import folder …*, subfolders are included). Logbook, single flight and statistics follow at once.
+2. **Battery** (Akku), per aircraft:
+   - **Aircraft** (Flugzeug) – the aircraft of the database whose battery settings the fields show; by default the aircraft of the newest flight.
    - **Cell chemistry** – LiPo, LiHV or Li-Ion. Selects the resting voltage → state of charge curve.
    - **Cell count** – 0 = detect automatically from the highest start voltage.
    - **Nominal capacity** – 0 = unknown; the capacity is then estimated from the flights. With a nominal capacity entered, state of charge, timer and the cell chemistry check become considerably more reliable.
 3. **Analysis** (Auswertung):
-   - **Min. flight duration** – shorter logs (ground tests, aborted flights) are skipped; default 120 s.
+   - **Min. flight duration** – shorter logs (ground tests, aborted flights) are not counted as flights at the import; default 120 s.
    - **Motor running from** – current above which the flight counts; default 1 A.
    - **Reserve at landing** – remaining charge the timer recommendation aims for; default 20 %.
    - **Voltage / current column** – only needed if automatic detection picks the wrong column; part of the column name is enough.
-4. Click **Analyse** (Auswerten); the app shows *Statistics → Summary*. Settings are saved to `%USERPROFILE%\.akku_analyse.json`.
+Settings are saved to `%USERPROFILE%\.akku_analyse.json`. Settings from older versions (log folder, period
+from/to, model selector) are ignored; the battery settings per model are kept.
 
-### Several aircraft in one folder
+### Several aircraft
 
-The model is taken from the log file name: the part before the time stamp, e.g. `Viper-Jet` from `Viper-Jet-2026-04-19-13-25-36.csv` (hyphens and digits in the name are fine, a leading `-` is ignored; files without a model part count as “(unknown)”).
+The aircraft (model) is taken from the log file name: the part before the time stamp, e.g. `Viper-Jet` from `Viper-Jet-2026-04-19-13-25-36.csv` (hyphens and digits in the name are fine, a leading `-` is ignored; files without a model part count as “(unknown)”).
 
-- If the folder holds logs of **one** model, nothing changes.
-- If it holds logs of **several** models, they are never mixed: every analysis (all tabs, summary, table, export) covers exactly one model. By default it is the model with the newest log. Under the folder row of *Log data* a selector **Model** (Modell) appears – choosing another model analyses that one. The status line and the summary name the analysed model; the summary also lists the other models in the folder.
-- The **battery settings** (cell chemistry, cell count, nominal capacity) are remembered per model and loaded when the model changes. Settings from before this feature stay with the first model analysed; another model starts with the defaults.
-- A model **without stored battery settings** – a new model, or the very first start without any battery settings – shows a red hint: at the top of the summary, in the status line (“Battery settings missing for this model”) and below the battery fields in *Data & settings*. The analysis still runs with LiPo, automatic cell count and unknown capacity, but this assumption does not count as a setting, so state of charge, ageing and remaining capacity may be wrong. The hint disappears as soon as you choose the cell chemistry (even if it is LiPo) or enter a nominal capacity for that model; until then it comes back after a restart. Models that are already set up and the settings taken over from before this feature show no hint.
-- The **period filter** applies within the selected model.
+- Aircraft are never mixed in one analysis: the statistics always cover exactly one aircraft (see *Statistics*).
+- The **battery settings** (cell chemistry, cell count, nominal capacity) are remembered per aircraft: choose the aircraft in the battery section, the fields show its settings. Settings from before aircraft existed stay with the first aircraft; another aircraft starts with the defaults.
+- An aircraft **without stored battery settings** shows a red hint: at the top of the statistics summary, in the status line of the statistics (“Battery settings missing for this model”) and below the battery fields in *Data & settings*. The statistics still use LiPo, automatic cell count and unknown capacity, but this assumption does not count as a setting, so state of charge, ageing and remaining capacity may be wrong. The hint disappears as soon as you choose the cell chemistry (even if it is LiPo) or enter a nominal capacity for that aircraft; until then it comes back after a restart.
 - The CSV export has a column *Model* (Modell).
 
 ## Flight database
 
-The section **Database** (Datenbank) at the top of *Data & settings* manages the flight database. The area
-*Logbook* and *Single flight* show its flights; statistics follow in a later version (they still work on the
-log folder for now):
+The section **Database** (Datenbank) at the top of *Data & settings* manages the flight database. Logbook,
+single flight and statistics show its flights:
 
 - The line below the file name shows how many logs the database holds, how many of them are flights, how many
   aircraft and how large the file is.
@@ -98,7 +97,7 @@ Details (detection, storage, schema): [Flight database](database.md).
 
 ## Language
 
-The language is chosen under **Data & settings → Language** (Deutsch, English, Español). The window is rebuilt immediately in the new language; an existing analysis result, the selected flight, view and zoom are kept, so the logs do not have to be analysed again. The choice is saved together with the other settings and used at the next start. Without a saved choice, the app starts in the language of the operating system if it is supported, otherwise in English.
+The language is chosen under **Data & settings → Language** (Deutsch, English, Español). The window is rebuilt immediately in the new language; the filter, the selected flight, view and zoom are kept. The choice is saved together with the other settings and used at the next start. Without a saved choice, the app starts in the language of the operating system if it is supported, otherwise in English.
 
 The language applies to the whole user interface, the text reports, the charts and the exports (file names, the text columns of the CSV table). The column names of the CSV export are internal identifiers and stay the same in every language.
 
@@ -130,7 +129,7 @@ The same functions are available in every chart (built in one place, `plots/hove
 The area *Single flight* shows the flights of the flight database:
 
 - **Flight** (Flug): every log marked as a flight, oldest first, as *date time | aircraft | duration | drawn mAh*. The newest flight is selected at the start; *‹ back* / *next ›* step through the list. **‹ Logbook** goes back to the logbook.
-- The charts and details compare the flight with **all flights of the same aircraft** in the database, with the battery settings of that aircraft (*Data & settings → Battery*, kept per model). The period filter does not apply here.
+- The charts and details compare the flight with **all flights of the same aircraft** in the database, with the battery settings of that aircraft (*Data & settings → Battery*, kept per model). The filter of logbook and statistics does not apply here.
 - When an aircraft is opened for the first time after the program start or an import, its flights are prepared from the database in the background (a few seconds for some 30 flights; the line above the chart shows the progress). The aircraft of the newest flight is prepared right after the start. After that a flight opens in well under a second.
 - Only the **views** for which the log has data are offered. A flight whose log has no voltage and current of the flight battery (e.g. a glider) is listed, but shows a note instead of the charts – the views need these values so far.
 - Without flights in the database the page explains how to import logs.
@@ -145,10 +144,31 @@ The area *Single flight* shows the flights of the flight database:
 - **Attitude view** (Fluglage): roll angle with the aileron stick, pitch angle with the elevator stick (angle on the left axis in °, stick on the right axis in %, both centred on zero), throttle with the rudder stick, g-load and altitude. Stick values are the Ethos channel values QR, HR, SR scaled to ±100 % (±1024 = full deflection); throttle is 0–100 %. Channels that are missing in the log or not moved are left out and listed in a note.
 - The line above the charts shows all values at the time under the cursor; a vertical line marks that time in all charts.
 
+### Statistics
+
+The area *Statistics* (Statistik) shows the flights of the flight database that pass the **filter**, without any
+button to start an analysis:
+
+- The **filter bar** at the top is the same filter as in the logbook (aircraft, year, month, from / to): a change
+  here is seen in the logbook at once and the other way round. Logs that are not flights never count.
+- **One aircraft at a time**: if the filtered flights belong to several aircraft, the statistics say “Please choose
+  an aircraft in the filter” instead of mixing them. With only one aircraft in the filtered flights nothing needs
+  to be chosen.
+- The **Summary** starts with the notice that this area is still experimental (also in the exported report),
+  followed by the filter (if set) and the battery hint (if the battery settings of the aircraft are missing).
+- Flights are numbered within the filter (flight 1 is the oldest flight of the filter), as the cross-flight
+  values (cell count, trends, timer) are calculated from exactly these flights.
+- The flights of an aircraft are prepared once in the background (about 1.6 s for 33 flights); until then every
+  page says so. Afterwards a filter change takes a fraction of a second; only the page that is shown is drawn
+  again, the others when you open them.
+- Flights without battery voltage and current (e.g. a glider) get a hint instead of the pages.
+- **Export** (*Data & settings → Export*): the table as CSV and *Report + all charts* use the statistics of the
+  current filter.
+
 ### Logbook
 
 The area *Logbook* (Logbuch), the start page, gives an overview of your flying. It reads the **flight database**
-(it works without the folder analysis) and shows the flights of all aircraft in it. From top to bottom:
+and shows the flights of all aircraft in it. From top to bottom:
 
 1. **Filter bar** (see below) and the switches **only with note or anomaly** and **Show non-flights**.
 2. **Scope line**: how many of the flights of the database are shown (“33 of 33 flights of the database”), with *Filter active* when a filter is set. If some flights have no date or no log duration, a line below says how many; they are left out of the totals.
@@ -164,7 +184,7 @@ The area *Logbook* (Logbuch), the start page, gives an overview of your flying. 
 
 #### Filter
 
-The filter bar offers **aircraft**, **year**, **month** and a date range **from / to** (dd.mm.yyyy; the end day is included; an entry that is not a date turns red and is ignored; an empty field means no limit). *Reset* removes all restrictions. The filter acts on the whole logbook: totals, tables, charts, tree and list. It is one shared setting (`gui/flight_filter.py`), so the statistics will show and change the same filter later. The *Period from/to* filter under *Data & settings* is a separate setting for the statistics and does not change the logbook.
+The filter bar offers **aircraft**, **year**, **month** and a date range **from / to** (dd.mm.yyyy; the end day is included; an entry that is not a date turns red and is ignored; an empty field means no limit). *Reset* removes all restrictions. The filter acts on the whole logbook: totals, tables, charts, tree and list. It is one shared setting (`gui/flight_filter.py`): the statistics show and change the same filter.
 
 #### Non-flights and corrections
 
@@ -201,4 +221,4 @@ automatically.
 
 ## Export
 
-Under **Data & settings → Export**: the table as CSV (semicolon separator, decimal comma – opens directly in a German or Spanish Excel) or report, table and all charts into a folder. Durations stay in seconds in the CSV (columns `…_s`, e.g. `dauer_s`), each followed by the same value as min:s text (`…_mmss`, e.g. `dauer_mmss`). Report texts, chart labels and file names are in the selected language.
+Under **Data & settings → Export**: the table of the statistics (the filtered flights of one aircraft) as CSV (semicolon separator, decimal comma – opens directly in a German or Spanish Excel) or report, table and all charts into a folder. Durations stay in seconds in the CSV (columns `…_s`, e.g. `dauer_s`), each followed by the same value as min:s text (`…_mmss`, e.g. `dauer_mmss`). Report texts, chart labels and file names are in the selected language.

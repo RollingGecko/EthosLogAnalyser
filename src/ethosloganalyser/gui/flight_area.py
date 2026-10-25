@@ -51,12 +51,6 @@ class DatabaseFlightArea:
         self.page.select_flight()
         return True
 
-    def find_flight(self, aircraft, start_time):
-        """log_id of the database flight of this aircraft with this start time, None if there is not exactly one."""
-        matches = [flight.log_id for flight in self.cache.flights
-                   if flight.aircraft == aircraft and flight.start_time == start_time]
-        return matches[0] if len(matches) == 1 else None
-
     # ---------------- callbacks of the page ----------------
     def _resolve(self, log_id):
         flight = self.cache.flight(log_id)

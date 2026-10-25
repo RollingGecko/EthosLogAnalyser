@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""The settings of the window: input fields of Data & settings, battery settings per model, saving.
+"""The settings of the window: input fields of Data & settings, battery settings per aircraft, anomaly rules,
+saving. Keys of settings files from older versions (log folder, period) are ignored.
 
 The settings live as long as the window (they survive a language switch, which rebuilds all widgets).
 """
 
 from ..analysis.anomalies import RuleSettings
-from ..analysis.fleet import parse_date
 from ..config import Params, save_settings
 from ..i18n import N_, get_language, tr
 
@@ -19,7 +19,7 @@ BATTERY_UNSET_KEY = "unset"
 # input fields of Data & settings: key -> default (as text, like the entry shows it)
 FIELD_DEFAULTS = {
     "chem": "LiPo", "cells": "0", "nominal_mah": "0", "min_flight_s": "120", "active_current_a": "1.0",
-    "reserve_pct": "20", "col_voltage": "", "col_current": "", "date_from": "", "date_to": "",
+    "reserve_pct": "20", "col_voltage": "", "col_current": "",
 }
 
 BATTERY_HINT = N_("Für das Modell {model} sind noch keine Akku-Einstellungen gespeichert: Bitte im Reiter "
@@ -39,16 +39,15 @@ def battery_unset_for(model, model_settings, saved):
 
 
 class AppSettings:
-    """Input fields (Tk variables), the battery settings of every model and the folder; saved as JSON."""
+    """Input fields (Tk variables) and the battery settings of every model (aircraft); saved as JSON."""
 
     def __init__(self, root, saved):
         import tkinter as tk
         self.saved = saved
         self.fields = {key: tk.StringVar(master=root, value=saved.get(key, default))
                        for key, default in FIELD_DEFAULTS.items()}
-        self.folder = tk.StringVar(master=root, value=saved.get("folder", ""))
-        # several aircraft: logs are analysed per model (from the file name, see
-        # io.ethos_log.model_from_filename); the battery settings are kept per model
+        # the model (aircraft) is the name from the log file name (io.ethos_log.model_from_filename); the battery
+        # settings are kept per model
         self.model = saved.get("model")                    # model the battery fields belong to
         self.model_settings = dict(saved.get("models") or {})
         # True while the battery fields of the current model hold only the defaults (LiPo, automatic cell
@@ -70,7 +69,6 @@ class AppSettings:
     def store(self, database_path=""):
         """Writes all settings to the settings file."""
         stored = {k: v.get() for k, v in self.fields.items()}
-        stored["folder"] = self.folder.get()
         stored["language"] = get_language()
         if self.model is not None:
             self.model_settings[self.model] = self.model_battery()
@@ -118,7 +116,7 @@ class AppSettings:
     def params_for_model(self, model):
         """Analysis parameters for the flights of model in the database, without any dialog: the battery
         settings of that model (the input fields if it is the current model), the other fields as entered.
-        A field that is not a valid number keeps its default. The period fields do not apply here."""
+        A field that is not a valid number keeps its default."""
         def number(key, text):
             try:
                 return float(str(text).replace(",", "."))
@@ -148,24 +146,15 @@ class AppSettings:
         return self.params_for_model(model) if self.battery_chosen(model) else None
 
     def read_params(self, messagebox):
-        """The analysis parameters from the input fields, or None after showing an input error."""
+        """The analysis parameters from the input fields (for an import), or None after showing an input error."""
         fields = self.fields
         try:
-            d0, d1 = parse_date(fields["date_from"].get()), parse_date(fields["date_to"].get())
-        except ValueError:
-            messagebox.showerror(tr("Eingabefehler"), tr("Bitte ein gültiges Datum eintragen (TT.MM.JJJJ) oder das "
-                                                        "Feld leer lassen."))
-            return None
-        if d0 and d1 and d0 > d1:
-            messagebox.showerror(tr("Eingabefehler"), tr("Der Beginn des Zeitraums liegt nach dem Ende."))
-            return None
-        try:
-            num = lambda k: float(fields[k].get().replace(",", "."))
-            return Params(cells=int(num("cells")), chem=fields["chem"].get(), nominal_mah=num("nominal_mah"),
-                          min_flight_s=num("min_flight_s"), active_current_a=num("active_current_a"),
-                          reserve_pct=num("reserve_pct"), col_voltage=fields["col_voltage"].get().strip(),
-                          col_current=fields["col_current"].get().strip(),
-                          date_from=d0.isoformat() if d0 else "", date_to=d1.isoformat() if d1 else "")
+            def number(key):
+                return float(fields[key].get().replace(",", "."))
+            return Params(cells=int(number("cells")), chem=fields["chem"].get(), nominal_mah=number("nominal_mah"),
+                          min_flight_s=number("min_flight_s"), active_current_a=number("active_current_a"),
+                          reserve_pct=number("reserve_pct"), col_voltage=fields["col_voltage"].get().strip(),
+                          col_current=fields["col_current"].get().strip())
         except ValueError:
             messagebox.showerror(tr("Eingabefehler"), tr("Bitte gültige Zahlen in den Einstellungen eintragen."))
             return None

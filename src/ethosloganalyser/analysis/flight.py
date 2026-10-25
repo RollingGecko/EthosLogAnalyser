@@ -8,21 +8,13 @@ import pandas as pd
 from ..analysis.rx_spikes import rx_spike_analysis
 from ..config import Params, SPIKE_CAUSES, STEP
 from ..i18n import Msg
-from ..io.ethos_log import CURR_KEYS, VOLT_KEYS, _active_series, _exact_series, _file_datetime, _find_col, _first_series, _numeric_cols, _switch_columns, _time_seconds, _to_num, read_log
+from ..io.ethos_log import CURR_KEYS, VOLT_KEYS, _active_series, _exact_series, _file_datetime, _find_col, _first_series, _numeric_cols, _switch_columns, _time_seconds, _to_num
 from ..utils import _mmss, _nanmax, _nanmin, _rolling
 
 
-def analyse_file(path, p: Params):
-    """Analyses one log file. Returns (dict, "ok") or (None, Msg with the reason why the file was skipped)."""
-    try:
-        df = read_log(path)
-    except Exception as e:
-        return None, Msg("Lesefehler: {err}", err=str(e))
-    return analyse_frame(df, path, p)
-
-
 def analyse_frame(df, path, p: Params, start_time=None):
-    """Analyses one log that has already been read (``read_log``). Same result as ``analyse_file``.
+    """Analyses one log that has already been read (``read_log_bytes``, or the time series stored in the flight
+    database). Returns (dict, "ok") or (None, Msg with the reason why the log is no flight with battery data).
 
     path is only used for the file name and the date in the result; start_time (datetime) replaces the date
     taken from the file name, e.g. for a log stored in the flight database whose file no longer exists.

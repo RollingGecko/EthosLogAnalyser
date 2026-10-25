@@ -50,6 +50,8 @@ class ChartManager:
                 elif ev.button == 3:
                     self.chart_menu(ev, canvas, builder, title, flight=flight, whole_page=whole_page)
             canvas.mpl_connect("button_press_event", on_press)
+            canvas._on_press = on_press               # connected again when the figure is replaced
+        canvas._toolbar = toolbar
         canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
         return canvas
 
@@ -164,6 +166,13 @@ class ChartManager:
         fig.set_size_inches(old_figure.get_size_inches())            # the size the canvas has been resized to
         canvas.figure = fig
         fig.set_canvas(canvas)
+        # the mouse handlers are registered with the figure: connect them to the new one (double-click and
+        # context menu to enlarge, the coordinates in the toolbar)
+        if getattr(canvas, "_on_press", None) is not None:
+            canvas.mpl_connect("button_press_event", canvas._on_press)
+        toolbar = getattr(canvas, "_toolbar", None)
+        if toolbar is not None:
+            toolbar._id_drag = canvas.mpl_connect("motion_notify_event", toolbar.mouse_move)
         canvas._hover = Hover(canvas)
         canvas.draw()
         old_figure.clear()

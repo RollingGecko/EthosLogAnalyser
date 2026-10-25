@@ -6,9 +6,9 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 
-from helpers import EXAMPLE_FILES
+from helpers import EXAMPLE_FILES, read_log
 from ethosloganalyser.io.ethos_log import (CURR_KEYS, VOLT_KEYS, _file_datetime, _find_col, _switch_columns,
-                                           _time_seconds, _to_num, read_log)
+                                           _time_seconds, _to_num)
 
 
 def test_example_logs_present():

@@ -8,12 +8,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from helpers import EXAMPLE_FILES, ROOT, ela, write_ethos_csv, write_glider_log
+from helpers import EXAMPLE_FILES, ROOT, analyse_folder_logs, ela, read_log, write_ethos_csv, write_glider_log
 from ethosloganalyser.db import FlightDatabase, flight_store, import_paths, importer
 from ethosloganalyser.db import flight_detection, log_analysis, reanalysis, sensor_roles
 from ethosloganalyser.analysis.flight import analyse_frame
 from ethosloganalyser.db.log_analysis import metrics_from_json
-from ethosloganalyser.io.ethos_log import read_log
 
 LOGS_2026 = ROOT / "examples" / "logs_2026"
 
@@ -163,10 +162,10 @@ def test_stored_time_series_give_the_same_metrics(database):
                 assert again[key] == pytest.approx(value), key
 
 
-def test_example_logs_match_the_folder_analysis(database):
+def test_example_logs_match_the_analysis_of_the_files(database):
     report = import_paths(database, [str(path) for path in EXAMPLE_FILES], ela.Params())
     assert report.flight_count == 3
-    folder = ela.analyse_folder(str(EXAMPLE_FILES[0].parent), ela.Params())
+    folder = analyse_folder_logs(EXAMPLE_FILES[0].parent, ela.Params())
     stored = flight_store.flight_rows(database.connection)
     assert sorted(stored["original_name"]) == sorted(folder.df["datei"])
     durations = dict(zip(stored["original_name"], stored["duration_s"]))
@@ -175,10 +174,10 @@ def test_example_logs_match_the_folder_analysis(database):
 
 
 @pytest.mark.skipif(not LOGS_2026.is_dir(), reason="examples/logs_2026 not available")
-def test_logs_2026_give_the_33_flights_of_the_folder_analysis(database):
+def test_logs_2026_give_the_33_flights_of_the_analysis_of_the_files(database):
     report = import_paths(database, [str(LOGS_2026)], ela.Params())
     assert report.count(importer.NEW) == 71 and report.flight_count == 33
-    folder = ela.analyse_folder(str(LOGS_2026), ela.Params())
+    folder = analyse_folder_logs(LOGS_2026, ela.Params())
     flights = set(flight_store.flight_rows(database.connection).query("is_flight == 1")["original_name"])
     assert flights == set(folder.df["datei"])
 

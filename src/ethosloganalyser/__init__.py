@@ -12,5 +12,5 @@ Layout:
 __version__ = "0.3.0"
 
 from .config import Params, CHEM          # noqa: F401
-from .analysis.flight import analyse_file  # noqa: F401
-from .analysis.fleet import analyse_folder, Result  # noqa: F401
+from .analysis.flight import analyse_frame  # noqa: F401
+from .analysis.fleet import analyse_flights, Result  # noqa: F401
