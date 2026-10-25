@@ -99,6 +99,7 @@ class FlightList:
         for key in COLUMN_KEYS:
             self.tree.column(key, anchor="center", stretch=False)
         self.headings = headings
+        self._fixed_widths = None
         self.fit_columns([])
         self.tree.tag_configure(NON_FLIGHT_TAG, foreground="#888888")
         self.sorter = sortable_tree(self.tree, columns)
@@ -116,19 +117,25 @@ class FlightList:
         self.tree.bind("<Motion>", self._on_motion)
         self.tree.bind("<Leave>", lambda _event: self._clear_hint())
 
-    def fit_columns(self, aircraft_names):
-        """Column widths from the font: heading with the sort mark and the widest value of each column."""
-        fonts = TableFonts(self.tree)
-        shape = fonts.shaped
-        samples = {"number": [fonts.digits(4)], "aircraft": aircraft_names,
-                   "datum": [shape(fmt_date(WIDEST_DATE))], "time": [shape(f"{WIDEST_DATE:%H:%M}")],
-                   "dauer_s": [shape(fmt_duration(WIDEST_DURATION_S))], "entnommen_mAh": [fonts.digits(6)],
-                   "is_flight": [CHECKED, UNCHECKED], "note": [WIDEST_HINT + " "]}
-        for key in COLUMN_KEYS:
-            if key == ID_COLUMN:
-                self.tree.column(key, width=0, stretch=False)
-            else:
-                self.tree.column(key, width=fonts.width(self.headings[key], samples[key], sortable=True), stretch=False)
+    def fit_columns(self, aircraft_names, refit=False):
+        """Column widths from the font: heading with the sort mark and the widest value of each column. Only the
+        aircraft column depends on the data; the rest is worked out once (``refit``: again, e.g. after a font
+        change)."""
+        if refit or self._fixed_widths is None:
+            fonts = TableFonts(self.tree)
+            shape = fonts.shaped
+            samples = {"number": [fonts.digits(4)], "datum": [shape(fmt_date(WIDEST_DATE))],
+                       "time": [shape(f"{WIDEST_DATE:%H:%M}")], "dauer_s": [shape(fmt_duration(WIDEST_DURATION_S))],
+                       "entnommen_mAh": [fonts.digits(6)], "is_flight": [CHECKED, UNCHECKED],
+                       "note": [WIDEST_HINT + " "]}
+            self._fonts = fonts
+            self._fixed_widths = {key: fonts.width(self.headings[key], samples[key], sortable=True)
+                                  for key in samples}
+        for key, width in self._fixed_widths.items():
+            self.tree.column(key, width=width, stretch=False)
+        self.tree.column("aircraft", width=self._fonts.width(self.headings["aircraft"], aircraft_names, sortable=True),
+                         stretch=False)
+        self.tree.column(ID_COLUMN, width=0, stretch=False)
 
     # ---------------- content ----------------
     def show(self, listed):

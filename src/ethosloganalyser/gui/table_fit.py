@@ -76,6 +76,7 @@ class TableFonts:
         self.cell_font = tkfont.nametofont("TkDefaultFont")
         heading = ttk.Style(widget).lookup("Treeview.Heading", "font") or "TkHeadingFont"
         self.heading_font = tkfont.Font(root=widget, font=heading)
+        self._digit = None
 
     @property
     def line_height(self):
@@ -85,7 +86,9 @@ class TableFonts:
         return column_width(self.heading_font.measure, self.cell_font.measure, heading, samples, sortable)
 
     def digits(self, count):
-        return widest_digits(self.cell_font.measure, count)
+        if self._digit is None:                               # measured once: ten Tk calls
+            self._digit = widest_digits(self.cell_font.measure, 1)
+        return self._digit * count
 
     def shaped(self, text):
         return shaped(text, self.digits(1))

@@ -76,21 +76,23 @@ class PeriodTable:
             self.tree.configure(yscrollcommand=bar.set)
             bar.pack(side="right", fill="y")
         self.tree.pack(side="left", fill="y")
+        self.fonts = TableFonts(self.tree)
+        self.fixed_widths = {key: self.fonts.width(head, self._fixed_samples(key)) for key, head in columns[1:]}
         self._fit([])
 
-    def _samples(self, key, names):
-        """The widest texts a column can show (the actual names for the first column)."""
+    def _fixed_samples(self, key):
+        """The widest texts a number column can show."""
         fonts = self.fonts
-        if key == self.columns[0][0]:
-            return list(self.name_samples) + list(names)
         return {"Fluege": [fonts.digits(WIDEST_FLIGHTS)], "Flugtage": [fonts.digits(WIDEST_DAYS)],
                 "entnommen_mAh": [fonts.digits(WIDEST_MAH)],
                 "dauer_s": [fonts.shaped(fmt_duration(WIDEST_DURATION_S))]}[key]
 
     def _fit(self, names):
-        self.fonts = TableFonts(self.tree)
-        for key, head in self.columns:
-            self.tree.column(key, width=self.fonts.width(head, self._samples(key, names)), stretch=False)
+        """Column widths: the number columns are fixed by the font, the first one follows the texts in it."""
+        first, head = self.columns[0]
+        self.tree.column(first, width=self.fonts.width(head, list(self.name_samples) + list(names)), stretch=False)
+        for key, width in self.fixed_widths.items():
+            self.tree.column(key, width=width, stretch=False)
 
     def show(self, rows, total=None):
         """Fills the table with rows of texts and, if given, the sum row (shaded) at the end."""

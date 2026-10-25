@@ -287,7 +287,7 @@ def check_font_fit(root, scalings=(1.0, 1.25, 1.5)):
                     assert not widths_fit(tree, _texts(tree), heading_font, cell_font), (factor, tree["columns"])
             finally:
                 frame.destroy()
-            h["lb_flights"].fit_columns(["Viper-Jet"])
+            h["lb_flights"].fit_columns(["Viper-Jet"], refit=True)
             for marked in (False, True):                               # the sort mark ▲/▼ is part of the heading
                 if marked:
                     h["lb_sort"]["sort"]("dauer_s")
@@ -298,6 +298,6 @@ def check_font_fit(root, scalings=(1.0, 1.25, 1.5)):
     finally:
         cell_font.configure(size=cell_size)
         style.configure("Treeview.Heading", font=(family, 9, "bold"))
-        h["lb_flights"].fit_columns(["Viper-Jet"])
+        h["lb_flights"].fit_columns(["Viper-Jet"], refit=True)
         h["statistics"]._fit_columns([])
     assert heights == sorted(set(heights)), heights                    # larger font, higher rows
