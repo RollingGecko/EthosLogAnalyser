@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Reading FrSky Ethos logs: encoding, column detection, time axis, switch channels."""
 
+import io
 import os
 import re
 import numpy as np
@@ -173,13 +174,24 @@ def _clean_name(c):
     return c
 
 
-def read_log(path):
-    last = None
-    for enc in ("utf-8-sig", "cp1252", "latin-1"):      # Ethos often writes cp1252 (umlauts, °)
+def _read_csv_any_encoding(open_source):
+    """Reads an Ethos CSV with the first encoding that works; open_source() gives a fresh path or stream."""
+    last_error = None
+    for encoding in ("utf-8-sig", "cp1252", "latin-1"):      # Ethos often writes cp1252 (umlauts, °)
         try:
-            df = pd.read_csv(path, sep=None, engine="python", encoding=enc)
+            df = pd.read_csv(open_source(), sep=None, engine="python", encoding=encoding)
             df.columns = [_clean_name(c) for c in df.columns]
             return df
-        except UnicodeDecodeError as e:
-            last = e
-    raise last
+        except UnicodeDecodeError as error:
+            last_error = error
+    raise last_error
+
+
+def read_log(path):
+    """Reads an Ethos log file (CSV) into a DataFrame; the encoding and the separator are detected."""
+    return _read_csv_any_encoding(lambda: path)
+
+
+def read_log_bytes(content):
+    """Reads an Ethos log from its file content (bytes), e.g. a raw log stored in the flight database."""
+    return _read_csv_any_encoding(lambda: io.BytesIO(content))

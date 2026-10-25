@@ -18,7 +18,15 @@ def analyse_file(path, p: Params):
         df = read_log(path)
     except Exception as e:
         return None, Msg("Lesefehler: {err}", err=str(e))
+    return analyse_frame(df, path, p)
 
+
+def analyse_frame(df, path, p: Params, start_time=None):
+    """Analyses one log that has already been read (``read_log``). Same result as ``analyse_file``.
+
+    path is only used for the file name and the date in the result; start_time (datetime) replaces the date
+    taken from the file name, e.g. for a log stored in the flight database whose file no longer exists.
+    """
     cv = _find_col(df.columns, VOLT_KEYS, p.col_voltage)
     ci = _find_col(df.columns, CURR_KEYS, p.col_current)
     if cv is None or ci is None:
@@ -290,7 +298,7 @@ def analyse_file(path, p: Params):
     u_end_load = float(np.min(_rolling(u, 5)[t >= t[-1] - 10.0]))
     row = dict(
         datei=os.path.basename(path), pfad=path,
-        datum=_file_datetime(path),
+        datum=start_time if start_time is not None else _file_datetime(path),
         dauer_s=round(dur, 1),
         entnommen_mAh=round(float(q_mah[-1]), 0), ESC_mAh=round(esc_mah, 0) if np.isfinite(esc_mah) else np.nan,
         energie_Wh=round(e_wh, 2),

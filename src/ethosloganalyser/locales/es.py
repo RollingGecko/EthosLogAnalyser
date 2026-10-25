@@ -801,4 +801,100 @@ CATALOG = {
         "Duración del registro por mes [h:min:s]",
     "Summe der Log-Dauer (Motor scharf bis gesperrt).":
         "Suma de las duraciones de registro (motor armado a bloqueado).",
+
+    # ---------------- flight database ----------------
+    "Analysefehler: {err}":
+        "Error de análisis: {err}",
+    "Datenbank":
+        "Base de datos",
+    "Es wurde eine neue Flug-Datenbank angelegt:\n{path}\n\nSollen die Logs aus dem bisher genutzten Ordner importiert werden?\n{folder}":
+        "Se ha creado una nueva base de datos de vuelos:\n{path}\n\n¿Importar los logs de la carpeta usada hasta ahora?\n{folder}",
+    "neu":
+        "nuevo",
+    "doppelt":
+        "duplicado",
+    "mögliches Duplikat":
+        "posible duplicado",
+    "nicht lesbar":
+        "ilegible",
+    "{size} MB":
+        "{size} MB",
+    "{size} kB":
+        "{size} kB",
+    "{new} neu (davon {flights} Flüge), {duplicate} doppelt, {suspicious} mögliche Duplikate, {unreadable} nicht lesbar":
+        "{new} nuevos ({flights} de ellos vuelos), {duplicate} duplicados, {suspicious} posibles duplicados, {unreadable} ilegibles",
+    "gleicher Inhalt wie {file} (übersprungen)":
+        "mismo contenido que {file} (omitido)",
+    "gleiches Modell und gleiche Startzeit wie {file} (importiert, markiert)":
+        "mismo modelo y misma hora de inicio que {file} (importado, marcado)",
+    "kein Flug":
+        "sin vuelo",
+    "Import-Bericht":
+        "Informe de importación",
+    "abgebrochen":
+        "cancelado",
+    "Ergebnis":
+        "Resultado",
+    "Hinweis":
+        "Nota",
+    "Datenbank leeren":
+        "Vaciar base de datos",
+    "Alle importierten Logs und Flüge aus der Datenbank löschen?\n\nDie Logdateien selbst bleiben unverändert.":
+        "¿Borrar de la base de datos todos los logs y vuelos importados?\n\nLos archivos de log no se modifican.",
+    "Neu …":
+        "Nueva …",
+    "Öffnen …":
+        "Abrir …",
+    "Speichern unter …":
+        "Guardar como …",
+    "Leeren …":
+        "Vaciar …",
+    "Dateien importieren …":
+        "Importar archivos …",
+    "Ordner importieren …":
+        "Importar carpeta …",
+    "Flug-Datenbank":
+        "Base de datos de vuelos",
+    "Alle Dateien":
+        "Todos los archivos",
+    "Neue Datenbank anlegen":
+        "Crear nueva base de datos",
+    "Datenbank öffnen":
+        "Abrir base de datos",
+    "Datenbank speichern unter":
+        "Guardar base de datos como",
+    "Eine Kopie der Datenbank wurde gespeichert:\n{path}\n\nGeöffnet bleibt weiterhin:\n{current}":
+        "Se ha guardado una copia de la base de datos:\n{path}\n\nSigue abierta:\n{current}",
+    "Logdateien importieren":
+        "Importar archivos de log",
+    "Ordner importieren (mit Unterordnern)":
+        "Importar carpeta (con subcarpetas)",
+    "keine Datenbank geöffnet":
+        "ninguna base de datos abierta",
+    "{logs} Logs: {flights} Flüge, {other} ohne Flug · Flugzeuge: {aircraft} · {size}":
+        "{logs} logs: {flights} vuelos, {other} sin vuelo · aeronaves: {aircraft} · {size}",
+    "Die Datei kann nicht als Flug-Datenbank geöffnet werden:\n{path}\n\n{error}":
+        "El archivo no se puede abrir como base de datos de vuelos:\n{path}\n\n{error}",
+    "Die Datenbank kann nicht angelegt werden:\n{path}\n\n{error}":
+        "No se puede crear la base de datos:\n{path}\n\n{error}",
+    "Die Kopie kann nicht gespeichert werden:\n{path}\n\n{error}":
+        "No se puede guardar la copia:\n{path}\n\n{error}",
+    "Die zuletzt geöffnete Datenbank wurde nicht gefunden:\n{path}\n\nEs wird die Standard-Datenbank verwendet.":
+        "No se encontró la última base de datos abierta:\n{path}\n\nSe usa la base de datos predeterminada.",
+    "Fehler bei der Verarbeitung:\n{error}":
+        "Error durante el procesamiento:\n{error}",
+    "Schließen":
+        "Cerrar",
+    "Datei:":
+        "Archivo:",
+    "{done} von {total}: {file}":
+        "{done} de {total}: {file}",
+    "wird vorbereitet …":
+        "preparando …",
+    "Letzter Import: {summary}":
+        "Última importación: {summary}",
+    "Ethos-Logs":
+        "Logs de Ethos",
+    "Neuberechnung":
+        "Recálculo",
 }

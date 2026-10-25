@@ -787,4 +787,100 @@ CATALOG = {
         "Log duration per month [h:min:s]",
     "Summe der Log-Dauer (Motor scharf bis gesperrt).":
         "Sum of the log durations (motor armed to disarmed).",
+
+    # ---------------- flight database ----------------
+    "Analysefehler: {err}":
+        "Analysis error: {err}",
+    "Datenbank":
+        "Database",
+    "Es wurde eine neue Flug-Datenbank angelegt:\n{path}\n\nSollen die Logs aus dem bisher genutzten Ordner importiert werden?\n{folder}":
+        "A new flight database has been created:\n{path}\n\nImport the logs from the folder used so far?\n{folder}",
+    "neu":
+        "new",
+    "doppelt":
+        "duplicate",
+    "mögliches Duplikat":
+        "possible duplicate",
+    "nicht lesbar":
+        "unreadable",
+    "{size} MB":
+        "{size} MB",
+    "{size} kB":
+        "{size} kB",
+    "{new} neu (davon {flights} Flüge), {duplicate} doppelt, {suspicious} mögliche Duplikate, {unreadable} nicht lesbar":
+        "{new} new ({flights} of them flights), {duplicate} duplicates, {suspicious} possible duplicates, {unreadable} unreadable",
+    "gleicher Inhalt wie {file} (übersprungen)":
+        "same content as {file} (skipped)",
+    "gleiches Modell und gleiche Startzeit wie {file} (importiert, markiert)":
+        "same model and start time as {file} (imported, marked)",
+    "kein Flug":
+        "not a flight",
+    "Import-Bericht":
+        "Import report",
+    "abgebrochen":
+        "cancelled",
+    "Ergebnis":
+        "Result",
+    "Hinweis":
+        "Note",
+    "Datenbank leeren":
+        "Empty database",
+    "Alle importierten Logs und Flüge aus der Datenbank löschen?\n\nDie Logdateien selbst bleiben unverändert.":
+        "Delete all imported logs and flights from the database?\n\nThe log files themselves stay unchanged.",
+    "Neu …":
+        "New …",
+    "Öffnen …":
+        "Open …",
+    "Speichern unter …":
+        "Save as …",
+    "Leeren …":
+        "Empty …",
+    "Dateien importieren …":
+        "Import files …",
+    "Ordner importieren …":
+        "Import folder …",
+    "Flug-Datenbank":
+        "Flight database",
+    "Alle Dateien":
+        "All files",
+    "Neue Datenbank anlegen":
+        "Create new database",
+    "Datenbank öffnen":
+        "Open database",
+    "Datenbank speichern unter":
+        "Save database as",
+    "Eine Kopie der Datenbank wurde gespeichert:\n{path}\n\nGeöffnet bleibt weiterhin:\n{current}":
+        "A copy of the database has been saved:\n{path}\n\nStill open:\n{current}",
+    "Logdateien importieren":
+        "Import log files",
+    "Ordner importieren (mit Unterordnern)":
+        "Import folder (with subfolders)",
+    "keine Datenbank geöffnet":
+        "no database open",
+    "{logs} Logs: {flights} Flüge, {other} ohne Flug · Flugzeuge: {aircraft} · {size}":
+        "{logs} logs: {flights} flights, {other} without flight · aircraft: {aircraft} · {size}",
+    "Die Datei kann nicht als Flug-Datenbank geöffnet werden:\n{path}\n\n{error}":
+        "The file cannot be opened as a flight database:\n{path}\n\n{error}",
+    "Die Datenbank kann nicht angelegt werden:\n{path}\n\n{error}":
+        "The database cannot be created:\n{path}\n\n{error}",
+    "Die Kopie kann nicht gespeichert werden:\n{path}\n\n{error}":
+        "The copy cannot be saved:\n{path}\n\n{error}",
+    "Die zuletzt geöffnete Datenbank wurde nicht gefunden:\n{path}\n\nEs wird die Standard-Datenbank verwendet.":
+        "The database opened last was not found:\n{path}\n\nThe default database is used.",
+    "Fehler bei der Verarbeitung:\n{error}":
+        "Processing error:\n{error}",
+    "Schließen":
+        "Close",
+    "Datei:":
+        "File:",
+    "{done} von {total}: {file}":
+        "{done} of {total}: {file}",
+    "wird vorbereitet …":
+        "preparing …",
+    "Letzter Import: {summary}":
+        "Last import: {summary}",
+    "Ethos-Logs":
+        "Ethos logs",
+    "Neuberechnung":
+        "Recalculation",
 }
