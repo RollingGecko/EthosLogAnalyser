@@ -251,11 +251,8 @@ def test_the_view_follows_filter_selection_and_non_flights(model):
     assert viper.n_flights == 3 and viper.book.n_counted == 3 and viper.n_aircraft == 1 and viper.n_total == 4
     assert model.view(FlightFilter(year=2030)).n_flights == 1
 
-    model.group_selector = {"year": 2026}                  # a tree row: only the flight list follows it
-    assert len(model.view(FlightFilter()).listed) == 3 and model.view(FlightFilter()).n_flights == 4
-    assert len(model.listed(FlightFilter())) == 3
-    model.group_selector = {"year": 1999}                  # a row that does not exist (any more): everything is listed
-    assert len(model.view(FlightFilter()).listed) == 4 and model.group_selector is None
+    assert len(model.listed(FlightFilter())) == 4          # the list always shows all flights of the filter
+    assert len(model.listed(FlightFilter(year=2026))) == 3 and len(model.listed(FlightFilter(aircraft="Glider"))) == 1
 
 
 def test_switching_a_flight_removes_it_from_the_totals_and_shows_it_as_a_non_flight(model):

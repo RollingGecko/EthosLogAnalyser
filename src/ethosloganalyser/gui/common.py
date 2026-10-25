@@ -9,28 +9,28 @@ from ..config import VOLTAGE_SOURCE_LABELS, label, model_label
 from ..i18n import N_, fmt_datetime
 from ..utils import fmt_duration
 
-# columns of the table tab: (key in the flight table, heading, width in pixels)
+# columns of the table tab: (key in the flight table, heading); the widths follow the font (statistics_page)
 TABLE_COLS = [
-    ("Flug", N_("Flug"), 45), ("datum", N_("Datum"), 120), ("dauer_s", N_("Dauer min:s"), 75),
-    ("entnommen_mAh", N_("entnommen mAh"), 90), ("ESC_mAh", N_("ESC mAh"), 65), ("Sensor_Abw_pct", N_("Abw. %"), 55),
-    ("energie_Wh", N_("Energie Wh"), 75), ("I_mittel_A", N_("Ø A"), 50), ("I_max_A", N_("max A"), 55),
-    ("P_max_W", N_("P max W"), 65), ("C_peak", N_("C Spitze"), 60), ("SoC_start_pct", N_("SoC Start %"), 75),
-    ("SoC_ende_pct", N_("SoC Ende %"), 75), ("SoC_ende_U_pct", N_("SoC Ende (U) %"), 90),
-    ("SoC_Abw_pct", N_("SoC Abw. Pkt"), 80), ("Kap_gesch_mAh", N_("Kapazität mAh"), 90),
-    ("Kap_norm_mAh", N_("Kapazität normiert"), 105),
-    ("Ri_Zelle_mOhm", N_("Ri/Zelle mΩ"), 80), ("Ri_Anf_Zelle_mOhm", N_("Ri Anfang"), 70),
-    ("Ri_End_Zelle_mOhm", N_("Ri Ende"), 65), ("U_ref_Zelle_V", N_("U Ref V/Z"), 70),
-    ("U_min_Zelle_V", N_("U min V/Z"), 70), ("U_ende_Zelle_V", N_("U Ende V/Z"), 75),
-    ("U_ende_Quelle", N_("U Ende Quelle"), 85), ("Reserve_Zelle_V", N_("Reserve V/Z"), 80),
-    ("Timer_s", N_("Timer min:s"), 75), ("rpm_p90", N_("rpm P90"), 70), ("P_ref_W", N_("P Ref W"), 65),
-    ("P_Kurve_Abw_pct", N_("P Abw. Kurve %"), 95),
-    ("Hoehe_max_m", N_("Höhe max"), 65), ("Wh_je_100m", N_("Wh/100m"), 65), ("g_max", N_("g max"), 50),
-    ("RSSI_min", N_("RSSI min"), 65), ("VFR_min", N_("VFR min"), 60), ("RxBatt_min_V", N_("Rx V min"), 65),
-    ("RxStrom_mittel_A", N_("Rx A Ø"), 55), ("RxStrom_max_A", N_("Rx A max"), 65),
-    ("RxSpitzen_n", N_("Rx Spitzen"), 70), ("RxSp_Schalter", N_("Sp. Schalter"), 80),
-    ("RxSp_ohne", N_("Sp. o. Anlass"), 85), ("Rx_r_Knueppel", N_("r Rx/Knüppel"), 85),
-    ("fit_R2", N_("R² Fit"), 50), ("versatz_s", N_("Versatz s"), 60), ("Auffaellig", N_("Auffälligkeiten"), 260),
-    ("Datenfehler", N_("Messfehler"), 260),
+    ("Flug", N_("Flug")), ("datum", N_("Datum")), ("dauer_s", N_("Dauer min:s")),
+    ("entnommen_mAh", N_("entnommen mAh")), ("ESC_mAh", N_("ESC mAh")), ("Sensor_Abw_pct", N_("Abw. %")),
+    ("energie_Wh", N_("Energie Wh")), ("I_mittel_A", N_("Ø A")), ("I_max_A", N_("max A")),
+    ("P_max_W", N_("P max W")), ("C_peak", N_("C Spitze")), ("SoC_start_pct", N_("SoC Start %")),
+    ("SoC_ende_pct", N_("SoC Ende %")), ("SoC_ende_U_pct", N_("SoC Ende (U) %")),
+    ("SoC_Abw_pct", N_("SoC Abw. Pkt")), ("Kap_gesch_mAh", N_("Kapazität mAh")),
+    ("Kap_norm_mAh", N_("Kapazität normiert")),
+    ("Ri_Zelle_mOhm", N_("Ri/Zelle mΩ")), ("Ri_Anf_Zelle_mOhm", N_("Ri Anfang")),
+    ("Ri_End_Zelle_mOhm", N_("Ri Ende")), ("U_ref_Zelle_V", N_("U Ref V/Z")),
+    ("U_min_Zelle_V", N_("U min V/Z")), ("U_ende_Zelle_V", N_("U Ende V/Z")),
+    ("U_ende_Quelle", N_("U Ende Quelle")), ("Reserve_Zelle_V", N_("Reserve V/Z")),
+    ("Timer_s", N_("Timer min:s")), ("rpm_p90", N_("rpm P90")), ("P_ref_W", N_("P Ref W")),
+    ("P_Kurve_Abw_pct", N_("P Abw. Kurve %")),
+    ("Hoehe_max_m", N_("Höhe max")), ("Wh_je_100m", N_("Wh/100m")), ("g_max", N_("g max")),
+    ("RSSI_min", N_("RSSI min")), ("VFR_min", N_("VFR min")), ("RxBatt_min_V", N_("Rx V min")),
+    ("RxStrom_mittel_A", N_("Rx A Ø")), ("RxStrom_max_A", N_("Rx A max")),
+    ("RxSpitzen_n", N_("Rx Spitzen")), ("RxSp_Schalter", N_("Sp. Schalter")),
+    ("RxSp_ohne", N_("Sp. o. Anlass")), ("Rx_r_Knueppel", N_("r Rx/Knüppel")),
+    ("fit_R2", N_("R² Fit")), ("versatz_s", N_("Versatz s")), ("Auffaellig", N_("Auffälligkeiten")),
+    ("Datenfehler", N_("Messfehler")),
 ]
 
 # durations [s] shown as min:s (table) and exported additionally as min:s text columns (CSV)

@@ -3,6 +3,7 @@
 
 from ..db import importer
 from ..i18n import N_, tr
+from .table_fit import TableFonts, window_size
 
 OUTCOME_LABELS = {
     importer.NEW: N_("neu"),
@@ -54,7 +55,7 @@ def show_import_report(root, report):
 
     window = tk.Toplevel(root)
     window.title(tr("Import-Bericht"))
-    window.geometry("900x480")
+    window.geometry("{}x{}".format(*window_size(window, (900, 480))))        # grows with the font
     window.transient(root)
     frame = ttk.Frame(window, padding=10)
     frame.pack(fill="both", expand=True)
@@ -63,11 +64,15 @@ def show_import_report(root, report):
     table = ttk.Frame(frame)
     table.pack(fill="both", expand=True)
     tree = ttk.Treeview(table, columns=("file", "outcome", "detail"), show="headings")
-    for column, title, width in (("file", tr("Datei"), 300), ("outcome", tr("Ergebnis"), 140),
-                                 ("detail", tr("Hinweis"), 420)):
+    rows = report_rows(report)
+    fonts = TableFonts(tree)
+    for index, (column, title) in enumerate((("file", tr("Datei")), ("outcome", tr("Ergebnis")),
+                                             ("detail", tr("Hinweis")))):
         tree.heading(column, text=title)
-        tree.column(column, width=width, stretch=column == "detail")
-    for row in report_rows(report):
+        longest = max((row[index] for row in rows), key=len, default="")
+        # widths follow the font; the detail column takes the rest of the window
+        tree.column(column, width=fonts.width(title, [longest if column != "detail" else ""]), stretch=column == "detail")
+    for row in rows:
         tree.insert("", "end", values=row)
     scrollbar = ttk.Scrollbar(table, orient="vertical", command=tree.yview)
     tree.configure(yscrollcommand=scrollbar.set)

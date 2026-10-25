@@ -10,6 +10,8 @@ single flight.
 Only characters that Windows shows with its user-interface font are used (no emojis).
 """
 
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
 
@@ -17,6 +19,7 @@ from ..config import model_label
 from ..i18n import fmt_date, tr
 from ..utils import fmt_duration
 from .common import sortable_tree
+from .table_fit import TableFonts
 
 # columns: key, width; the headings are translated when the list is built
 COLUMN_KEYS = ("number", "aircraft", "datum", "time", "dauer_s", "entnommen_mAh", "is_flight", "note", "log_id")
@@ -25,8 +28,10 @@ CHECKED, UNCHECKED = "☑", "☐"
 DUPLICATE_SYMBOL = "⚠"
 NOTE_SYMBOL = "✎"
 SEVERITY_SYMBOLS = {1: "ℹ", 2: "⚠", 3: "‼"}          # by annotations.SEVERITY_RANK
-# the widest text the hint column can show (its width follows the font, so nothing is cut off)
+# the widest text the hint column can show (the column width follows the font, so nothing is cut off)
 WIDEST_HINT = " ".join((NOTE_SYMBOL, SEVERITY_SYMBOLS[3], DUPLICATE_SYMBOL))
+WIDEST_DATE = datetime(2026, 12, 28, 23, 59)        # shaped with the widest digit to size the date and time columns
+WIDEST_DURATION_S = 100 * 3600 - 1
 HINT_COLORS = {"note": "#1f3b73", "info": "#1f3b73", "warning": "#b36b00", "critical": "#b00020",
                "duplicate": "#b36b00"}
 NON_FLIGHT_TAG = "non_flight"
@@ -74,7 +79,7 @@ class FlightList:
 
     def __init__(self, parent, on_open_flight, on_switch_flight, hint_lines=None):
         import tkinter as tk
-        from tkinter import font as tkfont, ttk
+        from tkinter import ttk
 
         self.on_open_flight = on_open_flight        # on_open_flight(log_id)
         self.on_switch_flight = on_switch_flight    # on_switch_flight(log_id)
@@ -88,15 +93,14 @@ class FlightList:
         headings = {"number": tr("Nr."), "aircraft": tr("Flugzeug"), "datum": tr("Datum"), "time": tr("Uhrzeit"),
                     "dauer_s": tr("Log-Dauer"), "entnommen_mAh": tr("entnommen mAh"), "is_flight": tr("Flug"),
                     "note": "", "log_id": ""}
-        # the hint column is as wide as its widest text in the current font (plus the cell padding)
-        hint_width = tkfont.nametofont("TkDefaultFont").measure(WIDEST_HINT + "  ") + 12
-        widths = {"number": 50, "aircraft": 120, "datum": 95, "time": 70, "dauer_s": 85, "entnommen_mAh": 105,
-                  "is_flight": 50, "note": max(35, hint_width), "log_id": 0}
-        columns = [(key, headings[key], widths[key]) for key in COLUMN_KEYS]
+        columns = [(key, headings[key], 0) for key in COLUMN_KEYS]
         self.visible = [key for key in COLUMN_KEYS if key != ID_COLUMN]
         self.tree = ttk.Treeview(box, columns=list(COLUMN_KEYS), displaycolumns=self.visible, show="headings")
-        for key, _heading, width in columns:
-            self.tree.column(key, width=width, anchor="center", stretch=False)
+        for key in COLUMN_KEYS:
+            self.tree.column(key, anchor="center", stretch=False)
+        self.headings = headings
+        self._fixed_widths = None
+        self.fit_columns([])
         self.tree.tag_configure(NON_FLIGHT_TAG, foreground="#888888")
         self.sorter = sortable_tree(self.tree, columns)
         self.hint = tk.StringVar()
@@ -113,10 +117,31 @@ class FlightList:
         self.tree.bind("<Motion>", self._on_motion)
         self.tree.bind("<Leave>", lambda _event: self._clear_hint())
 
+    def fit_columns(self, aircraft_names, refit=False):
+        """Column widths from the font: heading with the sort mark and the widest value of each column. Only the
+        aircraft column depends on the data; the rest is worked out once (``refit``: again, e.g. after a font
+        change)."""
+        if refit or self._fixed_widths is None:
+            fonts = TableFonts(self.tree)
+            shape = fonts.shaped
+            samples = {"number": [fonts.digits(4)], "datum": [shape(fmt_date(WIDEST_DATE))],
+                       "time": [shape(f"{WIDEST_DATE:%H:%M}")], "dauer_s": [shape(fmt_duration(WIDEST_DURATION_S))],
+                       "entnommen_mAh": [fonts.digits(6)], "is_flight": [CHECKED, UNCHECKED],
+                       "note": [WIDEST_HINT + " "]}
+            self._fonts = fonts
+            self._fixed_widths = {key: fonts.width(self.headings[key], samples[key], sortable=True)
+                                  for key in samples}
+        for key, width in self._fixed_widths.items():
+            self.tree.column(key, width=width, stretch=False)
+        self.tree.column("aircraft", width=self._fonts.width(self.headings["aircraft"], aircraft_names, sortable=True),
+                         stretch=False)
+        self.tree.column(ID_COLUMN, width=0, stretch=False)
+
     # ---------------- content ----------------
     def show(self, listed):
         """Fills the list with the logs of the table `listed` (see db/logbook_table.py)."""
         records = listed.to_dict("records")
+        self.fit_columns(sorted({model_label(flight["aircraft"]) for flight in records}))
         self._duplicates = {int(flight["log_id"]) for flight in records if flight["possible_duplicate"]}
         self._clear_hint()
         self.sorter["set_rows"]([list_row(flight) for flight in records])

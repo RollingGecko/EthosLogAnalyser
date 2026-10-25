@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Colours and ttk styles of the user interface."""
 
+from .table_fit import row_height
+
 ACCENT = "#1f5fa8"
 
 
@@ -46,6 +48,6 @@ def _setup_style(root):
     st.configure("View.TRadiobutton", padding=(10, 4), background="#dde3ec", indicatorsize=0)
     st.map("View.TRadiobutton", background=[("selected", ACCENT), ("active", "#c5d3e8")],
            foreground=[("selected", "#ffffff")])
-    st.configure("Treeview", rowheight=22)
+    st.configure("Treeview", rowheight=row_height(base.metrics("linespace")))    # follows the font and the scaling
     st.configure("Treeview.Heading", font=(fam, 9, "bold"))
     return fam

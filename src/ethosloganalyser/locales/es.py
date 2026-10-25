@@ -705,6 +705,8 @@ CATALOG = {
         "Libro de vuelo",
     "Summen":
         "Totales",
+    "Je Flugzeug":
+        "Por aeronave",
     "Je Jahr":
         "Por año",
     "Jahr":
@@ -739,14 +741,6 @@ CATALOG = {
         "Duración del registro = tiempo desde «motor armado» hasta «motor bloqueado» en el registro, no el tiempo de vuelo puro.",
     "{dur}  (Flug {no}, {date})":
         "{dur}  (vuelo {no}, {date})",
-    "Flüge je Monat":
-        "Vuelos por mes",
-    "Nur Monate mit Flügen.":
-        "Solo meses con vuelos.",
-    "Log-Dauer je Monat [h:min:s]":
-        "Duración del registro por mes [h:min:s]",
-    "Summe der Log-Dauer (Motor scharf bis gesperrt).":
-        "Suma de las duraciones de registro (motor armado a bloqueado).",
 
     # ---------------- flight database ----------------
     "Analysefehler: {err}":
@@ -889,14 +883,6 @@ CATALOG = {
         "N.º",
     "Mögliches Duplikat: gleiches Flugzeug und gleiche Startzeit wie ein anderer Flug":
         "Posible duplicado: misma aeronave y misma hora de inicio que otro vuelo",
-    "Gruppieren nach":
-        "Agrupar por",
-    "Zeit (Jahr, Monat, Flugzeug)":
-        "Tiempo (año, mes, aeronave)",
-    "Flugzeug (Jahr, Monat)":
-        "Aeronave (año, mes)",
-    "Gruppe":
-        "Grupo",
     "Summe":
         "Total",
     "{n} von {total} Flügen der Datenbank":

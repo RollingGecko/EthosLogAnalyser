@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """GUI checks of the logbook page (called from test_gui.py, which owns the one window of the test session).
 
-Everything here drives the widgets the way the user does: choosing in the combo boxes, clicking in the tree and
-on the flight switch, double-clicking a row.
+Everything here drives the widgets the way the user does: choosing in the combo boxes, clicking on the flight
+switch, double-clicking a row.
 """
 
 
@@ -43,8 +43,8 @@ def check_empty_logbook(root):
 
 
 def check_logbook(root, monkeypatch):
-    """Logbook from the database (three Viper-Jet flights): scope, totals, tables, flight list, sorting, chart,
-    status line, the tree with both groupings, the filter, double-click, the flight switch."""
+    """Logbook from the database (three Viper-Jet flights): scope, totals, tables, flight list, sorting,
+    status line, the three small tables, the filter, double-click, the flight switch."""
     h = root._akku
     nb, tabs = h["nb"], h["tabs"]
     assert nb.index(tabs["logbook"]) == 0                               # first area (start page)
@@ -54,10 +54,8 @@ def check_logbook(root, monkeypatch):
     assert h["lb_totals"]["flights"].get().startswith("3  (")
     assert h["lb_missing"].get() == ""
     assert h["status"].get() == "Flug-Datenbank  ·  3 Flüge, 1 Flugzeuge  ·  13.09.2026 – 18.10.2026"
-    years = [h["lb_year"].item(i)["values"] for i in h["lb_year"].get_children()]
-    assert len(years) == 1 and years[0][1] == 3
     _check_flight_list(root, h)
-    _check_tree(root, h)
+    _check_tables(root, h)
     _check_filter(root, h)
     _check_open_flight(root, h)
     _check_flight_switch(root, h, monkeypatch)
@@ -86,39 +84,26 @@ def _check_flight_list(root, h):
     h["lb_sort"]["sort"]("dauer_s")                                   # second click: longest first
     assert first_col()[0] == book.longest["Flug"]
     assert lst.heading("dauer_s")["text"].endswith("▼")
-    canvas = h["lb_canvas"]()
-    assert canvas is not None and len(canvas.figure.axes) == 2
     h["lb_sort"]["sort"]("number")                                    # by number, ascending
     assert first_col() == [1, 2, 3]
 
 
-def _check_tree(root, h):
-    """Both groupings, and a click on a row filters the flight list but not the totals."""
-    tree, lst = h["lb_groups"].tree, h["lb_list"]
-    top = tree.get_children()
-    assert [tree.item(i, "text") for i in top] == ["2026", "Summe"]
-    months = tree.get_children(top[0])
-    assert [tree.item(i, "text") for i in months] == ["09/2026", "10/2026"]
-    assert [int(tree.set(i, "#1")) for i in months] == [2, 1] and int(tree.set(top[1], "#1")) == 3
-    h["lb_groups"].select_item(months[1])                             # a click on October
-    root.update()
-    assert len(lst.get_children()) == 1 and h["lb_totals"]["flights"].get().startswith("3  (")
-    h["lb_groups"].select_item(top[1])                                # the sum row: everything again
-    root.update()
-    assert len(lst.get_children()) == 3
+def _rows(tree):
+    return [tree.item(item)["values"] for item in tree.get_children()]
 
-    by_aircraft = next(w for w in widgets(h["lb_groups"].frame) if w.winfo_class() == "TRadiobutton"
-                       and w.cget("text").startswith("Flugzeug"))
-    by_aircraft.invoke()
-    root.update()
-    top = tree.get_children()
-    assert [tree.item(i, "text") for i in top] == ["Viper-Jet", "Summe"]
-    assert [tree.item(i, "text") for i in tree.get_children(top[0])] == ["2026"]
-    assert h["lb_model"].group_by == "aircraft"
-    next(w for w in widgets(h["lb_groups"].frame) if w.winfo_class() == "TRadiobutton"
-         and w.cget("text").startswith("Zeit")).invoke()
-    root.update()
-    assert [tree.item(i, "text") for i in tree.get_children()] == ["2026", "Summe"]
+
+def _check_tables(root, h):
+    """The tables per aircraft, year and month agree with the totals; the flight list shows every flight."""
+    aircraft, years, months = _rows(h["lb_aircraft"]), _rows(h["lb_year"]), _rows(h["lb_month"])
+    assert [row[0] for row in aircraft] == ["Viper-Jet", "Summe"] and aircraft[0][1] == aircraft[1][1] == 3
+    assert aircraft[0][2:] == aircraft[1][2:]                         # one aircraft: its row is the sum
+    assert [row[0] for row in years] == [2026] and [row[0] for row in months] == ["09/2026", "10/2026"]
+    assert [row[1] for row in months] == [2, 1] and years[0][1] == 3
+    totals = h["lb_totals"]
+    assert totals["flights"].get().startswith("3  (") and totals["days"].get() == str(aircraft[1][2])
+    assert totals["total"].get() == aircraft[1][3]
+    assert aircraft[1][3] == years[0][2] and aircraft[1][4] == years[0][4]       # duration and drawn charge
+    assert len(h["lb_list"].get_children()) == 3                       # the list always shows all flights
 
 
 def _check_filter(root, h):
@@ -224,3 +209,95 @@ def _check_flight_switch(root, h, monkeypatch):
     h["lb_page"].non_flights_button.invoke()
     root.update()
     assert len(lst.get_children()) == 3 and h["lb_model"].show_non_flights is False
+
+
+# ---------------- nothing is cut off ----------------
+def widths_fit(tree, texts_by_column, heading_font, cell_font):
+    """Failures of a Treeview: a column narrower than its heading or one of its texts. {column: [texts]}."""
+    failures = []
+    for column in tree["columns"]:
+        width = int(tree.column(column, "width"))
+        if width == 0:                                                 # a hidden column
+            continue
+        if width < heading_font.measure(tree.heading(column, "text")):
+            failures.append((column, "heading", width))
+        for text in texts_by_column.get(column, []):
+            if width < cell_font.measure(str(text)):
+                failures.append((column, text, width))
+    return failures
+
+
+def _fonts(root):
+    from tkinter import font as tkfont, ttk
+    heading = tkfont.Font(root=root, font=ttk.Style(root).lookup("Treeview.Heading", "font"))
+    return heading, tkfont.nametofont("TkDefaultFont")
+
+
+def _texts(tree):
+    return {column: [tree.set(item, column) for item in tree.get_children()] for column in tree["columns"]}
+
+
+def _check_statistics_table_fit(h, heading_font, cell_font, factor):
+    """The wide table of the statistics page, worked out again for the scaling (when it has flights)."""
+    statistics = h["statistics"]
+    if statistics.view is None or statistics.view.state != "ready":
+        return
+    statistics._fill_table()
+    table = statistics.table
+    assert len(table.get_children()) > 0
+    assert not widths_fit(table, _texts(table), heading_font, cell_font), factor
+
+
+def check_import_report_fit(root, tree):
+    """The columns of an open import report are wide enough for their headings and texts."""
+    heading_font, cell_font = _fonts(root)
+    root.update_idletasks()
+    texts = _texts(tree)
+    detail_free = {column: values for column, values in texts.items() if column != "detail"}   # that one stretches
+    assert tree.get_children() and not widths_fit(tree, detail_free, heading_font, cell_font)
+
+
+def check_font_fit(root, scalings=(1.0, 1.25, 1.5)):
+    """The logbook tables, the flight list and the statistics table are sized again for fonts as they are at the
+    display scalings 100 %, 125 % and 150 %, and no heading or value is wider than its column. The row height
+    grows with the font. (The scaling is simulated by the font sizes, so the test does not depend on how the
+    display server of the test machine scales fonts.)"""
+    from tkinter import font as tkfont, ttk
+    from ethosloganalyser.gui.logbook_tables import LogbookTables
+    from ethosloganalyser.gui.table_fit import row_height
+
+    h = root._akku
+    style = ttk.Style(root)
+    cell_font = tkfont.nametofont("TkDefaultFont")
+    family, cell_size = cell_font.actual("family"), cell_font.cget("size")
+    book = h["lb_state"]["book"]
+    list_tree = h["lb_list"]
+    heights = []
+    try:
+        for factor in scalings:
+            cell_font.configure(size=round(cell_size * factor))
+            style.configure("Treeview.Heading", font=(family, round(9 * factor), "bold"))
+            heading_font, _ = _fonts(root)
+            frame = ttk.Frame(root)
+            try:
+                tables = LogbookTables(frame)
+                tables.show(book)
+                root.update_idletasks()
+                for tree in (tables.aircraft.tree, tables.year.tree, tables.month.tree):
+                    assert not widths_fit(tree, _texts(tree), heading_font, cell_font), (factor, tree["columns"])
+            finally:
+                frame.destroy()
+            h["lb_flights"].fit_columns(["Viper-Jet"], refit=True)
+            for marked in (False, True):                               # the sort mark ▲/▼ is part of the heading
+                if marked:
+                    h["lb_sort"]["sort"]("dauer_s")
+                assert not widths_fit(list_tree, _texts(list_tree), heading_font, cell_font), (factor, marked)
+            h["lb_sort"]["sort"]("number")
+            _check_statistics_table_fit(h, heading_font, cell_font, factor)
+            heights.append(row_height(cell_font.metrics("linespace")))
+    finally:
+        cell_font.configure(size=cell_size)
+        style.configure("Treeview.Heading", font=(family, 9, "bold"))
+        h["lb_flights"].fit_columns(["Viper-Jet"], refit=True)
+        h["statistics"]._fit_columns([])
+    assert heights == sorted(set(heights)), heights                    # larger font, higher rows
