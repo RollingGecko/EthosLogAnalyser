@@ -16,6 +16,10 @@ from ..plots.hover import Hover
 from ..report.text import flight_detail_lines
 from ..utils import fmt_duration
 from .common import fill_text, make_text
+from .table_fit import characters_for
+
+
+FLIGHT_BOX_CHARACTERS, SPIKE_BOX_CHARACTERS, MAX_BOX_CHARACTERS = 46, 44, 90      # widths in characters
 
 
 class FlightPage:
@@ -145,6 +149,7 @@ class FlightPage:
         self.resolve = resolve
         labels = [text for text, _key in self.choices]
         self.flight_box["values"] = labels
+        self._fit_box(self.flight_box, labels, FLIGHT_BOX_CHARACTERS)
         if not labels:
             self.flight_var.set("")
             self.show_message(empty_message)
@@ -153,6 +158,13 @@ class FlightPage:
         index = keys.index(selected_key) if selected_key in keys else len(labels) - 1
         self.flight_var.set(labels[index])
         self.select_flight()
+
+    @staticmethod
+    def _fit_box(box, texts, minimum):
+        """Makes the combobox wide enough for its longest entry in the current font (never narrower than before)."""
+        from tkinter import font as tkfont
+        measure = tkfont.nametofont("TkDefaultFont").measure
+        box.configure(width=characters_for(measure, texts, minimum, maximum=MAX_BOX_CHARACTERS))
 
     def current_key(self):
         labels = [text for text, _key in self.choices]
@@ -240,6 +252,7 @@ class FlightPage:
                      + (f" ({sp['schalter']})" if sp["schalter"] else "") for sp in rx["spikes"]]
         self.spike_times = [sp["t"] for sp in rx["spikes"]] if rx else []
         self.spike_box["values"] = items
+        self._fit_box(self.spike_box, items + [tr("keine Spitzen")], SPIKE_BOX_CHARACTERS)
         self.spike_var.set("" if items else tr("keine Spitzen"))
 
     def step_flight(self, step):

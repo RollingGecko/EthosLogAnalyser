@@ -15,7 +15,7 @@ import pandas as pd
 
 # columns of the flight list, in display order
 FLIGHT_COLS = ["Flug", "datum", "dauer_s", "entnommen_mAh"]
-# columns of the tables per year and per month
+# columns of the tables per aircraft, per year and per month
 PERIOD_COLS = ["Fluege", "dauer_s", "Flugtage", "entnommen_mAh"]
 
 
@@ -34,6 +34,7 @@ class Logbook:
     last: object = None
     per_year: pd.DataFrame = None      # index year; columns PERIOD_COLS
     per_month: pd.DataFrame = None     # index (year, month); columns PERIOD_COLS
+    per_aircraft: pd.DataFrame = None  # index aircraft name; columns PERIOD_COLS
     flights: pd.DataFrame = None       # FLIGHT_COLS, all flights (also those with missing values)
 
 
@@ -69,6 +70,7 @@ def logbook(df):
     if df is None or df.empty:
         lb.per_year = _period_table(pd.DataFrame(), ["Jahr"])
         lb.per_month = _period_table(pd.DataFrame(), ["Jahr", "Monat"])
+        lb.per_aircraft = _period_table(pd.DataFrame(), ["aircraft"])
         lb.flights = pd.DataFrame(columns=FLIGHT_COLS)
         return lb
 
@@ -89,6 +91,7 @@ def logbook(df):
     if c.empty:
         lb.per_year = _period_table(pd.DataFrame(), ["Jahr"])
         lb.per_month = _period_table(pd.DataFrame(), ["Jahr", "Monat"])
+        lb.per_aircraft = _period_table(pd.DataFrame(), ["aircraft"])
         return lb
 
     c["_day"] = c["datum"].dt.normalize()
@@ -106,4 +109,5 @@ def logbook(df):
     lb.n_mah = int(len(mah))
     lb.per_year = _period_table(c, ["Jahr"])
     lb.per_month = _period_table(c, ["Jahr", "Monat"])
+    lb.per_aircraft = _period_table(c.dropna(subset=["aircraft"]), ["aircraft"])
     return lb

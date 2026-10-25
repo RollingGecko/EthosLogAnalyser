@@ -154,7 +154,7 @@ class ChartManager:
         """Shows another figure in the canvas already in frame (False if there is none yet).
 
         Much faster than show_fig because the canvas and the toolbar stay; used by pages that redraw often
-        (the logbook, when the filter changes). The builder given to show_fig keeps working.
+        (the statistics, when the filter changes). The builder given to show_fig keeps working.
         """
         canvas = self.page_canvases.get(str(frame))
         if canvas is None or not canvas.get_tk_widget().winfo_exists():

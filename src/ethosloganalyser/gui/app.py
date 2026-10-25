@@ -10,7 +10,7 @@ show the flight database; Logbook and Statistics share one filter (aircraft, yea
 
 The pages are separate modules: settings_page (Data & settings), statistics_page with statistics_model,
 flight_page with flight_area, flight_cache and flight_annotations (single flight from the database),
-logbook_page with logbook_model, flight_filter, logbook_group_tree and logbook_flight_list; charts (chart
+logbook_page with logbook_model, flight_filter, logbook_tables and logbook_flight_list; charts (chart
 canvases, full screen), app_settings (input fields, battery per aircraft), database_panel, anomaly_controller.
 
 The status line shows the state of the flight database; on the statistics the flights of the filter.
@@ -36,6 +36,7 @@ from ..gui.settings_page import SettingsPage
 from ..gui.statistics_model import READY, StatisticsModel, filter_description
 from ..gui.statistics_page import CHART_PAGES, PAGE_KEYS, StatisticsPages, page_title, report_lines
 from ..gui.style import BG, _setup_style
+from ..gui.table_fit import window_size
 from ..i18n import LANGUAGES, detect_language, fmt_date, get_language, set_language, tr
 from ..plots.flight import FLIGHT_VIEWS, figure_flight
 from ..report.text import flight_detail_lines
@@ -75,7 +76,7 @@ class MainWindow:
 
         self.filedialog, self.messagebox = filedialog, messagebox
         self.root = tk.Tk()
-        self.root.geometry("1400x950")
+        self.root.geometry("{}x{}".format(*window_size(self.root, (1400, 950))))     # grows with the display scaling
         self.root.configure(background=BG)
         self.family = _setup_style(self.root)
 
@@ -134,8 +135,7 @@ class MainWindow:
         self.flight_area = DatabaseFlightArea(self.flight_page, self.flight_cache, self.flight_annotations)
         self.flight_area.reload(force=True)
         self.update_battery_models()
-        self.logbook_page = LogbookPage(self.tabs["logbook"], self.charts, self.family, tab_title("logbook"),
-                                        self.logbook_model, self.filter_state)
+        self.logbook_page = LogbookPage(self.tabs["logbook"], self.family, self.logbook_model, self.filter_state)
         self.logbook_page.on_open_flight = self.open_logbook_flight
         self.logbook_page.on_switch_flight = self.switch_logbook_flight
         if self.database.database is not None:       # at program start the database is opened right after this
@@ -405,10 +405,11 @@ class MainWindow:
             goto_spike=flight_page.goto_spike, spike_var=flight_page.spike_var, details=flight_page.details,
             flight_builder=flight_page.builder, flight_canvas=flight_page.canvas,
             lb_page=logbook_page, lb_model=self.logbook_model, filter_state=self.filter_state,
-            lb_filter=logbook_page.filter_bar, lb_groups=logbook_page.group_tree, lb_flights=logbook_page.flight_list,
+            lb_filter=logbook_page.filter_bar, lb_flights=logbook_page.flight_list,
             lb_totals=logbook_page.totals, lb_scope=logbook_page.scope, lb_missing=logbook_page.missing,
-            lb_year=logbook_page.year_tree, lb_month=logbook_page.month_tree, lb_list=logbook_page.flight_list.tree,
-            lb_sort=logbook_page.sorter, lb_state=logbook_page.state, lb_canvas=logbook_page.chart_canvas,
+            lb_aircraft=logbook_page.tables.aircraft.tree, lb_year=logbook_page.tables.year.tree,
+            lb_month=logbook_page.tables.month.tree, lb_list=logbook_page.flight_list.tree,
+            lb_sort=logbook_page.sorter, lb_state=logbook_page.state,
             lb_open_row=logbook_page.open_row, lb_only_annotated=logbook_page.only_annotated,
             lb_annotated_toggled=logbook_page._annotated_toggled, annotations_panel=self.flight_annotations,
             anomalies=self.anomalies, anomaly_settings=settings_page.anomaly_panel,

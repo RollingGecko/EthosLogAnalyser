@@ -5,7 +5,7 @@
 Desktop app (Python/Tkinter) for analysing **FrSky Ethos flight logs** (CSV), focusing on battery condition, drive and radio/onboard power. Built for an electric jet (Viper-Jet), but works with any Ethos log that contains flight battery voltage and current. The user interface is available in **German, English and Spanish**; the language can be switched in the app and is remembered.
 
 All logs are imported into one **flight database** (a file; duplicates are recognised, the log files stay
-untouched). From it the app shows a **logbook** (totals per year and month, flight list with notes and anomaly
+untouched). From it the app shows a **logbook** (totals, tables per aircraft, year and month, flight list with notes and anomaly
 hints), every **single flight** and the **statistics** of one aircraft – with one filter (aircraft, year, month,
 date range) shared by logbook and statistics.
 

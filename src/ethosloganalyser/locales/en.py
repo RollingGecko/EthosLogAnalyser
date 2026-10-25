@@ -692,6 +692,8 @@ CATALOG = {
         "Logbook",
     "Summen":
         "Totals",
+    "Je Flugzeug":
+        "Per aircraft",
     "Je Jahr":
         "Per year",
     "Jahr":
@@ -726,14 +728,6 @@ CATALOG = {
         "Log duration = time from “motor armed” to “motor disarmed” in the log, not the pure flight time.",
     "{dur}  (Flug {no}, {date})":
         "{dur}  (flight {no}, {date})",
-    "Flüge je Monat":
-        "Flights per month",
-    "Nur Monate mit Flügen.":
-        "Only months with flights.",
-    "Log-Dauer je Monat [h:min:s]":
-        "Log duration per month [h:min:s]",
-    "Summe der Log-Dauer (Motor scharf bis gesperrt).":
-        "Sum of the log durations (motor armed to disarmed).",
 
     # ---------------- flight database ----------------
     "Analysefehler: {err}":
@@ -876,14 +870,6 @@ CATALOG = {
         "No.",
     "Mögliches Duplikat: gleiches Flugzeug und gleiche Startzeit wie ein anderer Flug":
         "Possible duplicate: same aircraft and start time as another flight",
-    "Gruppieren nach":
-        "Group by",
-    "Zeit (Jahr, Monat, Flugzeug)":
-        "Time (year, month, aircraft)",
-    "Flugzeug (Jahr, Monat)":
-        "Aircraft (year, month)",
-    "Gruppe":
-        "Group",
     "Summe":
         "Total",
     "{n} von {total} Flügen der Datenbank":

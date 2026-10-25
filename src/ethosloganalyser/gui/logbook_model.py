@@ -14,7 +14,6 @@ from dataclasses import dataclass
 import pandas as pd
 
 from ..analysis.logbook import Logbook, logbook
-from ..analysis.logbook_groups import GROUP_BY_TIME, all_selectors, build_groups, select_flights
 from ..analysis.periods import aircraft_in, apply_filter, years_in
 from ..db import annotations, flight_store
 from ..db.logbook_table import build_logbook_table, empty_logbook_table, manual_value_after_switch
@@ -23,8 +22,7 @@ from ..db.logbook_table import build_logbook_table, empty_logbook_table, manual_
 @dataclass
 class LogbookView:
     """Everything the logbook page shows for one filter."""
-    book: Logbook                    # totals and tables per year and month of the flights that pass the filter
-    groups: list                     # GroupNode tree of these flights
+    book: Logbook                    # totals and tables per aircraft, year and month of the flights that pass the filter
     n_flights: int                   # flights that pass the filter
     n_aircraft: int                  # different aircraft among them
     n_total: int                     # flights in the database
@@ -71,8 +69,6 @@ class LogbookModel:
         self._annotations_signature = None
         # choices of the logbook page; kept here so they survive rebuilding the window (language switch)
         self.show_non_flights = False
-        self.group_by = GROUP_BY_TIME
-        self.group_selector = None               # selector of the selected row of the tree, None = all
         self.only_annotated = False              # list only flights with a note or an open anomaly
 
     # ---------------- reading the database ----------------
@@ -117,29 +113,21 @@ class LogbookModel:
         return years_in(self.flights)
 
     def view(self, flight_filter):
-        """The logbook for a filter and the current choices (non-flights shown or not, grouping, tree row).
-
-        A selected tree row that does not exist for this filter any more is dropped (everything is listed).
-        """
+        """The logbook for a filter and the current choices (non-flights shown or not, only annotated)."""
         filtered = apply_filter(self.table, flight_filter)
         flights = filtered[filtered["is_flight"].astype(bool)]
-        groups = build_groups(flights, self.group_by)
-        if self.group_selector is not None and self.group_selector not in all_selectors(groups):
-            self.group_selector = None
-        listed = self._listed(filtered, flights)
-        return LogbookView(book=logbook(flights), groups=groups,
-                           n_flights=len(flights), n_aircraft=len(aircraft_in(flights)), n_total=len(self.flights),
-                           listed=listed)
+        return LogbookView(book=logbook(flights), n_flights=len(flights), n_aircraft=len(aircraft_in(flights)),
+                           n_total=len(self.flights), listed=self._listed(filtered, flights))
 
     def listed(self, flight_filter):
-        """Only the rows of the flight list (quick: no totals, no tree), e.g. after a click on a row of the tree."""
+        """Only the rows of the flight list (quick: no totals), e.g. after a toggle of the list."""
         filtered = apply_filter(self.table, flight_filter)
         return self._listed(filtered, filtered[filtered["is_flight"].astype(bool)])
 
     def _listed(self, filtered, flights):
-        """The rows of the flight list: flights (and non-flights if shown) of the selected tree row; only those
-        with a note or an open anomaly if that is chosen."""
-        listed = select_flights(filtered if self.show_non_flights else flights, self.group_selector)
+        """The rows of the flight list: all flights of the filter (and the non-flights if shown); only those with
+        a note or an open anomaly if that is chosen."""
+        listed = filtered if self.show_non_flights else flights
         if self.only_annotated:
             listed = listed[listed["has_note"] | (listed["open_rank"] > 0)]
         return listed

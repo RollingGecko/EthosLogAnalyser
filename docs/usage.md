@@ -38,7 +38,7 @@ The window has four areas, shown as tabs at the top:
 
 | Area | Contents |
 |---|---|
-| Logbook (Logbuch) | start page: totals, tables per year and month, list of flights (see *Logbook* below) |
+| Logbook (Logbuch) | start page: totals, tables per aircraft, year and month, list of flights (see *Logbook* below) |
 | Single flight (Einzelflug) | one flight from the flight database: time series in four views and the detail report |
 | Statistics (Statistik) | the filter and pages over the filtered flights of one aircraft: Summary, Battery, Load & flight profile, Drive, Radio & onboard power, Table (smaller tabs inside the area); see *Statistics* below |
 | Data & settings (Daten & Einstellungen) | flight database, battery settings per aircraft, analysis settings, anomaly rules, language, export |
@@ -112,7 +112,7 @@ The language applies to the whole user interface, the text reports, the charts a
 | Statistics → Radio & onboard power (Funk & Bordnetz) | RSSI, VFR, receiver battery, receiver current and its spikes, transmitter battery |
 | Statistics → Table (Tabelle) | all metrics per flight |
 | Single flight (Einzelflug) | time series in four views, detail report compared with the median of all flights of the aircraft |
-| Logbook (Logbuch) | flights, flying days, total log duration, longest/shortest flight, total drawn charge; tables and bar charts per year and month; tree to group by time or aircraft; filter; sortable list of flights, with a switch to correct whether a log is a flight |
+| Logbook (Logbuch) | flights, flying days, total log duration, longest/shortest flight, total drawn charge; tables per aircraft, year and month; filter; sortable list of all flights, with a switch to correct whether a log is a flight |
 
 ### Working with charts
 
@@ -174,11 +174,13 @@ and shows the flights of all aircraft in it. From top to bottom:
 
 1. **Filter bar** (see below) and the switches **only with note or anomaly** and **Show non-flights**.
 2. **Scope line**: how many of the flights of the database are shown (“33 of 33 flights of the database”), with *Filter active* when a filter is set. If some flights have no date or no log duration, a line below says how many; they are left out of the totals.
-3. **Totals**: number of flights with first and last date, flying days (different calendar days with at least one flight), total log duration, longest and shortest flight (with flight number and date; with several aircraft in view also the aircraft) and the total drawn charge in Ah and mAh. The totals follow the **filter**, not the row selected in the tree.
-4. **Per year** and **per month** tables (flights, log duration, flying days, drawn mAh) and two bar charts: flights per month and log duration per month (only months with flights). The charts have the usual tooltip, double-click to enlarge and *Enlarge whole page*.
-5. **Group by** (Gruppieren nach) and the **flights**, side by side:
-   - The tree can be grouped **by time** (year → month → aircraft) or **by aircraft** (aircraft → year → month). Every row shows the number of flights and the flight time; the last row (*Total*) is the sum of everything shown. A click on a row restricts only the **flight list** to the flights of that row; the totals, tables and charts stay as they are. A click on the *Total* row shows all flights again.
-   - The list has the columns flight number, aircraft, date, time, log duration, drawn mAh, *Flight* (Flug) and a narrow hint column (see *Notes and anomalies*). A click on a column heading sorts by that column, a second click reverses the order (▲/▼); empty values stay at the end. A double-click on a row opens the flight in *Single flight*.
+3. **Totals**: number of flights with first and last date, flying days (different calendar days with at least one flight), total log duration, longest and shortest flight (with flight number and date; with several aircraft in view also the aircraft) and the total drawn charge in Ah and mAh. The totals follow the **filter**.
+4. **Three small tables side by side**, all following the filter and calculated the same way as the totals:
+   - **Per aircraft** (Je Flugzeug): aircraft, flights, flying days, log duration and drawn mAh, with a **sum row** (*Summe*) at the end that repeats the totals above. Flying days are counted per aircraft; in the sum row they are the different calendar days of all aircraft, so the days of two aircraft that flew on the same day count once.
+   - **Per year** and **per month**: flights, log duration, flying days and drawn mAh.
+5. The **flights**: the list of all flights that pass the filter, below the tables, with all the space that is left. It has the columns flight number, aircraft, date, time, log duration, drawn mAh, *Flight* (Flug) and a narrow hint column (see *Notes and anomalies*). A click on a column heading sorts by that column, a second click reverses the order (▲/▼); empty values stay at the end. A double-click on a row opens the flight in *Single flight*.
+
+Column widths and the row height of the tables follow the font, so headings and values are shown completely at any Windows display scaling (100 %, 125 %, 150 % …) – in the logbook, in the table of the statistics, in the selection of the single flight and in the import report. At a high scaling on a small screen the three tables need the width of the window; make the window wider if the right-hand table is cut off at the window edge.
 
 **Flight numbers** count per aircraft: *Flug 5* is the fifth flight of that aircraft, oldest first, and only logs counted as flights get a number. Two aircraft can therefore both have a flight 1.
 
@@ -186,11 +188,11 @@ and shows the flights of all aircraft in it. From top to bottom:
 
 #### Filter
 
-The filter bar offers **aircraft**, **year**, **month** and a date range **from / to** (dd.mm.yyyy; the end day is included; an entry that is not a date turns red and is ignored; an empty field means no limit). *Reset* removes all restrictions. The filter acts on the whole logbook: totals, tables, charts, tree and list. It is one shared setting (`gui/flight_filter.py`): the statistics show and change the same filter.
+The filter bar offers **aircraft**, **year**, **month** and a date range **from / to** (dd.mm.yyyy; the end day is included; an entry that is not a date turns red and is ignored; an empty field means no limit). *Reset* removes all restrictions. The filter acts on the whole logbook: totals, tables and list. It is one shared setting (`gui/flight_filter.py`): the statistics show and change the same filter.
 
 #### Non-flights and corrections
 
-Logs that were not detected as a flight (ground tests, short motor runs) are hidden. **Show non-flights** lists them too, in grey and without a flight number; they never count in the totals. The column **Flug** shows ☑ for a flight and ☐ for a log that is not one. A click on the symbol switches it: a ☐ becomes a flight, a ☑ no longer counts. The decision is stored in the database (`is_flight_manual`) and survives a new import; switching a log back to what the detection said removes the manual decision. Totals, tree, the single-flight list and the status line follow at once. A log that is not a flight cannot be opened as a single flight; the app says so.
+Logs that were not detected as a flight (ground tests, short motor runs) are hidden. **Show non-flights** lists them too, in grey and without a flight number; they never count in the totals. The column **Flug** shows ☑ for a flight and ☐ for a log that is not one. A click on the symbol switches it: a ☐ becomes a flight, a ☑ no longer counts. The decision is stored in the database (`is_flight_manual`) and survives a new import; switching a log back to what the detection said removes the manual decision. Totals, tables, the single-flight list and the status line follow at once. A log that is not a flight cannot be opened as a single flight; the app says so.
 
 A **⚠** in the last column marks a *possible duplicate*: another log of the same aircraft has the same start time but a different content. Hover over the symbol for the explanation. Both logs stay in the database; if one of them is really a copy, switch it to “not a flight”.
 

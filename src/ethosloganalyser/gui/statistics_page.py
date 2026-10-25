@@ -13,6 +13,7 @@ from ..report.text import summary_lines
 from .common import TABLE_COLS, fill_text, fmt_cell, make_text
 from .flight_filter import FilterBar
 from .statistics_model import EXPERIMENTAL_NOTICE, READY
+from .table_fit import TableFonts
 
 # chart pages: key -> function drawing the page from (result, params)
 CHART_PAGES = {"akku": figure_akku, "belastung": figure_belastung, "antrieb": figure_antrieb, "funk": figure_funk}
@@ -77,9 +78,10 @@ class StatisticsPages:
         from tkinter import ttk
         self.columns = [c[0] for c in TABLE_COLS]
         self.table = ttk.Treeview(parent, columns=self.columns, show="headings")
-        for key, head, width in TABLE_COLS:
+        for key, head in TABLE_COLS:
             self.table.heading(key, text=tr(head))
-            self.table.column(key, width=width, anchor="center", stretch=False)
+            self.table.column(key, anchor="center", stretch=False)
+        self._fit_columns([])
         vertical = ttk.Scrollbar(parent, orient="vertical", command=self.table.yview)
         horizontal = ttk.Scrollbar(parent, orient="horizontal", command=self.table.xview)
         self.table.configure(yscrollcommand=vertical.set, xscrollcommand=horizontal.set)
@@ -118,12 +120,23 @@ class StatisticsPages:
         else:
             self._draw_chart(key)
 
+    def _fit_columns(self, rows):
+        """Column widths from the font: the heading and the longest text of the column (digits as wide as the
+        widest digit), so neither is cut off at any screen scaling."""
+        fonts = TableFonts(self.table)
+        for index, (key, head) in enumerate(TABLE_COLS):
+            longest = max((row[index] for row in rows), key=len, default="")
+            self.table.column(key, width=fonts.width(tr(head), [fonts.shaped(longest)]), stretch=False)
+
     def _fill_table(self):
         self.table.delete(*self.table.get_children())
         if self.view.state != READY:
+            self._fit_columns([])
             return
-        for _, row in self.view.result.df.iterrows():
-            self.table.insert("", "end", values=[fmt_cell(k, row[k]) for k in self.columns])
+        rows = [[fmt_cell(k, row[k]) for k in self.columns] for _, row in self.view.result.df.iterrows()]
+        self._fit_columns(rows)
+        for row in rows:
+            self.table.insert("", "end", values=row)
 
     def figure(self, key):
         """The figure of a chart page for the current view (a message when there is nothing to show)."""

@@ -11,7 +11,7 @@ import pytest
 
 from helpers import EXAMPLES
 from annotation_checks import check_annotations
-from logbook_checks import check_empty_logbook, check_logbook
+from logbook_checks import check_empty_logbook, check_font_fit, check_import_report_fit, check_logbook
 from statistics_checks import check_statistics, check_two_aircraft
 
 # In CI (environment variable REQUIRE_GUI_TEST) the test must run - skipping it there would be an error.
@@ -58,12 +58,14 @@ def test_gui_analyses_example_logs(monkeypatch, tmp_path):
         check_empty_logbook(root)
         h["db_panel"].run_import([str(EXAMPLES)])            # logbook and single flight come from the database
         _wait_for_database(root)
+        check_import_report_fit(root, h["db_panel"].report["tree"])      # nothing cut off in the report
         h["db_panel"].report["window"].destroy()
         _wait_for_flight(root)
         check_logbook(root, monkeypatch)                        # filled without any folder analysis
         check_annotations(root)                                 # notes and anomalies
         _wait_for_flight(root)
         check_statistics(root)                                  # statistics from the database, shared filter
+        check_font_fit(root)                                    # tables at display scaling 100/125/150 %
         assert not errors, errors
         assert len(h["fbox"]["values"]) == 3
         for view in FLIGHT_VIEWS:
