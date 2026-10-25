@@ -98,16 +98,45 @@ Measured with `examples/logs_2026` (71 logs):
 | Read one flight's time series back | about 10 ms |
 | Import of the folder (background) | about 17 s; the window is never blocked for more than about 0.2 s |
 
-## Schema (version 1)
+## Notes and anomalies
+
+Every flight can have a free-text **note** and **anomalies** (found by the rules of `analysis/anomalies.py`, see
+docs/methodology.md, or entered by the user). They live in the database file, so *Save as* copies them and *Empty*
+deletes them. Reading and writing is in `db/annotations.py`:
+
+- The rules use only stored values: the metrics and the **signal metrics** (`flight.signal_metrics`, worked out at
+  import from the time series, `db/signal_metrics.py`). After an import, a switch between flight and no flight, a
+  change of the rules or the battery settings, all automatic anomalies are replaced in one transaction in the
+  background (`recalculate_anomalies`). A user action that needs the database (import, open, empty) stops a running
+  recalculation, which then runs again afterwards.
+- **Acknowledgements** of automatic anomalies are kept in a table of their own by flight and rule, so they survive
+  every recalculation. If the judged value changed by more than 20 % since, the acknowledgement is dropped and the
+  anomaly is open again.
+- **Entries by hand** (origin `manual`) are never touched by a recalculation.
+- The logbook reads one summary row per flight (`annotation_summary`: note yes/no, highest open level); notes and
+  anomalies do not make the logbook or the prepared single flights read their data again.
+
+## Migration
+
+Opening a database of an older schema version upgrades it in one transaction (`schema.migrate`): either all steps
+succeed or the file keeps its old version and content. Version 1 → 2 adds the column `flight.signal_metrics` and the
+tables for notes and anomalies; no flight is changed and nothing is imported again. The signal metrics of the
+existing logs are then worked out once in the background from the stored time series (about 10 ms per log).
+
+## Schema (version 2)
 
 | Table | Content |
 |---|---|
 | `aircraft` | `id`, `name` (model name from the file name, `""` = none) |
 | `log_file` | `id`, `sha256` (unique), `original_name`, `source_path`, `size_bytes`, `imported_at` |
 | `log_raw` | `log_id`, `data` (lzma-compressed file content); a table of its own so that queries never read it |
-| `flight` | `id`, `log_id` (unique), `aircraft_id`, `start_time` (ISO text), `duration_s`, `log_duration_s`, `is_flight`, `is_flight_manual`, `detection_method`, `possible_duplicate`, `analysis_version`, `analysis_params` (JSON), `metrics` (JSON), `skip_reason` (JSON message: why the analysis found no flight) |
+| `flight` | `id`, `log_id` (unique), `aircraft_id`, `start_time` (ISO text), `duration_s`, `log_duration_s`, `is_flight`, `is_flight_manual`, `detection_method`, `possible_duplicate`, `analysis_version`, `analysis_params` (JSON), `metrics` (JSON), `skip_reason` (JSON message: why the analysis found no flight), `signal_metrics` (JSON, version 2; NULL = not worked out yet) |
 | `sensor` | `id`, `log_id`, `position` (column in the file, 0 = time axis), `column_name`, `role`, `sample_count` |
 | `series` | `sensor_id`, `data` (encoded time series) |
 
-Indexes: `flight (aircraft_id, start_time)` and `flight (start_time)` for the logbook and the filters.
-Notes and anomalies get their own tables in a later schema version (WP-18).
+| `flight_note` | `log_id` (primary key), `text`, `updated_at` – version 2 |
+| `anomaly` | `id`, `log_id`, `rule` (rule code, `manual` for entries by hand), `origin` (`auto` or `manual`), `severity` (`info`, `warning`, `critical`), `message` (`auto`: JSON message with the values, translated when shown; `manual`: the user's text), `value` (the judged value), `acknowledged`, `created_at` – version 2 |
+| `anomaly_acknowledgement` | `log_id`, `rule` (primary key together), `value` (at the time of the acknowledgement), `acknowledged_at` – version 2 |
+
+Indexes: `flight (aircraft_id, start_time)` and `flight (start_time)` for the logbook and the filters,
+`anomaly (log_id)` for the anomalies of a flight. Notes and anomalies of `examples/logs_2026` add less than 10 kB.

@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Page Data & settings: database, log folder with model selector, battery, analysis, language, export, about,
-skipped files."""
+"""Page Data & settings: database, log folder with model selector, battery, analysis, anomaly rules, language,
+export, about, skipped files."""
 
 from ..buildinfo import about_lines
 from ..config import CHEM, model_label
 from ..i18n import LANGUAGES, get_language, tr
+from .anomaly_settings_panel import AnomalySettingsPanel
+from .common import scrollable_frame
 from .database_panel import DatabasePanel
+from .style import BG
 
 
 class SettingsPage:
@@ -16,7 +19,8 @@ class SettingsPage:
         from tkinter import ttk
         self.window = window
         self.actions = actions
-        page = ttk.Frame(parent, padding=14)
+        # the page scrolls when the window is not tall enough for all sections (nothing is cut off)
+        page = ttk.Frame(scrollable_frame(parent, BG), padding=14)
         page.pack(fill="both", expand=True)
         page.columnconfigure(0, weight=1)
         page.columnconfigure(1, weight=1)
@@ -26,6 +30,8 @@ class SettingsPage:
         self._build_log_folder(page)
         self._build_battery(page)
         self._build_analysis(page)
+        self.anomaly_panel = AnomalySettingsPanel(page, window.settings, window.anomalies, window.database)
+        self.anomaly_panel.frame.grid(row=3, column=0, columnspan=2, sticky="we", pady=(10, 0))
         self._build_language(page)
         self._build_export(page)
         self._build_skipped(page)
@@ -102,7 +108,7 @@ class SettingsPage:
         import tkinter as tk
         from tkinter import ttk
         box = ttk.LabelFrame(page, text=tr("Sprache (Language)"), padding=10)
-        box.grid(row=3, column=0, sticky="nwe", padx=(0, 6), pady=10)
+        box.grid(row=4, column=0, sticky="nwe", padx=(0, 6), pady=10)
         self.lang_var = tk.StringVar(value=LANGUAGES[get_language()])
         lang_box = ttk.Combobox(box, textvariable=self.lang_var, values=list(LANGUAGES.values()), width=14,
                                 state="readonly")
@@ -120,7 +126,7 @@ class SettingsPage:
     def _build_export(self, page):
         from tkinter import ttk
         box = ttk.LabelFrame(page, text=tr("Export"), padding=10)
-        box.grid(row=3, column=1, sticky="nwe", padx=(6, 0), pady=10)
+        box.grid(row=4, column=1, sticky="nwe", padx=(6, 0), pady=10)
         ttk.Button(box, text=tr("Tabelle als CSV speichern …"), command=self.actions["export_csv"]).pack(
             side="left", padx=(0, 8))
         ttk.Button(box, text=tr("Bericht + alle Diagramme speichern …"), command=self.actions["export_all"]).pack(
@@ -129,8 +135,8 @@ class SettingsPage:
     def _build_skipped(self, page):
         from tkinter import ttk
         box = ttk.LabelFrame(page, text=tr("Übersprungene Dateien"), padding=6)
-        box.grid(row=4, column=0, columnspan=2, sticky="nsew")
-        page.rowconfigure(4, weight=1)
+        box.grid(row=5, column=0, columnspan=2, sticky="nsew")
+        page.rowconfigure(5, weight=1)
         self.skip_tree = ttk.Treeview(box, columns=("datei", "grund"), show="headings", height=8)
         self.skip_tree.heading("datei", text=tr("Datei"))
         self.skip_tree.heading("grund", text=tr("Grund"))
@@ -146,7 +152,7 @@ class SettingsPage:
         from tkinter import ttk
         # about: version, and a clear marker on test builds from a pull request (see buildinfo.py)
         box = ttk.LabelFrame(page, text=tr("Über"), padding=10)
-        box.grid(row=5, column=0, columnspan=2, sticky="we", pady=(10, 0))
+        box.grid(row=6, column=0, columnspan=2, sticky="we", pady=(10, 0))
         for kind, text in about_lines():
             ttk.Label(box, text=text, wraplength=900, foreground={"test": "#b00020", "info": "#666"}.get(kind),
                       font=(family, 10, "bold") if kind != "info" else None).pack(anchor="w")

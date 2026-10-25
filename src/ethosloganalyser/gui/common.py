@@ -166,3 +166,45 @@ def scrolled(widget_parent, widget, horizontal=False):
         widget.configure(xscrollcommand=horizontal_bar.set)
         horizontal_bar.pack(side="bottom", fill="x")
     return widget
+
+
+def scrollable_frame(parent, background):
+    """A frame inside parent that scrolls vertically when its content is taller than the window (mouse wheel
+    and scrollbar). The frame is as wide as the visible area and at least as tall, so rows with a weight still
+    fill the window when there is room. Returns the inner frame; pack or grid nothing else into parent."""
+    import tkinter as tk
+    from tkinter import ttk
+
+    canvas = tk.Canvas(parent, background=background, highlightthickness=0, borderwidth=0)
+    scrollbar = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)
+    canvas.configure(yscrollcommand=scrollbar.set)
+    scrollbar.pack(side="right", fill="y")
+    canvas.pack(side="left", fill="both", expand=True)
+    inner = ttk.Frame(canvas)
+    window = canvas.create_window(0, 0, window=inner, anchor="nw")
+
+    def fit(_event=None):
+        width, height = canvas.winfo_width(), canvas.winfo_height()
+        canvas.itemconfigure(window, width=width, height=max(inner.winfo_reqheight(), height))
+        canvas.configure(scrollregion=(0, 0, width, max(inner.winfo_reqheight(), height)))
+
+    def on_wheel(event):
+        if inner.winfo_reqheight() > canvas.winfo_height():
+            step = -1 if (getattr(event, "delta", 0) > 0 or getattr(event, "num", 0) == 4) else 1
+            canvas.yview_scroll(step * 3, "units")
+
+    def bind_wheel(_event):
+        # only while the mouse is over the page, so the wheel still zooms charts on other pages
+        canvas.bind_all("<MouseWheel>", on_wheel)
+        canvas.bind_all("<Button-4>", on_wheel)
+        canvas.bind_all("<Button-5>", on_wheel)
+
+    def unbind_wheel(_event):
+        for sequence in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
+            canvas.unbind_all(sequence)
+
+    canvas.bind("<Configure>", fit)
+    inner.bind("<Configure>", fit)
+    canvas.bind("<Enter>", bind_wheel)
+    canvas.bind("<Leave>", unbind_wheel)
+    return inner

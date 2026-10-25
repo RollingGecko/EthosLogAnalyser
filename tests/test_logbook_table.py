@@ -218,6 +218,7 @@ class FakeController:
 
     def __init__(self, database):
         self.database, self.generation = SimpleNamespace(connection=database.connection), 1
+        self.annotations_generation = 1
 
 
 @pytest.fixture
@@ -280,6 +281,28 @@ def test_the_summary_of_the_database(model):
     summary = model.summary()
     assert (summary.n_flights, summary.n_non_flights, summary.n_aircraft) == (4, 0, 2)
     assert summary.first < summary.last and summary.last.year == 2030
-    empty = LogbookModel(SimpleNamespace(database=None, generation=0), lambda aircraft: LI_ION_13S)
+    empty = LogbookModel(SimpleNamespace(database=None, generation=0, annotations_generation=0),
+                         lambda aircraft: LI_ION_13S)
     assert empty.refresh() and empty.summary().n_flights == 0 and empty.summary().first is None
     assert empty.view(FlightFilter(year=2026)).n_flights == 0
+
+
+def test_notes_and_anomalies_show_in_the_list_and_filter_it(model):
+    from ethosloganalyser.db import annotations
+    from ethosloganalyser.gui.logbook_flight_list import NOTE_SYMBOL, SEVERITY_SYMBOLS
+    from ethosloganalyser.gui.logbook_model import ANNOTATIONS_CHANGED, FLIGHTS_CHANGED
+
+    assert model.refresh() == FLIGHTS_CHANGED
+    connection = model.controller.database.connection
+    first, second = (int(log_id) for log_id in model.table["log_id"].iloc[:2])
+    annotations.set_note(connection, first, "fuel smell")
+    annotations.add_manual_anomaly(connection, second, "canopy loose", "critical")
+    model.controller.annotations_generation += 1
+    assert model.refresh() == ANNOTATIONS_CHANGED and model.refresh() is None
+    rows = {int(row["log_id"]): list_row(row) for row in model.table.to_dict("records")}
+    assert rows[first][1][7] == NOTE_SYMBOL and rows[second][1][7] == SEVERITY_SYMBOLS[3]
+    assert rows[second][0][7] > rows[first][0][7]          # sorting: open anomalies before notes
+    model.only_annotated = True
+    assert sorted(model.listed(FlightFilter())["log_id"]) == sorted([first, second])
+    assert model.hint_lines(second) == [("critical", "canopy loose")]
+    assert model.hint_lines(first) == [("note", "fuel smell")]

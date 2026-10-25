@@ -45,6 +45,26 @@ QUALITY_HINTS = {
 # errors after which no battery value of the flight can be trusted
 BATTERY_INVALID = ("current_stuck", "voltage_dropout")
 
+# margin above the full cell voltage when the cell count is estimated from the highest start voltage
+CELL_ESTIMATE_MARGIN_V = 0.05
+
+
+def cell_count(configured_cells, highest_start_voltage, chemistry):
+    """The cell count of a battery: the configured one, or - if none is configured (0) - estimated from the
+    highest start voltage of its flights (0 if that is unknown). chemistry: an entry of config.CHEM."""
+    if configured_cells > 0:
+        return int(configured_cells)
+    if not np.isfinite(highest_start_voltage):
+        return 0
+    return int(np.ceil(highest_start_voltage / (chemistry["full"] + CELL_ESTIMATE_MARGIN_V)))
+
+
+def current_stuck(mean_current, max_current):
+    """Current sensor saturated or wrongly scaled: mean current close to the maximum (arrays or numbers)."""
+    mean_current, max_current = np.asarray(mean_current, dtype=float), np.asarray(max_current, dtype=float)
+    return np.isfinite(mean_current) & np.isfinite(max_current) & (max_current > 10) & \
+        (mean_current >= 0.97 * max_current)
+
 
 def rest_voltage_invalid(u_rest, u_min, tol=0.02):
     """Rest voltage after landing below the voltage under load at the end of the flight (per cell): impossible.
@@ -69,7 +89,7 @@ def detect_data_errors(df, ch):
     ri = _col(df, "Ri_Zelle_mOhm")
     out = {}
     # a real flight alternates between part and full throttle: mean current close to the maximum = stuck sensor
-    out["current_stuck"] = np.isfinite(imean) & np.isfinite(imax) & (imax > 10) & (imean >= 0.97 * imax)
+    out["current_stuck"] = current_stuck(imean, imax)
     out["voltage_dropout"] = np.isfinite(umin) & (umin < 0.5 * ch["load_min"])
     out["vfr_invalid"] = np.isfinite(vfr) & ((vfr < 0) | (vfr > 100))
     bad_ri = np.zeros(n, dtype=bool)

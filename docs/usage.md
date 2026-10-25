@@ -150,13 +150,13 @@ The area *Single flight* shows the flights of the flight database:
 The area *Logbook* (Logbuch), the start page, gives an overview of your flying. It reads the **flight database**
 (it works without the folder analysis) and shows the flights of all aircraft in it. From top to bottom:
 
-1. **Filter bar** (see below) and the switch **Show non-flights**.
+1. **Filter bar** (see below) and the switches **only with note or anomaly** and **Show non-flights**.
 2. **Scope line**: how many of the flights of the database are shown (“33 of 33 flights of the database”), with *Filter active* when a filter is set. If some flights have no date or no log duration, a line below says how many; they are left out of the totals.
 3. **Totals**: number of flights with first and last date, flying days (different calendar days with at least one flight), total log duration, longest and shortest flight (with flight number and date; with several aircraft in view also the aircraft) and the total drawn charge in Ah and mAh. The totals follow the **filter**, not the row selected in the tree.
 4. **Per year** and **per month** tables (flights, log duration, flying days, drawn mAh) and two bar charts: flights per month and log duration per month (only months with flights). The charts have the usual tooltip, double-click to enlarge and *Enlarge whole page*.
 5. **Group by** (Gruppieren nach) and the **flights**, side by side:
    - The tree can be grouped **by time** (year → month → aircraft) or **by aircraft** (aircraft → year → month). Every row shows the number of flights and the flight time; the last row (*Total*) is the sum of everything shown. A click on a row restricts only the **flight list** to the flights of that row; the totals, tables and charts stay as they are. A click on the *Total* row shows all flights again.
-   - The list has the columns flight number, aircraft, date, time, log duration, drawn mAh, *Flight* (Flug) and a warning column. A click on a column heading sorts by that column, a second click reverses the order (▲/▼); empty values stay at the end. A double-click on a row opens the flight in *Single flight*.
+   - The list has the columns flight number, aircraft, date, time, log duration, drawn mAh, *Flight* (Flug) and a narrow hint column (see *Notes and anomalies*). A click on a column heading sorts by that column, a second click reverses the order (▲/▼); empty values stay at the end. A double-click on a row opens the flight in *Single flight*.
 
 **Flight numbers** count per aircraft: *Flug 5* is the fifth flight of that aircraft, oldest first, and only logs counted as flights get a number. Two aircraft can therefore both have a flight 1.
 
@@ -171,6 +171,33 @@ The filter bar offers **aircraft**, **year**, **month** and a date range **from 
 Logs that were not detected as a flight (ground tests, short motor runs) are hidden. **Show non-flights** lists them too, in grey and without a flight number; they never count in the totals. The column **Flug** shows ☑ for a flight and ☐ for a log that is not one. A click on the symbol switches it: a ☐ becomes a flight, a ☑ no longer counts. The decision is stored in the database (`is_flight_manual`) and survives a new import; switching a log back to what the detection said removes the manual decision. Totals, tree, the single-flight list and the status line follow at once. A log that is not a flight cannot be opened as a single flight; the app says so.
 
 A **⚠** in the last column marks a *possible duplicate*: another log of the same aircraft has the same start time but a different content. Hover over the symbol for the explanation. Both logs stay in the database; if one of them is really a copy, switch it to “not a flight”.
+
+### Notes and anomalies
+
+Every flight can have a **note** (free text) and **anomalies**: hints found automatically by rules and entries of
+your own, each with a level *Info*, *Warning* or *Critical*. They are hints, never a diagnosis.
+
+- **Single flight**: below the charts, next to the details, the section *Note and anomalies*. Type the note and
+  click *Save note* – it is also saved when you choose another flight or leave the page. The list shows the
+  anomalies of the flight, most severe first, with level, status (*open* / *acknowledged*) and origin (*automatic* /
+  *own entry*); the full text of the selected one is shown below the list. *Acknowledge / reopen* marks the
+  selected anomaly as dealt with (or open again). *Own entry …* adds an entry with your text and level; *Delete
+  entry* deletes the selected own entry (automatic ones can only be acknowledged). *Hide details* hides this
+  section together with the details.
+- **Logbook**: the hint column of the flight list shows ✎ for a note and the highest level of the anomalies that
+  are still open (ℹ info, ⚠ warning, ‼ critical), followed by ⚠ for a possible duplicate. Hover over the column to
+  read the texts below the list. **only with note or anomaly** lists only flights that have a note or an open
+  anomaly. Sorting by the hint column puts the most severe open anomalies first (click twice).
+- **Data & settings → Anomalies**: every rule can be switched off and its value changed; the receiver minimum
+  voltage is set per aircraft (choose the aircraft, enter the voltage, empty = off). Changes take effect a moment
+  later; all flights are judged again in the background (under a second). The line below says how many automatic
+  hints were found.
+
+The rules and their standard values are described in docs/methodology.md (*Anomalies per flight*). The limits of
+the cell chemistry are only checked once the battery settings of the aircraft have been chosen. An acknowledgement
+stays after every recalculation; only if the value behind it changes clearly (more than 20 %) is the anomaly open
+again. After an import or after switching a log between flight and no flight, the anomalies are updated
+automatically.
 
 ## Export
 

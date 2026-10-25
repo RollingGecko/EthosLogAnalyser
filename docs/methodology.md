@@ -86,9 +86,70 @@ Threshold = maximum of baseline + 4 · robust spread, 1.5 × baseline and baseli
 
 Without attitude data (sticks, rotation rate, g-load) the cause is “no attitude data” (`no_attitude`).
 
-## Anomalies (`analysis/evaluate.py`)
+## Anomalies in the summary (`analysis/evaluate.py`)
 
 Limits (deep discharge, voltage collapse under load, sensor deviation, spikes without cause) apply to every flight except for values that were recognised as measurement errors. Statistical outliers are only searched from 6 flights on: robust z-score above 3.5, for ageing metrics relative to the trend.
+
+## Anomalies per flight (`analysis/anomalies.py`)
+
+Since the flight database (v2) every flight can carry **anomalies**: hints found by rules, plus entries the user
+adds by hand, each with a level *Info*, *Warning* or *Critical*. They are shown on the single flight (section
+*Note and anomalies*) and as a symbol in the logbook flight list. Every text is worded as a hint or estimate, never
+as a diagnosis.
+
+The rules only use values stored with every flight – the per-flight metrics of `analysis/flight.py` and the
+*signal metrics* (`db/signal_metrics.py`) – so all flights are judged again in well under a second, without time
+series or raw logs (33 flights: 0.03 s; about 1000 flights: 0.3 s). This happens in the background after every
+import, after a log was switched between flight and no flight, after the database was opened and whenever a rule
+or the battery settings change.
+
+**Signal metrics** are worked out at import from the time series of every log, also for aircraft without battery
+data: the receiver voltage (every receiver battery input, e.g. *RxBatt1* and *RxBatt2*) smoothed with a rolling
+median over 1 s, its median over the log, the lowest smoothed value and the largest drop below the input's own
+median in % with its time. The smoothing keeps a single wrong sample from counting as a dip. Databases from before
+are filled once from the stored time series (identical result).
+
+| Rule (code) | Kind | Level | Standard value | Rule |
+| --- | --- | --- | --- | --- |
+| Flight much shorter than usual (`short_flight`) | median | Info | 50 % | duration below 50 % of the median duration of the aircraft |
+| Internal resistance higher than usual (`ri_high`) | median | Warning | 30 % | Rᵢ more than 30 % above the median; above twice the median it is a failed fit (*Measurement errors*), not a finding; flights with a stuck current sensor do not count |
+| Receiver current maximum higher than usual (`rx_current_high`) | median | Warning | 50 % | highest receiver current more than 50 % above the median |
+| RSSI minimum lower than usual (`rssi_low`) | median | Warning | 10 dB | lowest RSSI while the motor runs more than 10 dB below the median |
+| Receiver voltage dip during the flight (`rx_voltage_dip`) | within the flight | Warning | 10 % | smoothed receiver voltage more than 10 % below its own median in the log |
+| Cell voltage under load below the limit (`cell_voltage_load`) | cell chemistry | Critical | – | lowest voltage under load per cell below the load limit of the chemistry (LiPo/LiHV 3.0 V, Li-Ion 2.8 V); below half of it the sensor failed (*Measurement errors*), no finding |
+| Resting voltage at the end below the limit (`cell_voltage_rest`) | cell chemistry | Critical | – | resting voltage after landing per cell below the minimum resting voltage (LiPo 3.70 V, LiHV 3.75 V, Li-Ion 3.30 V); an impossible measured value is replaced by the model estimate, as in the battery analysis |
+| Receiver voltage below the minimum of the model (`rx_voltage_limit`) | fixed per aircraft | Warning | off | lowest smoothed receiver voltage below the value entered for the aircraft |
+| Receiver current spikes without apparent cause (`rx_spikes_no_cause`) | fixed | Warning | 3 | at least 3 spikes without manoeuvre, take-off or landing (the limit the summary already uses) |
+| Current measurement deviates from the ESC counter (`current_sensor_deviation`) | fixed | Info | 5 % | drawn charge differs by more than 5 % from the ESC counter (the limit the summary already uses) |
+
+- **Median rules** compare a flight with all flights of the same aircraft and need at least 5 flights with that
+  value; so they adapt to every aircraft. Logs marked as non-flights are neither judged nor counted.
+- **Cell chemistry rules** are applied only once the battery settings of the aircraft have been chosen (cell
+  chemistry or capacity entered); with the assumed default LiPo the limits could be wrong. The cell count is the
+  configured one, otherwise estimated from the highest start voltage of the aircraft's flights.
+- An aircraft without a motor or battery sensor gets the rules it has values for (e.g. duration and receiver
+  voltage) and no error.
+- Every rule can be switched off and its value changed under *Data & settings → Anomalies*.
+
+**Standard values** were chosen against `examples/logs_2026` (33 flights, Li-Ion 13S 9000 mAh) so that only clear
+cases are found – too many hints would hide the important ones; a value can be loosened by the user:
+
+| Rule | Standard value | Flights found | Example | Closest flight not found |
+| --- | --- | --- | --- | --- |
+| `short_flight` | 50 % | 1 | flight 33, 18.10.2026: 3:16 instead of 8:04 (40 %) | flight 24: 6:42 (83 %) |
+| `ri_high` | 30 % | 0 | – | flight 33: +28 % (short flight, little discharge) |
+| `rx_current_high` | 50 % | 0 | – | flights 4 and 32: +10 % |
+| `rssi_low` | 10 dB | 0 | – | flights 7 and 16: −3 dB |
+| `rx_voltage_dip` | 10 % | 1 | flight 5, 04.05.2026: 6.21 V at 8:08 instead of 8.05 V (−23 %) | flight 20: −2.5 % |
+| `cell_voltage_load` | Li-Ion 2.80 V | 0 | – | flight 18: 2.85 V/cell |
+| `cell_voltage_rest` | Li-Ion 3.30 V | 0 | – | flight 32: 3.34 V/cell |
+| `rx_spikes_no_cause` | 3 | 0 | – | flight 17: 2 spikes |
+| `current_sensor_deviation` | 5 % | 0 | – | flight 24: 1.2 % |
+
+**Acknowledging**: an automatic anomaly can be acknowledged; the acknowledgement is kept by flight and rule, so it
+survives every recalculation and switching a rule off and on. If the judged value changes by more than 20 % since
+the acknowledgement (e.g. after changing the battery settings), the anomaly is open again. Entries by hand are
+never touched by a recalculation; only they can be deleted.
 
 ## Limitations
 

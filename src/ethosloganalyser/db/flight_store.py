@@ -9,6 +9,7 @@ import pandas as pd
 
 from .log_analysis import ANALYSIS_VERSION, message_to_json, metrics_to_json
 from .series_codec import decode_series
+from .signal_metrics import signal_metrics_to_json
 
 START_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 LZMA_PRESET = 6
@@ -57,7 +58,8 @@ def _flight_values(analysed):
     detection = analysed.detection
     return (detection.duration_s, analysed.log_duration_s, int(detection.is_flight), detection.method,
             ANALYSIS_VERSION, json.dumps(analysed.analysis_params, sort_keys=True),
-            metrics_to_json(analysed.metrics), message_to_json(analysed.skip_reason))
+            metrics_to_json(analysed.metrics), message_to_json(analysed.skip_reason),
+            signal_metrics_to_json(analysed.signal_metrics))
 
 
 def insert_log(connection, *, sha256, original_name, source_path, content, model, analysed,
@@ -73,8 +75,8 @@ def insert_log(connection, *, sha256, original_name, source_path, content, model
                        (log_id, lzma.compress(content, preset=LZMA_PRESET)))
     connection.execute(
         "INSERT INTO flight (log_id, aircraft_id, start_time, duration_s, log_duration_s, is_flight, "
-        "detection_method, analysis_version, analysis_params, metrics, skip_reason, possible_duplicate) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "detection_method, analysis_version, analysis_params, metrics, skip_reason, signal_metrics, "
+        "possible_duplicate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (log_id, aircraft_id(connection, model), start_time_text(analysed.start_time))
         + _flight_values(analysed) + (int(possible_duplicate),))
     _insert_sensors(connection, log_id, analysed.sensors)
@@ -86,7 +88,8 @@ def replace_analysis(connection, log_id, analysed):
     made by hand (is_flight_manual) is kept."""
     connection.execute(
         "UPDATE flight SET duration_s = ?, log_duration_s = ?, is_flight = ?, detection_method = ?, "
-        "analysis_version = ?, analysis_params = ?, metrics = ?, skip_reason = ? WHERE log_id = ?",
+        "analysis_version = ?, analysis_params = ?, metrics = ?, skip_reason = ?, signal_metrics = ? "
+        "WHERE log_id = ?",
         _flight_values(analysed) + (log_id,))
     connection.execute("DELETE FROM sensor WHERE log_id = ?", (log_id,))
     _insert_sensors(connection, log_id, analysed.sensors)

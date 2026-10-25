@@ -4,6 +4,7 @@
 The settings live as long as the window (they survive a language switch, which rebuilds all widgets).
 """
 
+from ..analysis.anomalies import RuleSettings
 from ..analysis.fleet import parse_date
 from ..config import Params, save_settings
 from ..i18n import N_, get_language, tr
@@ -56,6 +57,8 @@ class AppSettings:
         self.battery_unset = bool(self.model_settings.get(self.model, {}).get(BATTERY_UNSET_KEY))
         self.on_battery_confirmed = None                   # called when battery_unset becomes False
         self.fields["nominal_mah"].trace_add("write", self._on_capacity)
+        # anomaly rules: on/off, thresholds, receiver minimum voltage per model (analysis/anomalies.py)
+        self.anomaly_rules = RuleSettings.from_dict(saved.get("anomaly_rules"))
 
     def model_battery(self):
         """Battery settings of the current model as they are stored."""
@@ -73,6 +76,7 @@ class AppSettings:
             self.model_settings[self.model] = self.model_battery()
             stored["model"] = self.model
         stored["models"] = self.model_settings
+        stored["anomaly_rules"] = self.anomaly_rules.to_dict()
         if database_path:
             stored["database"] = database_path
         save_settings(stored)
@@ -131,6 +135,17 @@ class AppSettings:
                       active_current_a=number("active_current_a", fields["active_current_a"]),
                       reserve_pct=number("reserve_pct", fields["reserve_pct"]),
                       col_voltage=fields["col_voltage"].strip(), col_current=fields["col_current"].strip())
+
+    def battery_chosen(self, model):
+        """True if the cell chemistry or capacity of model has been chosen (not only the assumed defaults)."""
+        if model == self.model:
+            return not self.battery_unset
+        return not battery_unset_for(model, self.model_settings, self.saved)
+
+    def battery_for_anomalies(self, model):
+        """Battery settings of model for the anomaly rules, None while they are only the assumed defaults (the
+        limits of an assumed cell chemistry would give wrong hints)."""
+        return self.params_for_model(model) if self.battery_chosen(model) else None
 
     def read_params(self, messagebox):
         """The analysis parameters from the input fields, or None after showing an input error."""

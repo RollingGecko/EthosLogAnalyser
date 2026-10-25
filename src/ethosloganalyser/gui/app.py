@@ -22,10 +22,12 @@ import os
 from ..analysis.fleet import analyse_folder, default_model, find_logs, models_in
 from ..buildinfo import window_title
 from ..config import MODEL_UNKNOWN_LABEL, load_settings, model_label
+from ..gui.anomaly_controller import AnomalyController
 from ..gui.app_settings import BATTERY_HINT, AppSettings
 from ..gui.charts import ChartManager
 from ..gui.common import export_table
 from ..gui.database_panel import DatabaseController
+from ..gui.flight_annotations import FlightAnnotationsPanel
 from ..gui.flight_area import DatabaseFlightArea
 from ..gui.flight_cache import FlightCache
 from ..gui.flight_filter import FilterState
@@ -80,6 +82,7 @@ class MainWindow:
         self.settings = AppSettings(self.root, self.saved)
         self.settings.on_battery_confirmed = self.show_battery_hint
         self.database = DatabaseController(self.root, messagebox)     # flight database (section "Database")
+        self.anomalies = AnomalyController(self.root, self.database, self.settings)   # keeps anomalies up to date
         self.flight_cache = FlightCache(self.root, self.database, self.settings.params_for_model)
         self.flight_area = None
         self.filter_state = FilterState()                  # the flight filter, shared by the pages that use it
@@ -123,7 +126,9 @@ class MainWindow:
                                           self.charts, self.family)
         self.flight_page = FlightPage(self.tabs["flight"], self.charts, self.family, self.filedialog,
                                       back=lambda: self.select_page("logbook"))
-        self.flight_area = DatabaseFlightArea(self.flight_page, self.flight_cache)
+        self.flight_annotations = FlightAnnotationsPanel(self.flight_page.side_frame, self.database)
+        self.flight_annotations.frame.pack(fill="both", expand=True)
+        self.flight_area = DatabaseFlightArea(self.flight_page, self.flight_cache, self.flight_annotations)
         self.flight_area.reload(force=True)
         self.logbook_page = LogbookPage(self.tabs["logbook"], self.charts, self.family, tab_title("logbook"),
                                         self.logbook_model, self.filter_state)
@@ -197,9 +202,12 @@ class MainWindow:
         return text
 
     def _on_area_changed(self, _event=None):
-        """Another area was chosen: the logbook picks up changed battery settings, the status line follows."""
+        """Another area was chosen: the logbook picks up changed battery settings, the status line follows; changed
+        battery settings also judge the anomalies again. A note being typed is saved when the area is left."""
+        self.flight_annotations.save_note()
         if self.current_area() == "logbook":
             self.logbook_page.refresh()
+        self.anomalies.check_settings()
         self._show_status()
 
     # ---------------- folder analysis ----------------
@@ -378,6 +386,7 @@ class MainWindow:
         self.settings.store(self.database.path)
 
     def close(self):
+        self.flight_annotations.save_note()
         self.store_settings()
         self.flight_cache.close()
         self.database.close()
@@ -421,7 +430,9 @@ class MainWindow:
             lb_totals=logbook_page.totals, lb_scope=logbook_page.scope, lb_missing=logbook_page.missing,
             lb_year=logbook_page.year_tree, lb_month=logbook_page.month_tree, lb_list=logbook_page.flight_list.tree,
             lb_sort=logbook_page.sorter, lb_state=logbook_page.state, lb_canvas=logbook_page.chart_canvas,
-            lb_open_row=logbook_page.open_row,
+            lb_open_row=logbook_page.open_row, lb_only_annotated=logbook_page.only_annotated,
+            lb_annotated_toggled=logbook_page._annotated_toggled, annotations_panel=self.flight_annotations,
+            anomalies=self.anomalies, anomaly_settings=settings_page.anomaly_panel,
             fullscreen=self.charts.fullscreen, open_fullscreen=self.charts.open_fullscreen,
             open_chart=self.charts.open_chart, tab_canvas=self.statistics.chart_canvas,
             tab_builder=lambda key: (lambda: CHART_PAGES[key](self.res, self.params)))
