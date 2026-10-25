@@ -6,7 +6,13 @@ import, the duplicate and flight detection and the schema. The code is in `src/e
 The database is filled and managed on the page *Data & settings → Database*. The area *Single flight* reads its
 flights from it (`gui/database_flights.py`: the stored time series of all flights of an aircraft are analysed
 again with `analysis/flight.py` and combined with `analysis.fleet.analyse_flights`, which gives exactly the
-result of the folder analysis). Logbook and statistics move to the database in the next steps.
+result of the folder analysis). The area *Logbook* reads the same database
+(`db/flight_store.logbook_rows`, `db/logbook_table.py`): one row per log with the aircraft, start time, duration
+(`duration_s`, otherwise `log_duration_s`) and the metrics stored with the flight (drawn charge and the values for
+the battery validity). The effective decision whether a log is a flight is `coalesce(is_flight_manual, is_flight)`;
+a click on the flight switch in the logbook writes `is_flight_manual` (`flight_store.set_flight_manual`), and
+setting it back to what the detection said stores NULL again. Flight numbers are counted per aircraft over the
+effective flights. Statistics move to the database in the next step.
 
 ## The file
 

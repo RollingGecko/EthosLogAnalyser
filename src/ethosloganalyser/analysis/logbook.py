@@ -4,6 +4,8 @@
 Input is the flight table of an analysis (``Result.df``: one model, already limited by the period filter).
 The duration is the log duration (column ``dauer_s``, motor armed until disarmed), not an airborne time.
 The functions only read the table, so later views (selection by year/month, totals per battery) can reuse them.
+In the logbook the table comes from the flight database (db/logbook_table.py) and holds several aircraft; its
+flight numbers count per aircraft, so the longest and shortest flight also name their aircraft.
 """
 
 from dataclasses import dataclass, field
@@ -24,7 +26,7 @@ class Logbook:
     n_missing: int = 0                 # flights without date or duration (left out of the totals)
     total_s: float = 0.0               # sum of the log durations [s]
     flight_days: int = 0               # different calendar days with at least one flight
-    longest: dict = field(default_factory=dict)    # {"Flug", "datum", "dauer_s"} or {} without flights
+    longest: dict = field(default_factory=dict)    # {"Flug", "datum", "dauer_s", "aircraft"} or {} without flights
     shortest: dict = field(default_factory=dict)
     mah_total: float = 0.0             # drawn charge of the flights with a valid battery value [mAh]
     n_mah: int = 0                     # flights counted in mah_total
@@ -76,6 +78,7 @@ def logbook(df):
     d["dauer_s"] = pd.to_numeric(df.get("dauer_s"), errors="coerce")
     d["entnommen_mAh"] = pd.to_numeric(df.get("entnommen_mAh"), errors="coerce")
     d["_mah"] = _valid_mah(df)
+    d["aircraft"] = df["aircraft"] if "aircraft" in df else None   # flight numbers count per aircraft
     lb.flights = d[FLIGHT_COLS].reset_index(drop=True)
     lb.n_flights = len(d)
 
@@ -96,7 +99,8 @@ def logbook(df):
     lb.first, lb.last = c["datum"].min(), c["datum"].max()
     for attr, k in (("longest", c["dauer_s"].idxmax()), ("shortest", c["dauer_s"].idxmin())):
         r = c.loc[k]
-        setattr(lb, attr, {"Flug": int(r["Flug"]), "datum": r["datum"], "dauer_s": float(r["dauer_s"])})
+        setattr(lb, attr, {"Flug": int(r["Flug"]), "datum": r["datum"], "dauer_s": float(r["dauer_s"]),
+                           "aircraft": r["aircraft"]})
     mah = c["_mah"].dropna()
     lb.mah_total = float(mah.sum())
     lb.n_mah = int(len(mah))

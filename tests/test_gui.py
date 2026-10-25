@@ -10,6 +10,7 @@ import sys
 import pytest
 
 from helpers import EXAMPLES
+from logbook_checks import check_empty_logbook, check_logbook
 
 # In CI (environment variable REQUIRE_GUI_TEST) the test must run - skipping it there would be an error.
 REQUIRED = bool(os.environ.get("REQUIRE_GUI_TEST"))
@@ -50,11 +51,14 @@ def test_gui_analyses_example_logs(monkeypatch, tmp_path):
         h = root._akku
         assert h["nb"].index("current") == h["nb"].index(h["tabs"]["logbook"])     # start page: logbook
         _check_empty_flight_page(root)
-        h["db_panel"].run_import([str(EXAMPLES)])            # the single flight comes from the database
+        check_empty_logbook(root)
+        h["db_panel"].run_import([str(EXAMPLES)])            # logbook and single flight come from the database
         _wait_for_database(root)
         h["db_panel"].report["window"].destroy()
         _wait_for_flight(root)
-        h["folder_var"].set(str(EXAMPLES))                      # logbook and statistics: folder analysis
+        check_logbook(root, monkeypatch)                        # filled without any folder analysis
+        _wait_for_flight(root)
+        h["folder_var"].set(str(EXAMPLES))                      # statistics: folder analysis
         h["run"]()
         root.update()
         assert not errors, errors
@@ -75,7 +79,6 @@ def test_gui_analyses_example_logs(monkeypatch, tmp_path):
         _check_single_flight_from_database(root)
         _check_fullscreen(root)
         _check_whole_page_double_click(root)
-        _check_logbook(root)
         _check_language_switch(root, settings)
         _check_period_filter(root, errors)
         _check_two_models(root, errors, settings, tmp_path)
@@ -92,19 +95,29 @@ def _check_language_switch(root, settings):
     h = root._akku
     flight, view = h["flight_page"].current_key(), h["view_var"].get()
     h["nb"].select(h["tabs"]["flight"])
-    for code, status_text, heading in [("en", "3 flights analysed", "OVERVIEW"),
-                                       ("es", "3 vuelos analizados", "VISTA GENERAL"),
-                                       ("de", "3 Flüge ausgewertet", "ÜBERSICHT")]:
+    for code, database_status, scope, status_text, heading in [
+            ("en", "Flight database  ·  3 flights, 1 aircraft", "3 of 3 flights of the database",
+             "3 flights analysed", "OVERVIEW"),
+            ("es", "Base de datos de vuelos  ·  3 vuelos, 1 aeronaves", "3 de 3 vuelos de la base de datos",
+             "3 vuelos analizados", "VISTA GENERAL"),
+            ("de", "Flug-Datenbank  ·  3 Flüge, 1 Flugzeuge", "3 von 3 Flügen der Datenbank",
+             "3 Flüge ausgewertet", "ÜBERSICHT")]:
         h["set_language"](code)
         root.update()
         h = root._akku                                    # widgets were rebuilt
         assert get_language() == code
-        assert status_text in h["status"].get()
+        assert h["status"].get().startswith(database_status)                    # single-flight area: the database
+        assert h["lb_scope"].get() == scope                                     # the logbook is filled at once
         assert heading in h["summary"].get("1.0", "3.0").splitlines()[:2]   # after the battery hint, if any
         assert h["flight_page"].current_key() == flight                       # same flight selected
         assert h["view_var"].get() == view
         assert h["nb"].index("current") == h["nb"].index(h["tabs"]["flight"])
         assert json.loads(settings.read_text(encoding="utf-8"))["language"] == code    # remembered
+        h["nb"].select(h["tabs"]["statistics"])                                 # statistics: result of the analysis
+        root.update()
+        assert status_text in h["status"].get()
+        h["nb"].select(h["tabs"]["flight"])
+        root.update()
 
 
 def _check_period_filter(root, errors):
@@ -205,40 +218,6 @@ def _check_battery_hint(root, settings):
     assert h["settings"].battery_unset
     h["params"]["nominal_mah"].set("0")
     assert h["settings"].battery_unset
-
-
-def _check_logbook(root):
-    """Logbook tab: scope line, totals, tables per year/month, sortable flight list and the chart page."""
-    h = root._akku
-    nb, tabs = h["nb"], h["tabs"]
-    assert nb.index(tabs["logbook"]) == 0                               # first area (start page)
-    nb.select(tabs["logbook"])
-    root.update()
-    assert h["lb_scope"].get().startswith("Modell Viper-Jet  ·  Zeitraum: alle Flüge")
-    assert h["lb_totals"]["flights"].get().startswith("3  (")
-    assert h["lb_missing"].get() == ""
-    years = [h["lb_year"].item(i)["values"] for i in h["lb_year"].get_children()]
-    assert len(years) == 1 and years[0][1] == 3
-    lst = h["lb_list"]
-    first_col = lambda: [lst.item(i)["values"][0] for i in lst.get_children()]
-    assert first_col() == [1, 2, 3]
-    h["lb_sort"]["sort"]("dauer_s")                                   # shortest first
-    durations = [h["lb_state"]["book"].flights.set_index("Flug").loc[no, "dauer_s"] for no in first_col()]
-    assert durations == sorted(durations)
-    h["lb_sort"]["sort"]("dauer_s")                                   # second click: longest first
-    assert first_col()[0] == h["lb_state"]["book"].longest["Flug"]
-    assert lst.heading("dauer_s")["text"].endswith("▼")
-    canvas = h["lb_canvas"]()
-    assert canvas is not None and len(canvas.figure.axes) == 2
-
-    # double-click on a flight: that flight from the database on the single-flight page
-    item = next(i for i in lst.get_children() if lst.item(i)["values"][0] == 2)
-    h["lb_open_row"](item)                                           # what a double-click on the row does
-    root.update()
-    assert nb.index("current") == nb.index(tabs["flight"])
-    date = h["lb_state"]["book"].flights.set_index("Flug").loc[2, "datum"]
-    assert h["flight_var"].get().startswith(f"{date:%d.%m.%Y %H:%M} | Viper-Jet")
-    assert h["details"].get("1.0", "2.0").startswith("Flug 2 – ")
 
 
 def _check_fullscreen(root):
@@ -527,6 +506,7 @@ def _check_database(root, errors, settings, tmp_path, monkeypatch):
     assert database.stats().log_count == 0
     assert panel.stats.get().startswith("0 Logs")
     _check_empty_flight_page(root)
+    check_empty_logbook(root)
 
     # open the copy: it still has the flights
     monkeypatch.setattr("tkinter.filedialog.askopenfilename", lambda **k: str(copy_path))
@@ -534,4 +514,5 @@ def _check_database(root, errors, settings, tmp_path, monkeypatch):
     root.update()
     assert database.path == str(copy_path) and database.stats().flight_count == 4
     assert len(h["fbox"]["values"]) == 4
+    assert h["lb_scope"].get() == "4 von 4 Flügen der Datenbank"       # the logbook shows the opened database
     assert not errors, errors

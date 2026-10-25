@@ -119,3 +119,23 @@ def flight_rows(connection):
         "SELECT flight.*, aircraft.name AS aircraft, log_file.original_name FROM flight "
         "JOIN aircraft ON aircraft.id = flight.aircraft_id JOIN log_file ON log_file.id = flight.log_id "
         "ORDER BY flight.start_time, log_file.original_name", connection)
+
+
+def logbook_rows(connection):
+    """What the logbook needs of every stored log (flights and non-flights), ordered by start time.
+
+    The time series and the raw logs are not read; ``metrics`` is the stored JSON text.
+    """
+    return pd.read_sql_query(
+        "SELECT flight.log_id, aircraft.name AS aircraft, flight.start_time, flight.duration_s, "
+        "flight.log_duration_s, flight.is_flight, flight.is_flight_manual, flight.possible_duplicate, "
+        "flight.metrics, log_file.original_name FROM flight "
+        "JOIN aircraft ON aircraft.id = flight.aircraft_id JOIN log_file ON log_file.id = flight.log_id "
+        "ORDER BY flight.start_time, log_file.original_name", connection)
+
+
+def set_flight_manual(connection, log_id, value):
+    """Stores the decision made by hand whether a log is a flight: 1, 0, or None to use the automatic
+    detection again. The result of the automatic detection (``is_flight``) is not changed."""
+    with connection:
+        connection.execute("UPDATE flight SET is_flight_manual = ? WHERE log_id = ?", (value, log_id))

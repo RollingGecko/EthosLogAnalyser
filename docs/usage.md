@@ -43,8 +43,12 @@ The window has four areas, shown as tabs at the top:
 | Statistics (Statistik) | pages over all flights of the analysed model: Summary, Battery, Load & flight profile, Drive, Radio & onboard power, Table (smaller tabs inside the area) |
 | Data & settings (Daten & Einstellungen) | flight database, log folder, battery and analysis settings, language, export |
 
-For now, *Logbook* and *Statistics* show the result of the folder analysis (*Analyse* under *Log data*), while
-*Single flight* shows the flights imported into the flight database. Both will work on the database later.
+*Logbook* and *Single flight* show the flights of the flight database. *Statistics* still shows the result of the
+folder analysis (*Analyse* under *Log data*) and will work on the database later.
+
+The **status line** at the bottom shows the state of the flight database (flights, aircraft, first and last
+flight, and how many logs are not counted as flights) in the areas *Logbook* and *Single flight*. In the
+*Statistics* pages it shows the result of the analysis, as before.
 
 ## Workflow
 
@@ -74,8 +78,8 @@ The model is taken from the log file name: the part before the time stamp, e.g. 
 ## Flight database
 
 The section **Database** (Datenbank) at the top of *Data & settings* manages the flight database. The area
-*Single flight* shows its flights; logbook and statistics follow in later versions (they still work on the log
-folder for now):
+*Logbook* and *Single flight* show its flights; statistics follow in a later version (they still work on the
+log folder for now):
 
 - The line below the file name shows how many logs the database holds, how many of them are flights, how many
   aircraft and how large the file is.
@@ -109,7 +113,7 @@ The language applies to the whole user interface, the text reports, the charts a
 | Statistics → Radio & onboard power (Funk & Bordnetz) | RSSI, VFR, receiver battery, receiver current and its spikes, transmitter battery |
 | Statistics → Table (Tabelle) | all metrics per flight |
 | Single flight (Einzelflug) | time series in four views, detail report compared with the median of all flights of the aircraft |
-| Logbook (Logbuch) | flights, flying days, total log duration, longest/shortest flight, total drawn charge; tables and bar charts per year and month; sortable list of flights |
+| Logbook (Logbuch) | flights, flying days, total log duration, longest/shortest flight, total drawn charge; tables and bar charts per year and month; tree to group by time or aircraft; filter; sortable list of flights, with a switch to correct whether a log is a flight |
 
 ### Working with charts
 
@@ -143,14 +147,30 @@ The area *Single flight* shows the flights of the flight database:
 
 ### Logbook
 
-The area *Logbook* (Logbuch), the start page, gives an overview of your flying. It covers the same flights as all other tabs: the selected model (see *Several aircraft in one folder*) within the period filter. From top to bottom:
+The area *Logbook* (Logbuch), the start page, gives an overview of your flying. It reads the **flight database**
+(it works without the folder analysis) and shows the flights of all aircraft in it. From top to bottom:
 
-1. **Scope line**: model and period (“all flights” without a period filter). If some flights have no date or no log duration, a line below says how many; they are left out of all totals.
-2. **Totals**: number of flights with first and last date, flying days (different calendar days with at least one flight), total log duration, longest and shortest flight (with flight number and date) and the total drawn charge in Ah and mAh.
-3. **Per year** and **per month** tables (flights, log duration, flying days, drawn mAh) and two bar charts: flights per month and log duration per month (only months with flights). The charts have the usual tooltip, double-click to enlarge and *Enlarge whole page*.
-4. **Flights**: flight number, date, time, log duration and drawn mAh. A click on a column heading sorts by that column, a second click reverses the order (▲/▼); empty values stay at the end. A double-click on a flight opens it in *Single flight* (from the flight database, matched by aircraft and start time); a flight that is not in the database leads to a note to import the folder.
+1. **Filter bar** (see below) and the switch **Show non-flights**.
+2. **Scope line**: how many of the flights of the database are shown (“33 of 33 flights of the database”), with *Filter active* when a filter is set. If some flights have no date or no log duration, a line below says how many; they are left out of the totals.
+3. **Totals**: number of flights with first and last date, flying days (different calendar days with at least one flight), total log duration, longest and shortest flight (with flight number and date; with several aircraft in view also the aircraft) and the total drawn charge in Ah and mAh. The totals follow the **filter**, not the row selected in the tree.
+4. **Per year** and **per month** tables (flights, log duration, flying days, drawn mAh) and two bar charts: flights per month and log duration per month (only months with flights). The charts have the usual tooltip, double-click to enlarge and *Enlarge whole page*.
+5. **Group by** (Gruppieren nach) and the **flights**, side by side:
+   - The tree can be grouped **by time** (year → month → aircraft) or **by aircraft** (aircraft → year → month). Every row shows the number of flights and the flight time; the last row (*Total*) is the sum of everything shown. A click on a row restricts only the **flight list** to the flights of that row; the totals, tables and charts stay as they are. A click on the *Total* row shows all flights again.
+   - The list has the columns flight number, aircraft, date, time, log duration, drawn mAh, *Flight* (Flug) and a warning column. A click on a column heading sorts by that column, a second click reverses the order (▲/▼); empty values stay at the end. A double-click on a row opens the flight in *Single flight*.
 
-**Log duration** is the time from *motor armed* to *motor disarmed* in the log (column `dauer_s`), not the pure airborne time. The **drawn charge** follows the same rule as *Total drawn* in the summary: flights whose battery values are invalid (measurement errors) are not counted; the line says how many were left out. The totals are computed in `analysis/logbook.py` from the flight table.
+**Flight numbers** count per aircraft: *Flug 5* is the fifth flight of that aircraft, oldest first, and only logs counted as flights get a number. Two aircraft can therefore both have a flight 1.
+
+**Log duration** is the time from *motor armed* to *motor disarmed* in the log (column `dauer_s`), not the pure airborne time. For an aircraft without a motor the duration detected for the flight is used. The **drawn charge** follows the same rule as *Total drawn* in the summary: flights whose battery values are invalid (measurement errors) are not counted; the line says how many were left out.
+
+#### Filter
+
+The filter bar offers **aircraft**, **year**, **month** and a date range **from / to** (dd.mm.yyyy; the end day is included; an entry that is not a date turns red and is ignored; an empty field means no limit). *Reset* removes all restrictions. The filter acts on the whole logbook: totals, tables, charts, tree and list. It is one shared setting (`gui/flight_filter.py`), so the statistics will show and change the same filter later. The *Period from/to* filter under *Data & settings* is a separate setting for the statistics and does not change the logbook.
+
+#### Non-flights and corrections
+
+Logs that were not detected as a flight (ground tests, short motor runs) are hidden. **Show non-flights** lists them too, in grey and without a flight number; they never count in the totals. The column **Flug** shows ☑ for a flight and ☐ for a log that is not one. A click on the symbol switches it: a ☐ becomes a flight, a ☑ no longer counts. The decision is stored in the database (`is_flight_manual`) and survives a new import; switching a log back to what the detection said removes the manual decision. Totals, tree, the single-flight list and the status line follow at once. A log that is not a flight cannot be opened as a single flight; the app says so.
+
+A **⚠** in the last column marks a *possible duplicate*: another log of the same aircraft has the same start time but a different content. Hover over the symbol for the explanation. Both logs stay in the database; if one of them is really a copy, switch it to “not a flight”.
 
 ## Export
 

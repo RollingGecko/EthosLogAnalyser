@@ -5,12 +5,16 @@ The window content is built by ``MainWindow.build()``. When the user switches th
 destroyed and built again in the new language; the analysis result, the settings, the selected flight, view,
 zoom and tab are kept, so the logs do not have to be analysed again.
 
-Four areas, as tabs at the top: Logbook (start page), Single flight (flights from the flight database),
-Statistics (pages over all flights of the analysed folder) and Data & settings.
+Four areas, as tabs at the top: Logbook (start page, from the flight database), Single flight (flights from the
+flight database), Statistics (pages over all flights of the analysed folder) and Data & settings.
 
 The pages are separate modules: settings_page (Data & settings), statistics_page, flight_page with flight_area
-and flight_cache (single flight from the database), logbook_page; charts (chart canvases, full screen),
-app_settings (input fields, battery per model), database_panel.
+and flight_cache (single flight from the database), logbook_page with logbook_model, flight_filter,
+logbook_group_tree and logbook_flight_list; charts (chart canvases, full screen), app_settings (input fields,
+battery per model), database_panel.
+
+The status line shows the state of the flight database on the logbook and the single-flight area and the
+result of the last folder analysis everywhere else.
 """
 
 import os
@@ -24,12 +28,14 @@ from ..gui.common import export_table
 from ..gui.database_panel import DatabaseController
 from ..gui.flight_area import DatabaseFlightArea
 from ..gui.flight_cache import FlightCache
+from ..gui.flight_filter import FilterState
 from ..gui.flight_page import FlightPage
+from ..gui.logbook_model import LogbookModel
 from ..gui.logbook_page import LogbookPage
 from ..gui.settings_page import SettingsPage
 from ..gui.statistics_page import CHART_PAGES, PAGE_KEYS, StatisticsPages, page_title
 from ..gui.style import BG, _setup_style
-from ..i18n import LANGUAGES, Msg, detect_language, get_language, set_language, tr
+from ..i18n import LANGUAGES, Msg, detect_language, fmt_date, get_language, set_language, tr
 from ..plots.flight import FLIGHT_VIEWS, figure_flight
 from ..report.text import flight_detail_lines, summary_lines
 
@@ -38,6 +44,9 @@ START_DELAY_MS = 700
 
 # areas of the window (tabs at the top) in their order; the statistics area holds the pages PAGE_KEYS
 AREA_KEYS = ("logbook", "flight", "statistics", "settings")
+
+# areas whose status line shows the state of the flight database
+DATABASE_STATUS_AREAS = ("logbook", "flight")
 
 
 def tab_title(key):
@@ -73,6 +82,9 @@ class MainWindow:
         self.database = DatabaseController(self.root, messagebox)     # flight database (section "Database")
         self.flight_cache = FlightCache(self.root, self.database, self.settings.params_for_model)
         self.flight_area = None
+        self.filter_state = FilterState()                  # the flight filter, shared by the pages that use it
+        self.logbook_model = LogbookModel(self.database, self.settings.params_for_model)
+        self.logbook_page = None
         self.database.add_listener(self._on_database_changed)
         # result of the folder analysis
         self.res, self.params, self.folder = None, None, ""
@@ -113,9 +125,13 @@ class MainWindow:
                                       back=lambda: self.select_page("logbook"))
         self.flight_area = DatabaseFlightArea(self.flight_page, self.flight_cache)
         self.flight_area.reload(force=True)
-        self.logbook_page = LogbookPage(self.tabs["logbook"], self.charts, self.family, tab_title("logbook"))
+        self.logbook_page = LogbookPage(self.tabs["logbook"], self.charts, self.family, tab_title("logbook"),
+                                        self.logbook_model, self.filter_state)
         self.logbook_page.on_open_flight = self.open_logbook_flight
-        self.logbook_page.scope.set(str(self.status_msg) if self.res is None else "")
+        self.logbook_page.on_switch_flight = self.switch_logbook_flight
+        if self.database.database is not None:       # at program start the database is opened right after this
+            self.logbook_page.refresh()
+            self.logbook_page.show()
 
         self.show_battery_hint()
         if self.res is not None:
@@ -127,6 +143,8 @@ class MainWindow:
         else:
             self.select_page("logbook")
         self.root._akku = self.test_handles()
+        self.notebook.bind("<<NotebookTabChanged>>", self._on_area_changed)
+        self._show_status()
 
     @staticmethod
     def _add_tabs(notebook, keys):
@@ -149,8 +167,40 @@ class MainWindow:
         return self.settings.read_params(self.messagebox)
 
     def set_status(self, msg):
+        """Stores the status of the folder analysis; it is shown on the areas that do not show the database."""
         self.status_msg = msg
-        self.status.set(str(msg))
+        self._show_status()
+
+    def current_area(self):
+        """Key of the area (tab at the top) that is shown."""
+        return AREA_KEYS[self.notebook.index("current")]
+
+    def _show_status(self):
+        """Status line: the state of the flight database on the logbook and single-flight areas, otherwise the
+        result of the last folder analysis."""
+        if self.current_area() in DATABASE_STATUS_AREAS:
+            self.status.set(self.database_status_text())
+        else:
+            self.status.set(str(self.status_msg))
+
+    def database_status_text(self):
+        """Flights, aircraft and period of the flight database in the current language."""
+        summary = self.logbook_model.summary()
+        if not summary.n_flights:
+            return tr("Die Flug-Datenbank enthält noch keine Flüge – Logs unter „Daten & Einstellungen“ → "
+                      "„Datenbank“ importieren.")
+        text = tr("Flug-Datenbank  ·  {flights} Flüge, {aircraft} Flugzeuge  ·  {first} – {last}",
+                  flights=summary.n_flights, aircraft=summary.n_aircraft, first=fmt_date(summary.first),
+                  last=fmt_date(summary.last))
+        if summary.n_non_flights:
+            text += tr("  ·  {n} Logs ohne Flug", n=summary.n_non_flights)
+        return text
+
+    def _on_area_changed(self, _event=None):
+        """Another area was chosen: the logbook picks up changed battery settings, the status line follows."""
+        if self.current_area() == "logbook":
+            self.logbook_page.refresh()
+        self._show_status()
 
     # ---------------- folder analysis ----------------
     def choose_folder(self):
@@ -244,27 +294,28 @@ class MainWindow:
         res = self.res
         self.settings_page.show_skipped(res.skipped)
         self.statistics.show_summary(self.summary_with_hint())
-        self.logbook_page.show(res, self.params)
         self.statistics.show(res, self.params, lambda: (self.res, self.params))
 
     # ---------------- single flight from the database ----------------
     def _on_database_changed(self):
         if self.flight_area is not None:
             self.flight_area.reload()
+        if self.logbook_page is not None:
+            self.logbook_page.refresh()
+        self._show_status()
 
-    def open_logbook_flight(self, flight_no):
+    def open_logbook_flight(self, log_id):
         """Double-click in the logbook: shows that flight from the database on the single-flight page."""
-        rows = self.res.df.loc[self.res.df["Flug"] == flight_no] if self.res is not None else []
-        if not len(rows):
-            return
-        row = rows.iloc[0]
-        log_id = self.flight_area.find_flight(row["Modell"], row["datum"].to_pydatetime())
-        if log_id is None or not self.flight_area.open_flight(log_id):
-            self.messagebox.showinfo(tr("Einzelflug"), tr("Dieser Flug ist nicht in der Flug-Datenbank. Bitte den "
-                                                          "Log-Ordner unter „Daten & Einstellungen“ → „Datenbank“ "
-                                                          "importieren."))
+        if not self.flight_area.open_flight(log_id):
+            self.messagebox.showinfo(tr("Einzelflug"), tr("Dieser Log ist nicht als Flug gezählt. Zum Ansehen im "
+                                                          "Logbuch in der Spalte „Flug“ auf ☑ umschalten."))
             return
         self.select_page("flight")
+
+    def switch_logbook_flight(self, log_id):
+        """Switch in the flight list: decides by hand whether a log is a flight; every page reads it again."""
+        if self.logbook_model.switch_flight(log_id):
+            self.database.flights_changed()
 
     # ---------------- export ----------------
     def export_csv(self):
@@ -365,9 +416,12 @@ class MainWindow:
             select_flight=flight_page.select_flight, redraw=flight_page.redraw, set_xlim=flight_page.set_xlim,
             goto_spike=flight_page.goto_spike, spike_var=flight_page.spike_var, details=flight_page.details,
             flight_builder=flight_page.builder, flight_canvas=flight_page.canvas,
+            lb_page=logbook_page, lb_model=self.logbook_model, filter_state=self.filter_state,
+            lb_filter=logbook_page.filter_bar, lb_groups=logbook_page.group_tree, lb_flights=logbook_page.flight_list,
             lb_totals=logbook_page.totals, lb_scope=logbook_page.scope, lb_missing=logbook_page.missing,
-            lb_year=logbook_page.year_tree, lb_month=logbook_page.month_tree, lb_list=logbook_page.flight_list,
-            lb_sort=logbook_page.sorter, lb_state=logbook_page.state, lb_canvas=logbook_page.chart_canvas, lb_open_row=logbook_page.open_row,
+            lb_year=logbook_page.year_tree, lb_month=logbook_page.month_tree, lb_list=logbook_page.flight_list.tree,
+            lb_sort=logbook_page.sorter, lb_state=logbook_page.state, lb_canvas=logbook_page.chart_canvas,
+            lb_open_row=logbook_page.open_row,
             fullscreen=self.charts.fullscreen, open_fullscreen=self.charts.open_fullscreen,
             open_chart=self.charts.open_chart, tab_canvas=self.statistics.chart_canvas,
             tab_builder=lambda key: (lambda: CHART_PAGES[key](self.res, self.params)))
