@@ -162,7 +162,7 @@ def _check_two_models(root, errors, settings, tmp_path):
 
     h["use_model"]("Viper-Jet")                                      # back: its own settings again
     assert h["params"]["nominal_mah"].get() == "9000"
-    assert not h["state"]["battery_unset"]                           # set-up model: no hint
+    assert not h["settings"].battery_unset                           # set-up model: no hint
     h["folder_var"].set(str(EXAMPLES))
     h["run"]()
     root.update()
@@ -190,12 +190,12 @@ def _check_battery_hint(root, settings):
     assert "Akku-Einstellungen" not in h["status"].get() and "Modell Edge-540" in h["status"].get()
     assert hint not in h["summary"].get("1.0", "end")
 
-    h["state"]["battery_unset"] = True                               # again, now with the capacity
+    h["settings"].battery_unset = True                               # again, now with the capacity
     h["battery_hint"].grid()
     h["params"]["nominal_mah"].set("abc")                            # no number: hint stays
-    assert h["state"]["battery_unset"]
+    assert h["settings"].battery_unset
     h["params"]["nominal_mah"].set("0")
-    assert h["state"]["battery_unset"]
+    assert h["settings"].battery_unset
 
 
 def _check_logbook(root):

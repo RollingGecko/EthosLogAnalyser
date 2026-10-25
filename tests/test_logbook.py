@@ -7,7 +7,7 @@ import pandas as pd
 import helpers
 from ethosloganalyser import Params, analyse_folder
 from ethosloganalyser.analysis.logbook import logbook
-from ethosloganalyser.gui.app import sort_key
+from ethosloganalyser.gui.common import sort_key
 
 
 def _table(rows, valid=None):
