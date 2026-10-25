@@ -94,7 +94,7 @@ class LogbookPage:
 
     def _build_flight_list(self, parent):
         from tkinter import ttk
-        box = ttk.LabelFrame(parent, text=tr("Flüge (Klick auf eine Spaltenüberschrift sortiert)"), padding=4)
+        box = ttk.LabelFrame(parent, text=tr("Flüge (Klick auf eine Spaltenüberschrift sortiert, Doppelklick öffnet den Einzelflug)"), padding=4)
         box.pack(fill="both", expand=True, pady=(6, 0))
         columns = [("Flug", tr("Flug"), 60), ("datum", tr("Datum"), 100), ("zeit", tr("Uhrzeit"), 80),
                    ("dauer_s", tr("Log-Dauer"), 90), ("entnommen_mAh", tr("entnommen mAh"), 110)]
@@ -109,7 +109,10 @@ class LogbookPage:
         self.flight_list.bind("<Double-1>", self._on_double_click)
 
     def _on_double_click(self, event):
-        item = self.flight_list.identify_row(event.y)
+        self.open_row(self.flight_list.identify_row(event.y))
+
+    def open_row(self, item):
+        """Opens the flight of a row of the flight list (item id of the Treeview) on the single-flight page."""
         if item and self.on_open_flight is not None:
             self.on_open_flight(int(self.flight_list.item(item, "values")[0]))
 

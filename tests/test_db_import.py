@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from helpers import EXAMPLE_FILES, ROOT, ela, write_ethos_csv
+from helpers import EXAMPLE_FILES, ROOT, ela, write_ethos_csv, write_glider_log
 from ethosloganalyser.db import FlightDatabase, flight_store, import_paths, importer
 from ethosloganalyser.db import flight_detection, log_analysis, reanalysis, sensor_roles
 from ethosloganalyser.analysis.flight import analyse_frame
@@ -27,19 +27,6 @@ def _motor_flight(folder, name, seconds=300.0):
     stamp = name[-23:-4]                                    # YYYY-MM-DD-hh-mm-ss
     start = f"{stamp[:10]} {stamp[11:].replace('-', ':')}"
     return write_ethos_csv(folder, name, t, voltage, current, start=start)
-
-
-def _glider_log(folder, name, airborne_s, start="2026-06-01 14:00:00"):
-    """Log without current sensor: altitude, vario and receiver signal only (e.g. a glider)."""
-    t = np.arange(0, airborne_s + 120, 0.5)
-    altitude = np.where((t > 60) & (t < 60 + airborne_s), 120.0, 0.0) + 0.3 * np.sin(t)
-    times = pd.Timestamp(start) + pd.to_timedelta(t, unit="s")
-    frame = pd.DataFrame({"Date": times.strftime("%Y-%m-%d"), "Time": times.strftime("%H:%M:%S.%f").str[:-3],
-                          "Altitude(m)": np.round(altitude, 2), "VSpeed(m/s)": np.round(np.gradient(altitude), 2),
-                          "RSSI 2.4G(dB)": 90, "RxBatt(V)": 5.1})
-    path = folder / name
-    frame.to_csv(path, index=False)
-    return path
 
 
 @pytest.fixture
@@ -118,8 +105,8 @@ def test_too_short_log_is_imported_as_non_flight(database, tmp_path):
 
 
 def test_flight_detection_without_motor_sensor_uses_altitude(database, tmp_path):
-    flown = _glider_log(tmp_path, "Glider-2026-06-01-14-00-00.csv", airborne_s=600)
-    ground = _glider_log(tmp_path, "Glider-2026-06-01-15-00-00.csv", airborne_s=0, start="2026-06-01 15:00:00")
+    flown = write_glider_log(tmp_path, "Glider-2026-06-01-14-00-00.csv", airborne_s=600)
+    ground = write_glider_log(tmp_path, "Glider-2026-06-01-15-00-00.csv", airborne_s=0, start="2026-06-01 15:00:00")
     report = import_paths(database, [str(flown), str(ground)], ela.Params())
     assert report.count(importer.NEW) == 2 and report.flight_count == 1
     rows = database.connection.execute(

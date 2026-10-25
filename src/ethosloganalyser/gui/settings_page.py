@@ -5,7 +5,7 @@ skipped files."""
 from ..buildinfo import about_lines
 from ..config import CHEM, model_label
 from ..i18n import LANGUAGES, get_language, tr
-from .database_panel import build_database_panel
+from .database_panel import DatabasePanel
 
 
 class SettingsPage:
@@ -20,9 +20,9 @@ class SettingsPage:
         page.pack(fill="both", expand=True)
         page.columnconfigure(0, weight=1)
         page.columnconfigure(1, weight=1)
-        self.db_panel = build_database_panel(page, window.database, window.read_params, window.filedialog,
-                                             window.messagebox)
-        self.db_panel["frame"].grid(row=0, column=0, columnspan=2, sticky="we", pady=(0, 10))
+        self.db_panel = DatabasePanel(page, window.database, window.read_params, window.filedialog,
+                                      window.messagebox)
+        self.db_panel.frame.grid(row=0, column=0, columnspan=2, sticky="we", pady=(0, 10))
         self._build_log_folder(page)
         self._build_battery(page)
         self._build_analysis(page)

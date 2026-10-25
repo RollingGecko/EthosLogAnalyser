@@ -3,8 +3,10 @@
 With the rebuild of the app (v2), all imported logs are kept in one flight database. This page describes the file, the
 import, the duplicate and flight detection and the schema. The code is in `src/ethosloganalyser/db/`.
 
-So far (WP-15) the database is filled and managed on the page *Data & settings → Database*; the analysis tabs
-still work on a log folder. Logbook, single flight and statistics move to the database in the next steps.
+The database is filled and managed on the page *Data & settings → Database*. The area *Single flight* reads its
+flights from it (`gui/database_flights.py`: the stored time series of all flights of an aircraft are analysed
+again with `analysis/flight.py` and combined with `analysis.fleet.analyse_flights`, which gives exactly the
+result of the folder analysis). Logbook and statistics move to the database in the next steps.
 
 ## The file
 

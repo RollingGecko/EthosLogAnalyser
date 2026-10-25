@@ -111,6 +111,27 @@ class AppSettings:
         except ValueError:
             pass
 
+    def params_for_model(self, model):
+        """Analysis parameters for the flights of model in the database, without any dialog: the battery
+        settings of that model (the input fields if it is the current model), the other fields as entered.
+        A field that is not a valid number keeps its default. The period fields do not apply here."""
+        def number(key, text):
+            try:
+                return float(str(text).replace(",", "."))
+            except ValueError:
+                return float(FIELD_DEFAULTS[key])
+
+        battery = {k: self.fields[k].get() for k in BATTERY_KEYS} if model == self.model else \
+            self.model_settings.get(model, BATTERY_DEFAULTS)
+        battery = {k: battery.get(k, BATTERY_DEFAULTS[k]) for k in BATTERY_KEYS}
+        fields = {k: v.get() for k, v in self.fields.items()}
+        return Params(cells=int(number("cells", battery["cells"])), chem=battery["chem"],
+                      nominal_mah=number("nominal_mah", battery["nominal_mah"]),
+                      min_flight_s=number("min_flight_s", fields["min_flight_s"]),
+                      active_current_a=number("active_current_a", fields["active_current_a"]),
+                      reserve_pct=number("reserve_pct", fields["reserve_pct"]),
+                      col_voltage=fields["col_voltage"].strip(), col_current=fields["col_current"].strip())
+
     def read_params(self, messagebox):
         """The analysis parameters from the input fields, or None after showing an input error."""
         fields = self.fields

@@ -5,8 +5,12 @@ The window content is built by ``MainWindow.build()``. When the user switches th
 destroyed and built again in the new language; the analysis result, the settings, the selected flight, view,
 zoom and tab are kept, so the logs do not have to be analysed again.
 
-The pages are separate modules: settings_page (Data & settings), statistics_page, flight_page, logbook_page;
-charts (chart canvases, full screen), app_settings (input fields, battery per model), database_panel.
+Four areas, as tabs at the top: Logbook (start page), Single flight (flights from the flight database),
+Statistics (pages over all flights of the analysed folder) and Data & settings.
+
+The pages are separate modules: settings_page (Data & settings), statistics_page, flight_page with flight_area
+and flight_cache (single flight from the database), logbook_page; charts (chart canvases, full screen),
+app_settings (input fields, battery per model), database_panel.
 """
 
 import os
@@ -18,35 +22,29 @@ from ..gui.app_settings import BATTERY_HINT, AppSettings
 from ..gui.charts import ChartManager
 from ..gui.common import export_table
 from ..gui.database_panel import DatabaseController
+from ..gui.flight_area import DatabaseFlightArea
+from ..gui.flight_cache import FlightCache
 from ..gui.flight_page import FlightPage
 from ..gui.logbook_page import LogbookPage
 from ..gui.settings_page import SettingsPage
-from ..gui.statistics_page import CHART_PAGES, StatisticsPages, page_title
+from ..gui.statistics_page import CHART_PAGES, PAGE_KEYS, StatisticsPages, page_title
 from ..gui.style import BG, _setup_style
-from ..i18n import LANGUAGES, Msg, detect_language, fmt_datetime, get_language, set_language, tr
+from ..i18n import LANGUAGES, Msg, detect_language, get_language, set_language, tr
 from ..plots.flight import FLIGHT_VIEWS, figure_flight
 from ..report.text import flight_detail_lines, summary_lines
-from ..utils import _mmss
 
-# tabs of the window in their order (key, title is looked up when building)
-TAB_KEYS = ("settings", "summary", "akku", "belastung", "antrieb", "funk", "flight", "table", "logbook")
+# time after the program start before database flights are prepared in the background
+START_DELAY_MS = 700
+
+# areas of the window (tabs at the top) in their order; the statistics area holds the pages PAGE_KEYS
+AREA_KEYS = ("logbook", "flight", "statistics", "settings")
 
 
 def tab_title(key):
-    """Title of a tab in the current language."""
-    if key == "settings":
-        return tr("Daten & Einstellungen")
-    if key == "flight":
-        return tr("Einzelflug")
-    if key == "logbook":
-        return tr("Logbuch")
-    return page_title(key)
-
-
-def flight_label(row):
-    """Entry of the flight selector for a row of the flight table."""
-    return (f"{int(row['Flug'])} | {fmt_datetime(row['datum'])} | {_mmss(row['dauer_s'])} | "
-            f"{row['entnommen_mAh']:.0f} mAh")
+    """Title of an area or statistics page in the current language."""
+    titles = {"logbook": tr("Logbuch"), "flight": tr("Einzelflug"), "statistics": tr("Statistik"),
+              "settings": tr("Daten & Einstellungen")}
+    return titles[key] if key in titles else page_title(key)
 
 
 class MainWindow:
@@ -73,6 +71,9 @@ class MainWindow:
         self.settings = AppSettings(self.root, self.saved)
         self.settings.on_battery_confirmed = self.show_battery_hint
         self.database = DatabaseController(self.root, messagebox)     # flight database (section "Database")
+        self.flight_cache = FlightCache(self.root, self.database, self.settings.params_for_model)
+        self.flight_area = None
+        self.database.add_listener(self._on_database_changed)
         # result of the folder analysis
         self.res, self.params, self.folder = None, None, ""
         self.models = {}                                   # {model: number of logs} of the last analysed folder
@@ -96,11 +97,10 @@ class MainWindow:
         ttk.Label(self.content, textvariable=self.status, style="Status.TLabel").pack(fill="x")
         self.notebook = ttk.Notebook(self.content)
         self.notebook.pack(fill="both", expand=True, padx=6, pady=(4, 6))
-        self.tabs = {}
-        for key in TAB_KEYS:
-            frame = ttk.Frame(self.notebook)
-            self.notebook.add(frame, text=tab_title(key))
-            self.tabs[key] = frame
+        self.tabs = self._add_tabs(self.notebook, AREA_KEYS)
+        self.statistics_notebook = ttk.Notebook(self.tabs["statistics"], style="Pages.TNotebook")
+        self.statistics_notebook.pack(fill="both", expand=True, pady=(4, 0))
+        self.tabs.update(self._add_tabs(self.statistics_notebook, PAGE_KEYS))
 
         self.charts = ChartManager(self.root)
         self.settings_page = SettingsPage(self.tabs["settings"], self, {
@@ -109,19 +109,41 @@ class MainWindow:
         self.settings_page.update_model_box(self.models, self.settings.model)
         self.statistics = StatisticsPages({key: self.tabs[key] for key in ("summary", "table", *CHART_PAGES)},
                                           self.charts, self.family)
-        self.flight_page = FlightPage(self.tabs["flight"], self.charts, self.family, self.filedialog)
+        self.flight_page = FlightPage(self.tabs["flight"], self.charts, self.family, self.filedialog,
+                                      back=lambda: self.select_page("logbook"))
+        self.flight_area = DatabaseFlightArea(self.flight_page, self.flight_cache)
+        self.flight_area.reload(force=True)
         self.logbook_page = LogbookPage(self.tabs["logbook"], self.charts, self.family, tab_title("logbook"))
+        self.logbook_page.on_open_flight = self.open_logbook_flight
+        self.logbook_page.scope.set(str(self.status_msg) if self.res is None else "")
 
         self.show_battery_hint()
         if self.res is not None:
             self.show_results()
         if snap is not None:
-            if self.res is not None:
-                self.flight_page.restore(snap["flight_page"])
+            self.flight_page.restore(snap["flight_page"])
             self.notebook.select(snap["tab"])
+            self.statistics_notebook.select(snap["statistics_tab"])
         else:
-            self.notebook.select(self.tabs["settings"])
+            self.select_page("logbook")
         self.root._akku = self.test_handles()
+
+    @staticmethod
+    def _add_tabs(notebook, keys):
+        from tkinter import ttk
+        frames = {}
+        for key in keys:
+            frames[key] = ttk.Frame(notebook)
+            notebook.add(frames[key], text=tab_title(key))
+        return frames
+
+    def select_page(self, key):
+        """Shows an area, or a statistics page inside the statistics area."""
+        if key in PAGE_KEYS:
+            self.notebook.select(self.tabs["statistics"])
+            self.statistics_notebook.select(self.tabs[key])
+        else:
+            self.notebook.select(self.tabs[key])
 
     def read_params(self):
         return self.settings.read_params(self.messagebox)
@@ -177,7 +199,7 @@ class MainWindow:
         self.settings_page.update_model_box(self.models, self.settings.model)
         self._set_status_after_analysis(folder, model, res, params)
         self.show_results()
-        self.notebook.select(self.tabs["summary"])
+        self.select_page("summary")
 
     def _set_status_after_analysis(self, folder, model, res, params):
         cells = res.meta.get("cells", params.cells)
@@ -224,14 +246,25 @@ class MainWindow:
         self.statistics.show_summary(self.summary_with_hint())
         self.logbook_page.show(res, self.params)
         self.statistics.show(res, self.params, lambda: (self.res, self.params))
-        if not res.df.empty:
-            self.flight_page.set_choices([(flight_label(row), int(row["Flug"])) for _, row in res.df.iterrows()],
-                                         self._resolve_folder_flight)
 
-    def _resolve_folder_flight(self, flight_no):
-        df = self.res.df
-        rows = df.loc[df["Flug"] == flight_no, "pfad"]
-        return (self.res, self.params, rows.iloc[0]) if len(rows) else None
+    # ---------------- single flight from the database ----------------
+    def _on_database_changed(self):
+        if self.flight_area is not None:
+            self.flight_area.reload()
+
+    def open_logbook_flight(self, flight_no):
+        """Double-click in the logbook: shows that flight from the database on the single-flight page."""
+        rows = self.res.df.loc[self.res.df["Flug"] == flight_no] if self.res is not None else []
+        if not len(rows):
+            return
+        row = rows.iloc[0]
+        log_id = self.flight_area.find_flight(row["Modell"], row["datum"].to_pydatetime())
+        if log_id is None or not self.flight_area.open_flight(log_id):
+            self.messagebox.showinfo(tr("Einzelflug"), tr("Dieser Flug ist nicht in der Flug-Datenbank. Bitte den "
+                                                          "Log-Ordner unter „Daten & Einstellungen“ → „Datenbank“ "
+                                                          "importieren."))
+            return
+        self.select_page("flight")
 
     # ---------------- export ----------------
     def export_csv(self):
@@ -278,7 +311,8 @@ class MainWindow:
     # ---------------- language, settings, closing ----------------
     def snapshot(self):
         """What the user is looking at - restored after a language switch."""
-        return {"tab": self.notebook.index("current"), "flight_page": self.flight_page.snapshot()}
+        return {"tab": self.notebook.index("current"), "statistics_tab": self.statistics_notebook.index("current"),
+                "flight_page": self.flight_page.snapshot()}
 
     def change_language(self, code):
         """Switches the language and builds the window content again (the analysis result is kept)."""
@@ -294,6 +328,7 @@ class MainWindow:
 
     def close(self):
         self.store_settings()
+        self.flight_cache.close()
         self.database.close()
         self.root.destroy()
 
@@ -303,20 +338,24 @@ class MainWindow:
                                                         "Sollen die Logs aus dem bisher genutzten Ordner importiert "
                                                         "werden?\n{folder}", path=self.database.path,
                                                         folder=folder)):
-            self.settings_page.db_panel["run_import"]([folder])
+            self.settings_page.db_panel.run_import([folder])
 
     def start(self):
         self.root.protocol("WM_DELETE_WINDOW", self.close)
+        self.flight_cache.paused = True
         self.build()
         self.database.start(self.saved, self.offer_folder_import)
         self.store_settings()
+        # prepare the flights of the database only once the window is shown (keeps the start quick)
+        self.root.after(START_DELAY_MS, self.flight_cache.resume)
 
     # ---------------- tests ----------------
     def test_handles(self):
         """Widgets and functions that the GUI test drives (root._akku)."""
         settings_page, flight_page, logbook_page = self.settings_page, self.flight_page, self.logbook_page
         return dict(
-            window=self, database=self.database, db_panel=settings_page.db_panel, run=self.run_analysis,
+            window=self, database=self.database, flight_cache=self.flight_cache, flight_area=self.flight_area,
+            select_page=self.select_page, statistics_nb=self.statistics_notebook, flight_page=flight_page, db_panel=settings_page.db_panel, run=self.run_analysis,
             model_box=settings_page.model_box, model_bar=settings_page.model_bar, use_model=self.settings.use_model,
             folder_var=self.settings.folder, battery_hint=settings_page.battery_hint,
             chem_box=settings_page.chem_box, settings=self.settings, params=self.settings.fields,
@@ -328,7 +367,7 @@ class MainWindow:
             flight_builder=flight_page.builder, flight_canvas=flight_page.canvas,
             lb_totals=logbook_page.totals, lb_scope=logbook_page.scope, lb_missing=logbook_page.missing,
             lb_year=logbook_page.year_tree, lb_month=logbook_page.month_tree, lb_list=logbook_page.flight_list,
-            lb_sort=logbook_page.sorter, lb_state=logbook_page.state, lb_canvas=logbook_page.chart_canvas,
+            lb_sort=logbook_page.sorter, lb_state=logbook_page.state, lb_canvas=logbook_page.chart_canvas, lb_open_row=logbook_page.open_row,
             fullscreen=self.charts.fullscreen, open_fullscreen=self.charts.open_fullscreen,
             open_chart=self.charts.open_chart, tab_canvas=self.statistics.chart_canvas,
             tab_builder=lambda key: (lambda: CHART_PAGES[key](self.res, self.params)))

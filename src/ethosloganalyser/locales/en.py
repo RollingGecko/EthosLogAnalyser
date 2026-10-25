@@ -747,8 +747,6 @@ CATALOG = {
         "Per month",
     "Monat":
         "Month",
-    "Flüge (Klick auf eine Spaltenüberschrift sortiert)":
-        "Flights (click a column heading to sort)",
     "Uhrzeit":
         "Time",
     "Log-Dauer":
@@ -883,4 +881,26 @@ CATALOG = {
         "Ethos logs",
     "Neuberechnung":
         "Recalculation",
+
+    # ---------------- areas, single flight from the database ----------------
+    "Statistik":
+        "Statistics",
+    "Dieser Flug ist nicht in der Flug-Datenbank. Bitte den Log-Ordner unter „Daten & Einstellungen“ → „Datenbank“ importieren.":
+        "This flight is not in the flight database. Please import the log folder under “Data & settings” → “Database”.",
+    "Noch keine Flüge in der Datenbank.\n\nLogs importieren: „Daten & Einstellungen“ → Bereich „Datenbank“ → „Ordner importieren …“ oder „Dateien importieren …“.":
+        "No flights in the database yet.\n\nImport logs: “Data & settings” → section “Database” → “Import folder …” or “Import files …”.",
+    "Für diesen Flug sind keine Spannungs- und Stromdaten des Flugakkus im Log.\nDie Einzelflug-Ansichten brauchen sie bisher.":
+        "The log of this flight has no voltage and current of the flight battery.\nThe single-flight views need them so far.",
+    "Die Flüge von {aircraft} konnten nicht aus der Datenbank vorbereitet werden.":
+        "The flights of {aircraft} could not be prepared from the database.",
+    "Die Flüge von {aircraft} werden aus der Datenbank vorbereitet …":
+        "Preparing the flights of {aircraft} from the database …",
+    "Vorbereitet: {done} von {total} Flügen":
+        "Prepared: {done} of {total} flights",
+    "keine Diagramme für diesen Flug":
+        "no charts for this flight",
+    "‹ Logbuch":
+        "‹ Logbook",
+    "Flüge (Klick auf eine Spaltenüberschrift sortiert, Doppelklick öffnet den Einzelflug)":
+        "Flights (click a column heading to sort, double-click opens the single flight)",
 }

@@ -2,8 +2,8 @@
 """Section "Database" on the page Data & settings: new, open, save as, empty, import with report.
 
 DatabaseController owns the open flight database and runs imports in the background; it lives as long as
-the window. build_database_panel draws the section and is called again when the window content is rebuilt
-(language switch). The analysis tabs do not use the database yet (WP-16 to WP-19).
+the window. DatabasePanel draws the section and is created again when the window content is rebuilt
+(language switch). The single-flight area reads its flights from the database (flight_cache.py).
 """
 
 import os
@@ -137,6 +137,9 @@ class DatabaseController:
         self.progress = None                         # (done, total, text) while a background task runs
         self.last_report = None
         self.listeners = []
+        # raised whenever the content may have changed (other database, import, recalculation, emptied), so
+        # views built from the database know when to read it again
+        self.generation = 0
 
     # ---------------- state ----------------
     @property
@@ -168,6 +171,7 @@ class DatabaseController:
         if self.database is not None:
             self.database.close()
         self.database = database
+        self.generation += 1
         self._changed()
         self._reanalyse_if_needed()
 
@@ -209,6 +213,7 @@ class DatabaseController:
     def clear(self):
         """Deletes all logs and flights from the open database (the log files themselves stay untouched)."""
         self.database.clear()
+        self.generation += 1
         self.last_report = None
         self._changed()
 
@@ -243,6 +248,7 @@ class DatabaseController:
                 self.messagebox.showerror(tr("Datenbank"), tr("Fehler bei der Verarbeitung:\n{error}", error=value))
             else:
                 on_finished(value)
+            self.generation += 1
             self._changed()
 
         self.task = BackgroundTask(self.root, self.path, work, on_progress, on_done)
@@ -313,114 +319,126 @@ def show_import_report(root, report):
     return dict(window=window, tree=tree)
 
 
-def build_database_panel(parent, controller, read_params, filedialog, messagebox):
-    """Draws the section "Database" into parent and returns its widgets (for tests).
+class DatabasePanel:
+    """The section "Database" on Data & settings, drawn into parent.
 
     read_params() gives the analysis settings (config.Params) or None after showing an input error.
+    Attributes used by tests: path, stats, progress (Tk variables), actions (buttons), report (last report
+    window: dict(window, tree)), run_import(paths).
     """
-    import tkinter as tk
-    from tkinter import ttk
 
-    frame = ttk.LabelFrame(parent, text=tr("Datenbank"), padding=10)
-    frame.columnconfigure(1, weight=1)
-    ttk.Label(frame, text=tr("Datei:")).grid(row=0, column=0, sticky="w")
-    path_var, stats_var, progress_var = tk.StringVar(), tk.StringVar(), tk.StringVar()
-    ttk.Label(frame, textvariable=path_var).grid(row=0, column=1, columnspan=2, sticky="w", padx=(6, 0))
-    ttk.Label(frame, textvariable=stats_var, foreground="#666").grid(row=1, column=1, columnspan=2, sticky="w",
-                                                                     padx=(6, 0))
-    buttons = ttk.Frame(frame)
-    buttons.grid(row=2, column=0, columnspan=3, sticky="w", pady=(8, 0))
-    handles = {"report_window": None}
+    def __init__(self, parent, controller, read_params, filedialog, messagebox):
+        import tkinter as tk
+        from tkinter import ttk
 
-    def file_types():
+        self.controller = controller
+        self.read_params = read_params
+        self.filedialog = filedialog
+        self.messagebox = messagebox
+        self.report = None
+        self.frame = ttk.LabelFrame(parent, text=tr("Datenbank"), padding=10)
+        self.frame.columnconfigure(1, weight=1)
+        ttk.Label(self.frame, text=tr("Datei:")).grid(row=0, column=0, sticky="w")
+        self.path, self.stats, self.progress = tk.StringVar(), tk.StringVar(), tk.StringVar()
+        ttk.Label(self.frame, textvariable=self.path).grid(row=0, column=1, columnspan=2, sticky="w", padx=(6, 0))
+        ttk.Label(self.frame, textvariable=self.stats, foreground="#666").grid(row=1, column=1, columnspan=2,
+                                                                               sticky="w", padx=(6, 0))
+        self._build_buttons()
+        self.progress_bar = ttk.Progressbar(self.frame, mode="determinate")
+        self.progress_bar.grid(row=3, column=0, columnspan=3, sticky="we", pady=(8, 0))
+        ttk.Label(self.frame, textvariable=self.progress, foreground="#666").grid(row=4, column=0, columnspan=3,
+                                                                                  sticky="w", pady=(4, 0))
+        controller.add_listener(self.refresh)
+        self.frame.bind("<Destroy>", lambda event: controller.remove_listener(self.refresh)
+                        if event.widget is self.frame else None)
+        self.refresh()
+
+    def _build_buttons(self):
+        from tkinter import ttk
+        buttons = ttk.Frame(self.frame)
+        buttons.grid(row=2, column=0, columnspan=3, sticky="w", pady=(8, 0))
+        self.actions = {}
+        for key, text, command in (("new", tr("Neu …"), self.new_database), ("open", tr("Öffnen …"), self.open_database),
+                                   ("save_as", tr("Speichern unter …"), self.save_as),
+                                   ("clear", tr("Leeren …"), self.clear_database),
+                                   ("import_files", tr("Dateien importieren …"), self.import_files),
+                                   ("import_folder", tr("Ordner importieren …"), self.import_folder)):
+            self.actions[key] = ttk.Button(buttons, text=text, command=command)
+            self.actions[key].pack(side="left", padx=(0, 6) if key != "clear" else (0, 24))
+
+    # ---------------- actions ----------------
+    @staticmethod
+    def _file_types():
         return [(tr("Flug-Datenbank"), "*.db"), (tr("Alle Dateien"), "*.*")]
 
-    def start_folder():
-        return os.path.dirname(controller.path) or None
+    def _start_folder(self):
+        return os.path.dirname(self.controller.path) or None
 
-    def new_database():
-        path = filedialog.asksaveasfilename(title=tr("Neue Datenbank anlegen"), defaultextension=".db",
-                                            filetypes=file_types(), initialdir=start_folder())
+    def new_database(self):
+        path = self.filedialog.asksaveasfilename(title=tr("Neue Datenbank anlegen"), defaultextension=".db",
+                                                 filetypes=self._file_types(), initialdir=self._start_folder())
         if path:
-            controller.create_new(path)
+            self.controller.create_new(path)
 
-    def open_database():
-        path = filedialog.askopenfilename(title=tr("Datenbank öffnen"), filetypes=file_types(),
-                                          initialdir=start_folder())
+    def open_database(self):
+        path = self.filedialog.askopenfilename(title=tr("Datenbank öffnen"), filetypes=self._file_types(),
+                                               initialdir=self._start_folder())
         if path:
-            controller.open_path(path)
+            self.controller.open_path(path)
 
-    def save_as():
-        path = filedialog.asksaveasfilename(title=tr("Datenbank speichern unter"), defaultextension=".db",
-                                            filetypes=file_types(), initialdir=start_folder())
-        if path and controller.save_copy(path):
-            messagebox.showinfo(tr("Datenbank"), tr("Eine Kopie der Datenbank wurde gespeichert:\n{path}\n\n"
-                                                    "Geöffnet bleibt weiterhin:\n{current}",
-                                                    path=path, current=controller.path))
+    def save_as(self):
+        path = self.filedialog.asksaveasfilename(title=tr("Datenbank speichern unter"), defaultextension=".db",
+                                                 filetypes=self._file_types(), initialdir=self._start_folder())
+        if path and self.controller.save_copy(path):
+            self.messagebox.showinfo(tr("Datenbank"), tr("Eine Kopie der Datenbank wurde gespeichert:\n{path}\n\n"
+                                                         "Geöffnet bleibt weiterhin:\n{current}",
+                                                         path=path, current=self.controller.path))
 
-    def clear_database():
-        if messagebox.askyesno(tr("Datenbank leeren"), tr("Alle importierten Logs und Flüge aus der Datenbank "
-                                                          "löschen?\n\nDie Logdateien selbst bleiben unverändert.")):
-            controller.clear()
+    def clear_database(self):
+        if self.messagebox.askyesno(tr("Datenbank leeren"), tr("Alle importierten Logs und Flüge aus der Datenbank "
+                                                               "löschen?\n\nDie Logdateien selbst bleiben "
+                                                               "unverändert.")):
+            self.controller.clear()
 
-    def run_import(paths):
-        params = read_params()
+    def run_import(self, paths):
+        params = self.read_params()
         if params is not None:
-            controller.start_import(paths, params, on_report=show_report)
+            self.controller.start_import(paths, params, on_report=self.show_report)
 
-    def import_files():
-        paths = filedialog.askopenfilenames(title=tr("Logdateien importieren"),
-                                            filetypes=[(tr("Ethos-Logs"), "*.csv"), (tr("Alle Dateien"), "*.*")])
+    def import_files(self):
+        paths = self.filedialog.askopenfilenames(title=tr("Logdateien importieren"),
+                                                 filetypes=[(tr("Ethos-Logs"), "*.csv"), (tr("Alle Dateien"), "*.*")])
         if paths:
-            run_import(list(paths))
+            self.run_import(list(paths))
 
-    def import_folder():
-        folder = filedialog.askdirectory(title=tr("Ordner importieren (mit Unterordnern)"))
+    def import_folder(self):
+        folder = self.filedialog.askdirectory(title=tr("Ordner importieren (mit Unterordnern)"))
         if folder:
-            run_import([folder])
+            self.run_import([folder])
 
-    def show_report(report):
-        handles["report_window"] = show_import_report(frame.winfo_toplevel(), report)
+    def show_report(self, report):
+        self.report = show_import_report(self.frame.winfo_toplevel(), report)
 
-    actions = {}
-    for key, text, command in (("new", tr("Neu …"), new_database), ("open", tr("Öffnen …"), open_database),
-                               ("save_as", tr("Speichern unter …"), save_as),
-                               ("clear", tr("Leeren …"), clear_database),
-                               ("import_files", tr("Dateien importieren …"), import_files),
-                               ("import_folder", tr("Ordner importieren …"), import_folder)):
-        actions[key] = ttk.Button(buttons, text=text, command=command)
-        actions[key].pack(side="left", padx=(0, 6) if key != "clear" else (0, 24))
-
-    progress_bar = ttk.Progressbar(frame, mode="determinate")
-    progress_bar.grid(row=3, column=0, columnspan=3, sticky="we", pady=(8, 0))
-    ttk.Label(frame, textvariable=progress_var, foreground="#666").grid(row=4, column=0, columnspan=3, sticky="w",
-                                                                        pady=(4, 0))
-
-    def refresh():
-        path_var.set(controller.path or tr("keine Datenbank geöffnet"))
+    # ---------------- display ----------------
+    def refresh(self):
+        """Shows path, contents, progress and the last import of the database."""
+        controller = self.controller
+        self.path.set(controller.path or tr("keine Datenbank geöffnet"))
         stats = controller.stats()
-        if stats is None:
-            stats_var.set("")
-        else:
-            stats_var.set(tr("{logs} Logs: {flights} Flüge, {other} ohne Flug · Flugzeuge: {aircraft} · {size}",
-                             logs=stats.log_count, flights=stats.flight_count, other=stats.non_flight_count,
-                             aircraft=stats.aircraft_count, size=format_size(stats.size_bytes)))
+        self.stats.set("" if stats is None else tr(
+            "{logs} Logs: {flights} Flüge, {other} ohne Flug · Flugzeuge: {aircraft} · {size}",
+            logs=stats.log_count, flights=stats.flight_count, other=stats.non_flight_count,
+            aircraft=stats.aircraft_count, size=format_size(stats.size_bytes)))
         state = "disabled" if controller.busy or controller.database is None else "normal"
-        for key, button in actions.items():
+        for key, button in self.actions.items():
             button.configure(state="normal" if key in ("new", "open") and not controller.busy else state)
         if controller.progress is not None:
             done, total, text = controller.progress
-            progress_bar.grid()
-            progress_bar.configure(maximum=max(total, 1), value=done)
-            progress_var.set(tr("{done} von {total}: {file}", done=done, total=total, file=text) if total else
-                             tr("wird vorbereitet …"))
+            self.progress_bar.grid()
+            self.progress_bar.configure(maximum=max(total, 1), value=done)
+            self.progress.set(tr("{done} von {total}: {file}", done=done, total=total, file=text) if total else
+                              tr("wird vorbereitet …"))
         else:
-            progress_bar.grid_remove()
-            progress_var.set(tr("Letzter Import: {summary}", summary=report_summary(controller.last_report))
-                             if controller.last_report else "")
-
-    controller.add_listener(refresh)
-    frame.bind("<Destroy>", lambda event: controller.remove_listener(refresh) if event.widget is frame else None)
-    refresh()
-    return dict(frame=frame, path=path_var, stats=stats_var, progress=progress_var, actions=actions,
-                run_import=run_import, handles=handles, refresh=refresh)
+            self.progress_bar.grid_remove()
+            self.progress.set(tr("Letzter Import: {summary}", summary=report_summary(controller.last_report))
+                              if controller.last_report else "")

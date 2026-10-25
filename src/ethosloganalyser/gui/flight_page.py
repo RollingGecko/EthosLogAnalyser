@@ -3,7 +3,8 @@
 
 The page shows flights it is given as choices [(label, key)]; resolve(key) returns (result, params, path)
 for drawing with plots/flight.py, where result is an analysis result (analysis/fleet.Result) that contains
-the flight under path.
+the flight under path - or None if the flight cannot be drawn (yet); the page then shows message_for(key).
+before_select(key) is called first, e.g. to show only the views the flight has data for (show_views).
 """
 
 import numpy as np
@@ -20,11 +21,14 @@ from .common import fill_text, make_text
 class FlightPage:
     """The widgets and the behaviour of the single-flight page."""
 
-    def __init__(self, parent, charts, family, filedialog):
+    def __init__(self, parent, charts, family, filedialog, back=None):
         self.charts = charts
         self.filedialog = filedialog
+        self.back = back                  # "Back to the logbook" (button shown if given)
         self.choices = []                 # [(label, key)] of the selectable flights
         self.resolve = lambda key: None   # key -> (result, params, path) or None
+        self.before_select = None         # key -> None, called before a flight is shown
+        self.message_for = lambda key: ""  # text shown instead of the charts when resolve gives None
         self.shown_path = None
         self.axes = []
         self.drag = None
@@ -43,9 +47,10 @@ class FlightPage:
         self._build_selection_bar(parent)
         self._build_view_bar(parent)
         self._build_time_bar(parent)
-        self.readout = tk.StringVar(value=tr(
+        self.readout_hint = tr(
             "Maus über das Diagramm bewegen: Werte zum Zeitpunkt.   Mausrad: zoomen  ·  Ziehen mit linker Maustaste: "
-            "verschieben  ·  Doppelklick oder Rechtsklick: Diagramm vergrößern"))
+            "verschieben  ·  Doppelklick oder Rechtsklick: Diagramm vergrößern")
+        self.readout = tk.StringVar(value=self.readout_hint)
         ttk.Label(parent, textvariable=self.readout, style="Readout.TLabel").pack(fill="x", padx=6)
 
         self.paned = ttk.PanedWindow(parent, orient="vertical")
@@ -75,6 +80,8 @@ class FlightPage:
         bar = ttk.Frame(parent, padding=(6, 6, 6, 2))
         bar.pack(fill="x")
         self.selection_bar = bar
+        if self.back is not None:
+            ttk.Button(bar, text=tr("‹ Logbuch"), command=self.back).pack(side="left", padx=(0, 14))
         ttk.Label(bar, text=tr("Flug:")).pack(side="left")
         self.flight_var = tk.StringVar()
         self.flight_box = ttk.Combobox(bar, textvariable=self.flight_var, width=46, state="readonly")
@@ -98,6 +105,7 @@ class FlightPage:
         ttk.Label(bar, text=tr("Ansicht:")).pack(side="left", padx=(0, 4))
         self.view_var = tk.StringVar(value=FLIGHT_VIEWS[0])
         self.view_buttons = {}
+        self.no_view_label = ttk.Label(bar, text=tr("keine Diagramme für diesen Flug"), foreground="#666")
         for view in FLIGHT_VIEWS:
             button = ttk.Radiobutton(bar, text=label(VIEW_LABELS, view), value=view, variable=self.view_var,
                                      style="View.TRadiobutton", command=self.redraw)
@@ -123,14 +131,16 @@ class FlightPage:
         self.spike_box.bind("<<ComboboxSelected>>", self.goto_spike)
 
     # ---------------- flights ----------------
-    def set_choices(self, choices, resolve, selected_key=None):
-        """Sets the selectable flights and selects one (default: the last)."""
+    def set_choices(self, choices, resolve, selected_key=None, empty_message=""):
+        """Sets the selectable flights and selects one (default: the last). Without flights the page shows
+        empty_message."""
         self.choices = list(choices)
         self.resolve = resolve
         labels = [text for text, _key in self.choices]
         self.flight_box["values"] = labels
         if not labels:
             self.flight_var.set("")
+            self.show_message(empty_message)
             return
         keys = [key for _text, key in self.choices]
         index = keys.index(selected_key) if selected_key in keys else len(labels) - 1
@@ -172,10 +182,46 @@ class FlightPage:
         self.shown_path = path
         self.canvas.draw_idle()
 
+    def show_views(self, views):
+        """Shows only the view buttons in views; selects the first of them if the current one is hidden."""
+        for button in self.view_buttons.values():
+            button.pack_forget()
+        self.no_view_label.pack_forget()
+        for view in FLIGHT_VIEWS:
+            if view in views:
+                self.view_buttons[view].pack(side="left", padx=1)
+        if not views:
+            self.no_view_label.pack(side="left", padx=4)
+        elif self.view_var.get() not in views:
+            self.view_var.set(views[0])
+
+    def show_message(self, text):
+        """A text instead of the charts (no flight, flight without data, flight being prepared)."""
+        if not self.axes and getattr(self, "_message", None) == text:
+            return                                    # already shown: do not draw the figure again
+        self._message = text
+        self.axes = []
+        self.shown_path = None
+        self.figure.clear()
+        self.figure.text(0.5, 0.5, text, ha="center", va="center", color="grey", fontsize=12, wrap=True)
+        self.canvas.draw_idle()
+        fill_text(self.details, [])
+        self.spike_times = []
+        self.spike_box["values"] = []
+        self.spike_var.set("")
+
     def select_flight(self, *_):
-        selected = self.current()
-        if selected is None:
+        key = self.current_key()
+        if key is None:
             return
+        if self.before_select is not None:
+            self.before_select(key)
+        selected = self.resolve(key)
+        if selected is None:
+            self.show_message(self.message_for(key))
+            return
+        self._message = None
+        self.readout.set(self.readout_hint)
         result, params, path = selected
         self.shown_path = None
         self.redraw(keep_zoom=False)
