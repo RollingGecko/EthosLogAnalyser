@@ -34,7 +34,7 @@ class FakeCache:
         self.requested.append(aircraft)
 
     def finish(self, aircraft):
-        self.prepared[aircraft] = database_flights.prepare_aircraft(self.connection, aircraft, LI_ION_13S)
+        self.prepared[aircraft] = database_flights.prepare_aircraft(self.connection, aircraft)
 
 
 @pytest.fixture(scope="module")

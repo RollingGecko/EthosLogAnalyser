@@ -130,7 +130,8 @@ The area *Single flight* shows the flights of the flight database:
 
 - **Flight** (Flug): every log marked as a flight, oldest first, as *date time | aircraft | duration | drawn mAh*. The newest flight is selected at the start; *‹ back* / *next ›* step through the list. **‹ Logbook** goes back to the logbook.
 - The charts and details compare the flight with **all flights of the same aircraft** in the database, with the battery settings of that aircraft (*Data & settings → Battery*, kept per model). The filter of logbook and statistics does not apply here.
-- When an aircraft is opened for the first time after the program start or an import, its flights are prepared from the database in the background (a few seconds for some 30 flights; the line above the chart shows the progress). The aircraft of the newest flight is prepared right after the start. After that a flight opens in well under a second.
+- When an aircraft is opened for the first time after the program start or an import, its flights are read from the database in the background (well under a second for some 150 flights, about 1.5 s for 1000). The aircraft of the newest flight is read right after the start. A flight then opens in well under a second.
+- After updating from a version before the prepared values (flight database schema 2), the app works them out once when the database is opened: *Data & settings → Database* shows the progress (“Preparing the values for the statistics”), and the window can be used meanwhile. Until it is finished, single flight and statistics analyse the flights of an aircraft as before (a few seconds for some 30 flights; the line above the chart shows the progress) – the results are the same.
 - Only the **views** for which the log has data are offered. A flight whose log has no voltage and current of the flight battery (e.g. a glider) is listed, but shows a note instead of the charts – the views need these values so far.
 - Without flights in the database the page explains how to import logs.
 - In the logbook a **double-click** on a flight opens it here (if it is in the database).
@@ -158,9 +159,10 @@ button to start an analysis:
   followed by the filter (if set) and the battery hint (if the battery settings of the aircraft are missing).
 - Flights are numbered within the filter (flight 1 is the oldest flight of the filter), as the cross-flight
   values (cell count, trends, timer) are calculated from exactly these flights.
-- The flights of an aircraft are prepared once in the background (about 1.6 s for 33 flights); until then every
-  page says so. Afterwards a filter change takes a fraction of a second; only the page that is shown is drawn
-  again, the others when you open them.
+- The flights of an aircraft are read once in the background from the values stored with every flight (about
+  0.05 s for 33 flights, 1.5 s for 1000; the statistics are ready about 1.7 s after the program start with
+  `examples/logs_2026`); until then every page says so. Afterwards a filter change takes a fraction of a second; only
+  the page that is shown is drawn again, the others when you open them.
 - Flights without battery voltage and current (e.g. a glider) get a hint instead of the pages.
 - **Export** (*Data & settings → Export*): the table as CSV and *Report + all charts* use the statistics of the
   current filter.

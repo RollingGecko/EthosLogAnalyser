@@ -3,13 +3,14 @@
 
 Every flight stores the analysis version it was calculated with. Flights with an older version are analysed
 again from their stored raw log - in the background, without the original files - with the analysis
-settings they were imported with.
+settings they were imported with. Their prepared values for the statistics are worked out again with them
+(flight_preparation.py).
 """
 
 import dataclasses
 import json
 
-from . import flight_store
+from . import flight_preparation, flight_store
 from .log_analysis import ANALYSIS_VERSION, UnreadableLog, analyse_log_content
 
 
@@ -43,6 +44,7 @@ def reanalyse_outdated(database, params, progress=None, should_cancel=None):
             continue                      # was readable at import; leave it as it is
         with connection:
             flight_store.replace_analysis(connection, log_id, analysed)
+            flight_preparation.store_for_new_analysis(connection, log_id, file_name, analysed)
         updated += 1
         if progress is not None:
             progress(done, len(log_ids))

@@ -11,11 +11,12 @@ The database is filled and managed on the page *Data & settings → Database*. A
   `coalesce(is_flight_manual, is_flight)`; a click on the flight switch in the logbook writes `is_flight_manual`
   (`flight_store.set_flight_manual`), and setting it back to what the detection said stores NULL again. Flight
   numbers are counted per aircraft over the effective flights.
-- *Single flight* and *Statistics* (`gui/database_flights.py`, `gui/flight_cache.py`): the stored time series of all
-  flights of an aircraft are analysed again with `analysis/flight.py` once per aircraft in the background; the
-  cross-flight part (`analysis.fleet.analyse_flights`) is then calculated for all flights of the aircraft (single
-  flight) or for the flights that pass the filter (statistics, `gui/statistics_model.py`). Against the analysis of
-  the log files themselves the results are identical (flight table, summary, chart data, CSV export).
+- *Single flight* and *Statistics* (`gui/database_flights.py`, `gui/flight_cache.py`): the per-flight analysis of
+  every flight (`analysis/flight.py` on its stored time series) is stored once per flight as **prepared values**
+  (table `flight_preparation`, see below) and read once per aircraft in the background; the cross-flight part
+  (`analysis.fleet.analyse_flights`) is then calculated for all flights of the aircraft (single flight) or for the
+  flights that pass the filter (statistics, `gui/statistics_model.py`). Against the analysis of the log files
+  themselves the results are identical (flight table, summary, chart data, CSV export).
 
 ## The file
 
@@ -78,6 +79,22 @@ Barometric values are smoothed with a rolling median of 5 samples against single
   altitude, RSSI, …; `sensor_roles.py`). The roles are found from today's Ethos column names; columns without a
   known role are stored anyway. There is no user interface for the roles yet.
 - **Time series** of every sensor at full resolution, plus the time axis (seconds since the start).
+- **Prepared values for the statistics** (`flight_preparation`, schema 3, `db/flight_preparation.py`): the result of
+  the per-flight analysis of the stored time series, so the statistics and the single flight do not analyse every
+  flight again at each program start. Stored are the per-flight row (JSON) and only the time series the
+  cross-flight analysis and the statistics charts read: time, current, drawn charge, power, RPM and the throttle
+  histogram (each encoded losslessly with `series_codec`). The steady-state points of the motor curve are worked out
+  from RPM and power when reading (well under 1 ms per flight). The other time series (voltage, altitude, receiver,
+  sticks, …) are only drawn by the single flight: it works them out for the one flight it shows (about 40 ms);
+  storing them for every flight would more than double the file. The values depend only on the flight and its
+  analysis settings, not on the battery settings, which still act at once through the cross-flight part.
+  - Worked out at **import** (in the same transaction as the log) and when a flight is **calculated again** after an
+    analysis change (`reanalysis.py`). A switch between flight and no flight changes nothing (the flights are chosen
+    when reading). Logs without metrics get no entry.
+  - **Outdated** when its `preparation_version` (`flight_preparation.PREPARATION_VERSION`), `analysis_version` or
+    `analysis_params` differ from the flight. Missing or outdated values are worked out in the background when the
+    database is opened (*Data & settings → Database* shows the progress); until then such a flight is analysed from
+    its time series as before, so the statistics are never wrong or incomplete.
 
 ## Size
 
@@ -87,8 +104,11 @@ Barometric values are smoothed with a rolling median of 5 samples against single
   integer type that fits, compressed with zlib. Missing values (Ethos writes every sensor in its own rows) are a
   bit mask. Values that need more decimals are stored as float64. The encoding is lossless: reading the series
   back gives exactly the values of the CSV, and analysing them again gives the stored metrics.
-- `examples/logs_2026` (71 files, 18.7 MB): database 5.0 MB – raw logs 2.6 MB, time series 1.8 MB, metrics
-  0.04 MB.
+- Prepared values for the statistics: the same lossless encoding for their time series, the row as JSON; about
+  47 kB per flight with battery data.
+- `examples/logs_2026` (71 files, 18.7 MB): database 6.5 MB – raw logs 2.6 MB, time series 1.8 MB, prepared values
+  1.5 MB, metrics 0.04 MB (5.0 MB before the prepared values; storing all time series of the analysis instead of
+  the ones of the statistics would have added about 7.5 MB).
 
 ## Performance
 
@@ -99,7 +119,11 @@ Measured with `examples/logs_2026` (71 logs):
 | Open the database and count logs/flights | about 1 ms |
 | Program start with this database (window included) | about 1 s |
 | Read one flight's time series back | about 10 ms |
-| Import of the folder (background) | about 17 s; the window is never blocked for more than about 0.2 s |
+| Import of the folder (background) | about 11 s (about 10 s before the prepared values); the window is never blocked for more than about 0.2 s |
+| Program start until the statistics are ready | about 1.7 s (2.9 s before the prepared values); about 1000 flights: 4 s (43 s before) |
+| Read the prepared values of all flights of the aircraft | 0.05 s (1.1 s analysing them again); about 1000 flights: 1.5 s (37 s) |
+| Open a single flight (its remaining time series are analysed) | about 40 ms |
+| Work out the prepared values once after the update to schema 3 (background) | about 40 ms per flight |
 
 ## Notes and anomalies
 
@@ -125,8 +149,11 @@ Opening a database of an older schema version upgrades it in one transaction (`s
 succeed or the file keeps its old version and content. Version 1 → 2 adds the column `flight.signal_metrics` and the
 tables for notes and anomalies; no flight is changed and nothing is imported again. The signal metrics of the
 existing logs are then worked out once in the background from the stored time series (about 10 ms per log).
+Version 2 → 3 adds the table `flight_preparation`; nothing else changes. The prepared values of the existing flights
+are then worked out once in the background from the stored time series (about 40 ms per flight, with progress on
+*Data & settings*); a cancelled run (program closed) continues the next time. Notes and anomalies stay.
 
-## Schema (version 2)
+## Schema (version 3)
 
 | Table | Content |
 |---|---|
@@ -140,6 +167,7 @@ existing logs are then worked out once in the background from the stored time se
 | `flight_note` | `log_id` (primary key), `text`, `updated_at` – version 2 |
 | `anomaly` | `id`, `log_id`, `rule` (rule code, `manual` for entries by hand), `origin` (`auto` or `manual`), `severity` (`info`, `warning`, `critical`), `message` (`auto`: JSON message with the values, translated when shown; `manual`: the user's text), `value` (the judged value), `acknowledged`, `created_at` – version 2 |
 | `anomaly_acknowledgement` | `log_id`, `rule` (primary key together), `value` (at the time of the acknowledgement), `acknowledged_at` – version 2 |
+| `flight_preparation` | `log_id` (primary key), `preparation_version`, `analysis_version` and `analysis_params` (of the flight the values were worked out for), `row` (JSON: the per-flight values; NULL = the analysis gave no result), `series` (the statistics time series, each one encoded by `series_codec`, as key/blob entries) – version 3 |
 
 Indexes: `flight (aircraft_id, start_time)` and `flight (start_time)` for the logbook and the filters,
 `anomaly (log_id)` for the anomalies of a flight. Notes and anomalies of `examples/logs_2026` add less than 10 kB.

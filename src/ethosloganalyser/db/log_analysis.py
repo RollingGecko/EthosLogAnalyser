@@ -110,6 +110,11 @@ def analysis_params_of(params):
     return {name: getattr(params, name) for name in ANALYSIS_PARAM_NAMES}
 
 
+def analysis_params_to_json(analysis_params):
+    """The analysis settings as stored in flight.analysis_params (sorted keys, so equal settings give equal text)."""
+    return json.dumps(analysis_params, sort_keys=True)
+
+
 def _sensor_series(frame, time_s, roles):
     """All numeric columns of the log plus the time axis, encoded for storage."""
     sensors = [SensorSeries(position=0, column_name=TIME_COLUMN_NAME, role=sensor_roles.TIME,

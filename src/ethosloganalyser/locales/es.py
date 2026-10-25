@@ -841,6 +841,8 @@ CATALOG = {
         "Última importación: {summary}",
     "Ethos-Logs":
         "Logs de Ethos",
+    "Auswertungswerte für die Statistik werden vorbereitet":
+        "Preparando los valores para la estadística",
     "Neuberechnung":
         "Recálculo",
 

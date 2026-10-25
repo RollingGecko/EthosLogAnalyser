@@ -55,7 +55,7 @@ def test_a_version_1_database_is_migrated_without_losing_flights(tmp_path):
     _write_version_1_database(path)
     database = FlightDatabase(str(path))
     connection = database.connection
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == schema.SCHEMA_VERSION == 2
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == schema.SCHEMA_VERSION == 3
     assert database.stats().flight_count == 3
     tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert {"flight_note", "anomaly", "anomaly_acknowledgement"} <= tables

@@ -8,7 +8,7 @@ The database is one SQLite file. It is recognised by ``PRAGMA application_id`` a
 # "ELA1" - marks an SQLite file as an EthosLogAnalyser flight database
 APPLICATION_ID = 0x454C4131
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 # One statement per entry, executed in this order when a new database is created.
 CREATE_STATEMENTS = (
@@ -122,14 +122,33 @@ VERSION_2_STATEMENTS = (
     """,
 )
 
+# Schema version 3 (prepared values for the statistics, WP-20). Used for new databases and as the migration from
+# version 2; the table of a migrated database is filled in the background (flight_preparation.py).
+VERSION_3_STATEMENTS = (
+    # the per-flight analysis of the stored time series as the statistics need it, worked out once per flight
+    # instead of at every program start. row: the per-flight values (JSON, NULL = the analysis gave no result);
+    # series: the time series the cross-flight analysis and the statistics charts use (flight_preparation.py).
+    # Outdated when preparation_version, analysis_version or analysis_params differ from the flight.
+    """
+    CREATE TABLE flight_preparation (
+        log_id              INTEGER PRIMARY KEY REFERENCES log_file(id) ON DELETE CASCADE,
+        preparation_version INTEGER NOT NULL,
+        analysis_version    INTEGER NOT NULL,
+        analysis_params     TEXT NOT NULL,
+        row                 TEXT,
+        series              BLOB
+    )
+    """,
+)
+
 # MIGRATIONS[n] upgrades a database from schema version n to n + 1 (list of SQL statements).
-MIGRATIONS = {1: VERSION_2_STATEMENTS}
+MIGRATIONS = {1: VERSION_2_STATEMENTS, 2: VERSION_3_STATEMENTS}
 
 
 def create_schema(connection):
     """Creates all tables in an empty database and marks it as a flight database of the current version."""
     with connection:
-        for statement in CREATE_STATEMENTS + VERSION_2_STATEMENTS:
+        for statement in CREATE_STATEMENTS + VERSION_2_STATEMENTS + VERSION_3_STATEMENTS:
             connection.execute(statement)
         connection.execute(f"PRAGMA application_id = {APPLICATION_ID}")
         connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")

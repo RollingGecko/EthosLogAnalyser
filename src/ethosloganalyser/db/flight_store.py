@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 """Writing logs and flights into the database and reading them back."""
 
-import json
 import lzma
 from datetime import datetime
 
 import pandas as pd
 
-from .log_analysis import ANALYSIS_VERSION, message_to_json, metrics_to_json
+from .log_analysis import ANALYSIS_VERSION, analysis_params_to_json, message_to_json, metrics_to_json
 from .series_codec import decode_series
 from .signal_metrics import signal_metrics_to_json
 
@@ -57,7 +56,7 @@ def _insert_sensors(connection, log_id, sensors):
 def _flight_values(analysed):
     detection = analysed.detection
     return (detection.duration_s, analysed.log_duration_s, int(detection.is_flight), detection.method,
-            ANALYSIS_VERSION, json.dumps(analysed.analysis_params, sort_keys=True),
+            ANALYSIS_VERSION, analysis_params_to_json(analysed.analysis_params),
             metrics_to_json(analysed.metrics), message_to_json(analysed.skip_reason),
             signal_metrics_to_json(analysed.signal_metrics))
 
@@ -107,7 +106,13 @@ def load_log_frame(connection, log_id):
     rows = connection.execute(
         "SELECT sensor.column_name, series.data FROM sensor JOIN series ON series.sensor_id = sensor.id "
         "WHERE sensor.log_id = ? ORDER BY sensor.position", (log_id,)).fetchall()
-    return pd.DataFrame({name: decode_series(blob) for name, blob in rows})
+    return frame_from_encoded_series(rows)
+
+
+def frame_from_encoded_series(named_blobs):
+    """DataFrame of encoded time series given as (column name, blob) pairs in the order of the original file -
+    the same frame load_log_frame reads back from the database."""
+    return pd.DataFrame({name: decode_series(blob) for name, blob in named_blobs})
 
 
 def sensor_roles_of(connection, log_id):
