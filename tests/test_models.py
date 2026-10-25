@@ -10,7 +10,8 @@ import helpers
 from ethosloganalyser import Params, analyse_folder
 from ethosloganalyser.analysis.fleet import default_model, find_logs, models_in
 from ethosloganalyser.config import model_label
-from ethosloganalyser.gui.app import battery_unset_for, export_table
+from ethosloganalyser.gui.app_settings import battery_unset_for
+from ethosloganalyser.gui.common import export_table
 from ethosloganalyser.i18n import set_language
 from ethosloganalyser.io.ethos_log import UNKNOWN_MODEL, model_from_filename
 

@@ -40,3 +40,17 @@ def write_ethos_csv(folder, name, t, u, i, extra=None, start="2026-05-01 12:00:0
 
 def tmpdir():
     return tempfile.mkdtemp(prefix="ela_test_")
+
+
+def write_glider_log(folder, name, airborne_s, start="2026-06-01 14:00:00"):
+    """Log without current sensor: altitude, vario and receiver signal only (e.g. a glider)."""
+    t = np.arange(0, airborne_s + 120, 0.5)
+    altitude = np.where((t > 60) & (t < 60 + airborne_s), 120.0, 0.0) + 0.3 * np.sin(t)
+    times = pd.Timestamp(start) + pd.to_timedelta(t, unit="s")
+    frame = pd.DataFrame({"Date": times.strftime("%Y-%m-%d"), "Time": times.strftime("%H:%M:%S.%f").str[:-3],
+                          "Altitude(m)": np.round(altitude, 2), "VSpeed(m/s)": np.round(np.gradient(altitude), 2),
+                          "RSSI 2.4G(dB)": 90, "RxBatt(V)": 5.1})
+    path = Path(folder) / name
+    frame.to_csv(path, index=False)
+    return path
+

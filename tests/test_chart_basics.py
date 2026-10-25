@@ -188,7 +188,7 @@ def test_tooltip_survives_a_cleared_figure():
 # ---------------------------------------------------------------- table and CSV export
 
 def test_csv_export_keeps_seconds_and_adds_min_s_columns():
-    from ethosloganalyser.gui.app import export_table, fmt_cell
+    from ethosloganalyser.gui.common import export_table, fmt_cell
     df = pd.DataFrame({"Flug": [1, 2], "dauer_s": [482.6, np.nan], "Timer_s": [538.0, 3725.0], "pfad": ["a", "b"]})
     out = export_table(df)
     assert list(out.columns) == ["Flug", "dauer_s", "dauer_mmss", "Timer_s", "Timer_mmss"]

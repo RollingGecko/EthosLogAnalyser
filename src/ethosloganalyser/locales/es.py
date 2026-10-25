@@ -761,8 +761,6 @@ CATALOG = {
         "Por mes",
     "Monat":
         "Mes",
-    "Flüge (Klick auf eine Spaltenüberschrift sortiert)":
-        "Vuelos (clic en el encabezado de una columna para ordenar)",
     "Uhrzeit":
         "Hora",
     "Log-Dauer":
@@ -897,4 +895,26 @@ CATALOG = {
         "Logs de Ethos",
     "Neuberechnung":
         "Recálculo",
+
+    # ---------------- areas, single flight from the database ----------------
+    "Statistik":
+        "Estadísticas",
+    "Dieser Flug ist nicht in der Flug-Datenbank. Bitte den Log-Ordner unter „Daten & Einstellungen“ → „Datenbank“ importieren.":
+        "Este vuelo no está en la base de datos de vuelos. Importa la carpeta de logs en «Datos y ajustes» → «Base de datos».",
+    "Noch keine Flüge in der Datenbank.\n\nLogs importieren: „Daten & Einstellungen“ → Bereich „Datenbank“ → „Ordner importieren …“ oder „Dateien importieren …“.":
+        "Todavía no hay vuelos en la base de datos.\n\nImportar logs: «Datos y ajustes» → sección «Base de datos» → «Importar carpeta …» o «Importar archivos …».",
+    "Für diesen Flug sind keine Spannungs- und Stromdaten des Flugakkus im Log.\nDie Einzelflug-Ansichten brauchen sie bisher.":
+        "El log de este vuelo no tiene tensión ni corriente de la batería de vuelo.\nPor ahora las vistas de vuelo individual las necesitan.",
+    "Die Flüge von {aircraft} konnten nicht aus der Datenbank vorbereitet werden.":
+        "No se pudieron preparar los vuelos de {aircraft} desde la base de datos.",
+    "Die Flüge von {aircraft} werden aus der Datenbank vorbereitet …":
+        "Preparando los vuelos de {aircraft} desde la base de datos …",
+    "Vorbereitet: {done} von {total} Flügen":
+        "Preparados: {done} de {total} vuelos",
+    "keine Diagramme für diesen Flug":
+        "sin gráficos para este vuelo",
+    "‹ Logbuch":
+        "‹ Libro de vuelo",
+    "Flüge (Klick auf eine Spaltenüberschrift sortiert, Doppelklick öffnet den Einzelflug)":
+        "Vuelos (clic en un encabezado para ordenar, doble clic abre el vuelo individual)",
 }

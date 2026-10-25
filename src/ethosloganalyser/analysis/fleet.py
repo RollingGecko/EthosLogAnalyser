@@ -104,13 +104,26 @@ def analyse_folder(folder, p: Params, progress=None, model=None):
             rows.append(res)
         if progress:
             progress(n + 1, len(files))
+    return analyse_flights(rows, series, p, meta, skipped=skipped, total=len(files))
 
+
+def analyse_flights(rows, series, p: Params, meta, skipped=(), total=None):
+    """Cross-flight analysis of the flights of ONE model (cell count, state of charge, capacity and ageing,
+    reference values, motor curve, timer, data errors, flags).
+
+    rows: per-flight results of analysis.flight.analyse_file without "_series"; series: {row["pfad"]: series};
+    meta: dict with at least "model" (completed and returned in the Result). Used by analyse_folder and for
+    flights stored in the flight database.
+    """
+    skipped = list(skipped)
+    total = len(rows) + len(skipped) if total is None else total
     if not rows:
-        return Result(pd.DataFrame(), skipped, len(files), series, meta)
+        return Result(pd.DataFrame(), skipped, total, series, meta)
 
+    model = meta.get("model")
     df = pd.DataFrame(rows).sort_values("datum").reset_index(drop=True)
     df.insert(0, "Flug", np.arange(1, len(df) + 1))
-    df.insert(df.columns.get_loc("datei") + 1, "Modell", chosen if chosen is not None else UNKNOWN_MODEL)
+    df.insert(df.columns.get_loc("datei") + 1, "Modell", model if model is not None else UNKNOWN_MODEL)
     ch = CHEM[p.chem]
 
     # cell count: as configured, or estimated from the highest start voltage
@@ -308,4 +321,4 @@ def analyse_folder(folder, p: Params, progress=None, model=None):
     df["Auffaellig"] = [
         ", ".join(code for code, fl in flags.items() if int(r["Flug"]) in fl) for _, r in df.iterrows()]
     meta["corr"] = usage_correlations(df)
-    return Result(df, skipped, len(files), series, meta)
+    return Result(df, skipped, total, series, meta)

@@ -31,6 +31,15 @@ def _setup_style(root):
            lightcolor=[("selected", ACCENT)],
            font=[("selected", (fam, 10, "bold"))],
            expand=[("selected", (2, 3, 2, 0))])
+    # pages inside an area (e.g. Statistics): smaller, lighter tabs, so the two levels can be told apart
+    st.configure("Pages.TNotebook", background=BG, borderwidth=0, tabmargins=(4, 4, 4, 0))
+    st.configure("Pages.TNotebook.Tab", padding=(12, 4), background="#e8edf4", foreground="#3a4656",
+                 bordercolor="#c9d1dc", lightcolor="#e8edf4", font=(fam, 9))
+    st.map("Pages.TNotebook.Tab",
+           background=[("selected", "#ffffff"), ("active", "#d5dfec")],
+           foreground=[("selected", ACCENT)],
+           lightcolor=[("selected", "#ffffff")],
+           font=[("selected", (fam, 9, "bold"))])
     st.configure("Accent.TButton", background=ACCENT, foreground="#ffffff", padding=(14, 6), font=(fam, 10, "bold"))
     st.map("Accent.TButton", background=[("active", "#174a85"), ("disabled", "#9fb3cc")])
     st.configure("TButton", padding=(10, 4))
