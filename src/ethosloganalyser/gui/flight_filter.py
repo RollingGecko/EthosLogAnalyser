@@ -2,14 +2,13 @@
 """The shared flight filter: aircraft, year, month and a date range.
 
 ``FilterState`` holds the one setting and the choices that exist (aircraft, years). ``FilterBar`` is a row of
-widgets that shows the state and changes it. Several bars can exist at once (logbook now, statistics later);
-they all show the same setting and a change in one is seen in all of them at once.
+widgets that shows the state and changes it. The logbook and the statistics each show a bar; both show the same
+setting and a change in one is seen in the other at once.
 """
 
 import dataclasses
 
-from ..analysis.fleet import parse_date
-from ..analysis.periods import MONTHS, FlightFilter
+from ..analysis.periods import MONTHS, FlightFilter, parse_date
 from ..config import model_label
 from ..i18n import fmt_date, tr
 

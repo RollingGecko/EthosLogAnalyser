@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from helpers import EXAMPLE_FILES, ela, tmpdir, write_ethos_csv
+from helpers import EXAMPLE_FILES, analyse_log, ela, tmpdir, write_ethos_csv
 
 # Reference values of the example logs (as of the first version); deviations mean the calculation changed
 REFERENCE = {
@@ -15,7 +15,7 @@ REFERENCE = {
 
 def test_example_flights_match_reference_values():
     for f in EXAMPLE_FILES:
-        row, msg = ela.analyse_file(str(f), ela.Params())
+        row, msg = analyse_log(f, ela.Params())
         assert msg == "ok", (f.name, msg)
         ref = REFERENCE[f.name]
         assert abs(row["dauer_s"] - ref["dauer_s"]) < 0.5, f.name
@@ -25,7 +25,7 @@ def test_example_flights_match_reference_values():
 
 def test_integrated_charge_matches_esc_counter():
     for f in EXAMPLE_FILES:
-        row, _ = ela.analyse_file(str(f), ela.Params())
+        row, _ = analyse_log(f, ela.Params())
         assert abs(row["entnommen_mAh"] - row["ESC_mAh"]) / row["ESC_mAh"] < 0.05, f.name
 
 
@@ -42,7 +42,7 @@ def test_internal_resistance_is_recovered_from_synthetic_log():
     u = 50.0 - 0.050 * i - 1.2 * q_ah
     d = tmpdir()
     path = write_ethos_csv(d, "Synth-2026-05-01-12-00-00.csv", t, u, i)
-    row, msg = ela.analyse_file(str(path), ela.Params())
+    row, msg = analyse_log(path, ela.Params())
     assert msg == "ok"
     assert abs(row["Ri_mOhm"] - 50.0) < 2.0
     assert abs(row["entnommen_mAh"] - q_ah[-1] * 1000) / (q_ah[-1] * 1000) < 0.02
@@ -59,7 +59,7 @@ def test_motor_test_before_takeoff_is_not_counted_as_flight():
     u = 48.0 - 0.05 * i
     d = tmpdir()
     path = write_ethos_csv(d, "Synth-2026-05-01-12-00-00.csv", t, u, i)
-    row, msg = ela.analyse_file(str(path), ela.Params())
+    row, msg = analyse_log(path, ela.Params())
     assert msg == "ok"
     assert 195 < row["dauer_s"] < 202
 
@@ -69,7 +69,7 @@ def test_too_short_flight_is_skipped():
     i = _profile(len(t))
     d = tmpdir()
     path = write_ethos_csv(d, "Short-2026-05-01-12-00-00.csv", t, 48 - 0.05 * i, i)
-    row, msg = ela.analyse_file(str(path), ela.Params())
+    row, msg = analyse_log(path, ela.Params())
     assert row is None and str(msg).startswith("zu kurz")
 
 
@@ -78,5 +78,5 @@ def test_ground_log_without_battery_values_is_skipped():
     z = np.zeros_like(t)
     d = tmpdir()
     path = write_ethos_csv(d, "Ground-2026-05-01-12-00-00.csv", t, z, z)
-    row, msg = ela.analyse_file(str(path), ela.Params())
+    row, msg = analyse_log(path, ela.Params())
     assert row is None and "Nullwerte" in str(msg)

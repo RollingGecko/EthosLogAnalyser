@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 import helpers
-from ethosloganalyser import Params, analyse_folder
+from ethosloganalyser import Params
 from ethosloganalyser.analysis.logbook import logbook
 from ethosloganalyser.gui.common import sort_key
 
@@ -76,7 +76,7 @@ def test_empty_and_only_missing():
 
 
 def test_logbook_of_the_example_logs():
-    res = analyse_folder(str(helpers.EXAMPLES), Params(cells=13, chem="Li-Ion", nominal_mah=9000))
+    res = helpers.analyse_logs(helpers.EXAMPLE_FILES, Params(cells=13, chem="Li-Ion", nominal_mah=9000))
     lb = logbook(res.df)
     assert lb.n_counted == len(res.df) == 3
     assert lb.total_s == res.df["dauer_s"].sum()

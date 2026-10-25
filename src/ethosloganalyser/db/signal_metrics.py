@@ -81,8 +81,3 @@ def signal_metrics(time_s, frame, roles):
 def signal_metrics_to_json(values):
     """Signal metrics -> compact JSON text ("{}" when the log has none, so it is not worked out again)."""
     return json.dumps(values, separators=(",", ":"), sort_keys=True)
-
-
-def signal_metrics_from_json(text):
-    """Stored signal metrics -> dict ({} when none are stored)."""
-    return json.loads(text) if isinstance(text, str) and text else {}

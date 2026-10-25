@@ -20,10 +20,45 @@ EXAMPLES = ROOT / "examples" / "logs"
 EXAMPLE_FILES = sorted(EXAMPLES.glob("*.csv"))
 
 
+def read_log(path):
+    """An Ethos log file read as the import reads it."""
+    from ethosloganalyser.io.ethos_log import read_log_bytes
+    return read_log_bytes(Path(path).read_bytes())
+
+
+def analyse_log(path, p):
+    """Per-flight analysis of one log file: (row, "ok") or (None, Msg with the reason)."""
+    from ethosloganalyser.analysis.flight import analyse_frame
+    from ethosloganalyser.io.ethos_log import read_log_bytes
+    return analyse_frame(read_log_bytes(Path(path).read_bytes()), str(path), p)
+
+
+def analyse_logs(paths, p, model=None):
+    """Cross-flight analysis straight from log files, as a reference for the flight database: every file is
+    analysed, the flights of one model (default: the model of the first file) are combined."""
+    from ethosloganalyser.io.ethos_log import model_from_filename
+    paths = sorted(str(path) for path in paths)
+    model = model if model is not None else (model_from_filename(paths[0]) if paths else None)
+    rows, series = [], {}
+    for path in paths:
+        if model_from_filename(path) != model:
+            continue
+        row, _reason = analyse_log(path, p)
+        if row is not None:
+            series[row["pfad"]] = row.pop("_series")
+            rows.append(row)
+    return ela.analyse_flights(rows, series, p, {"model": model})
+
+
+def analyse_folder_logs(folder, p, model=None):
+    """analyse_logs for all CSV files of a folder and its subfolders."""
+    return analyse_logs(sorted(Path(folder).rglob("*.csv")), p, model)
+
+
 @lru_cache(maxsize=None)
 def example_result(nominal_mah=0.0):
-    """Analysis of the example folder (cached because it takes a few seconds)."""
-    return ela.analyse_folder(str(EXAMPLES), ela.Params(nominal_mah=nominal_mah))
+    """Analysis of the example logs (cached because it takes a few seconds)."""
+    return analyse_logs(EXAMPLE_FILES, ela.Params(nominal_mah=nominal_mah))
 
 
 def write_ethos_csv(folder, name, t, u, i, extra=None, start="2026-05-01 12:00:00"):

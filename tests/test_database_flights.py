@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from helpers import EXAMPLES, ela, write_glider_log
+from helpers import EXAMPLE_FILES, EXAMPLES, analyse_logs, ela, write_glider_log
 from ethosloganalyser.db import FlightDatabase, flight_store, import_paths
 from ethosloganalyser.gui import database_flights
 from ethosloganalyser.plots.flight import FLIGHT_VIEWS
@@ -44,7 +44,7 @@ def test_aircraft_result_equals_the_folder_analysis(database):
     params = ela.Params(chem="Li-Ion", cells=13, nominal_mah=9000)
     prepared = database_flights.prepare_aircraft(database.connection, "Viper-Jet", params)
     result = database_flights.aircraft_result(prepared, params, "Viper-Jet")
-    folder = ela.analyse_folder(str(EXAMPLES), params)
+    folder = analyse_logs(EXAMPLE_FILES, params)
     pd.testing.assert_frame_equal(result.df.drop(columns=["pfad"]), folder.df.drop(columns=["pfad"]))
     for from_db, from_file in zip(result.df["pfad"], folder.df["pfad"]):
         assert from_db.startswith(database_flights.PATH_PREFIX)

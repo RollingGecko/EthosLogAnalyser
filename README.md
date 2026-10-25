@@ -4,13 +4,19 @@
 
 Desktop app (Python/Tkinter) for analysing **FrSky Ethos flight logs** (CSV), focusing on battery condition, drive and radio/onboard power. Built for an electric jet (Viper-Jet), but works with any Ethos log that contains flight battery voltage and current. The user interface is available in **German, English and Spanish**; the language can be switched in the app and is remembered.
 
+All logs are imported into one **flight database** (a file; duplicates are recognised, the log files stay
+untouched). From it the app shows a **logbook** (totals per year and month, flight list with notes and anomaly
+hints), every **single flight** and the **statistics** of one aircraft – with one filter (aircraft, year, month,
+date range) shared by logbook and statistics.
+
 ## What it analyses
 
 - **Battery:** internal resistance, voltage at reference load, estimated capacity, state of health (SoH), ageing trend and remaining life forecast, timer recommendation. State of charge at landing by coulomb counting, cross-checked against the resting voltage.
 - **Load & flight profile:** C-rate, power, throttle histogram, flight phases, energy per phase, g-forces.
 - **Drive:** power vs. RPM curve, current sensor plausibility against the ESC counter.
 - **Radio & onboard power:** RSSI, VFR, receiver and transmitter battery, receiver current spikes classified by cause (switch, manoeuvre, take-off/landing or no apparent cause).
-- **Single flight:** time series with zoom and crosshair, detail report compared with the median of all flights.
+- **Single flight:** time series with zoom and crosshair, detail report compared with the median of all flights, note and anomalies per flight.
+- **Statistics** (still experimental): the pages above over the filtered flights of one aircraft.
 
 ## Download
 
@@ -27,11 +33,11 @@ pip install -e .
 ethosloganalyser
 ```
 
-Three real flight logs to try are in `examples/logs/`. `scripts\build_exe.bat` builds the Windows EXE; GitHub also builds it on every push (Actions → Artifacts) and publishes it with every release.
+Three real flight logs to try are in `examples/logs/` (*Data & settings → Database → Import folder …*). `scripts\build_exe.bat` builds the Windows EXE; GitHub also builds it on every push (Actions → Artifacts) and publishes it with every release.
 
 ## Documentation
 
-- [Usage](docs/usage.md) – installation, settings, tabs, export
+- [Usage](docs/usage.md) – installation, import, logbook, single flight, statistics with the filter, settings, export
 - [Methodology](docs/methodology.md) – how internal resistance, state of charge, capacity, timer and spikes are computed
 - [Ethos log format](docs/ethos-log-format.md) – which columns the app expects
 - [Flight database](docs/database.md) – import, duplicate and flight detection, storage and schema
@@ -47,7 +53,8 @@ src/ethosloganalyser/
   i18n.py         translation of all user-facing texts
   locales/        translation catalogs (en, es)
   io/             reading Ethos CSV logs
-  analysis/       single flight, receiver current spikes, cross-flight analysis, assessment
+  db/             flight database: import, duplicates, flight detection, notes and anomalies
+  analysis/       single flight, receiver current spikes, cross-flight analysis, anomaly rules, assessment
   report/         text reports
   plots/          charts (usable without the GUI)
   gui/            Tkinter user interface

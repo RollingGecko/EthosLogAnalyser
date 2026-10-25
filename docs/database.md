@@ -3,16 +3,19 @@
 With the rebuild of the app (v2), all imported logs are kept in one flight database. This page describes the file, the
 import, the duplicate and flight detection and the schema. The code is in `src/ethosloganalyser/db/`.
 
-The database is filled and managed on the page *Data & settings → Database*. The area *Single flight* reads its
-flights from it (`gui/database_flights.py`: the stored time series of all flights of an aircraft are analysed
-again with `analysis/flight.py` and combined with `analysis.fleet.analyse_flights`, which gives exactly the
-result of the folder analysis). The area *Logbook* reads the same database
-(`db/flight_store.logbook_rows`, `db/logbook_table.py`): one row per log with the aircraft, start time, duration
-(`duration_s`, otherwise `log_duration_s`) and the metrics stored with the flight (drawn charge and the values for
-the battery validity). The effective decision whether a log is a flight is `coalesce(is_flight_manual, is_flight)`;
-a click on the flight switch in the logbook writes `is_flight_manual` (`flight_store.set_flight_manual`), and
-setting it back to what the detection said stores NULL again. Flight numbers are counted per aircraft over the
-effective flights. Statistics move to the database in the next step.
+The database is filled and managed on the page *Data & settings → Database*. All areas read their flights from it:
+
+- *Logbook* (`db/flight_store.logbook_rows`, `db/logbook_table.py`): one row per log with the aircraft, start time,
+  duration (`duration_s`, otherwise `log_duration_s`) and the metrics stored with the flight (drawn charge and the
+  values for the battery validity). The effective decision whether a log is a flight is
+  `coalesce(is_flight_manual, is_flight)`; a click on the flight switch in the logbook writes `is_flight_manual`
+  (`flight_store.set_flight_manual`), and setting it back to what the detection said stores NULL again. Flight
+  numbers are counted per aircraft over the effective flights.
+- *Single flight* and *Statistics* (`gui/database_flights.py`, `gui/flight_cache.py`): the stored time series of all
+  flights of an aircraft are analysed again with `analysis/flight.py` once per aircraft in the background; the
+  cross-flight part (`analysis.fleet.analyse_flights`) is then calculated for all flights of the aircraft (single
+  flight) or for the flights that pass the filter (statistics, `gui/statistics_model.py`). Against the analysis of
+  the log files themselves the results are identical (flight table, summary, chart data, CSV export).
 
 ## The file
 
@@ -60,7 +63,7 @@ the log has (`flight_detection.py`):
    receiver telemetry (receiver off; only transmitter values) is not a flight.
 
 Barometric values are smoothed with a rolling median of 5 samples against single spikes. With
-`examples/logs_2026` the import finds the same 33 flights as the folder analysis.
+`examples/logs_2026` the import finds the same 33 flights as the analysis of the files before the database.
 
 ## What is stored per flight
 

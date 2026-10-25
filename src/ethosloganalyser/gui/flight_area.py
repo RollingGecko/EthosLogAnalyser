@@ -24,7 +24,9 @@ class DatabaseFlightArea:
         self.waiting_for = None           # aircraft whose preparation the page is waiting for
         page.before_select = self._before_select
         page.message_for = self._message_for
-        cache.on_change = self._on_cache_change
+        cache.add_listener(self._on_cache_change)
+        page.frame.bind("<Destroy>", lambda event: cache.remove_listener(self._on_cache_change)
+                        if event.widget is page.frame else None, add="+")
 
     def reload(self, force=False):
         """Fills the flight selector from the database (if it changed or force); keeps the selected flight."""
@@ -48,12 +50,6 @@ class DatabaseFlightArea:
         self.page.flight_var.set(self.page.choices[keys.index(log_id)][0])
         self.page.select_flight()
         return True
-
-    def find_flight(self, aircraft, start_time):
-        """log_id of the database flight of this aircraft with this start time, None if there is not exactly one."""
-        matches = [flight.log_id for flight in self.cache.flights
-                   if flight.aircraft == aircraft and flight.start_time == start_time]
-        return matches[0] if len(matches) == 1 else None
 
     # ---------------- callbacks of the page ----------------
     def _resolve(self, log_id):

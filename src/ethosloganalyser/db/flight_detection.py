@@ -90,7 +90,7 @@ def _radio_link_span_s(series):
 def detect_flight(frame, time_s, roles, motor_metrics, params):
     """Decides whether the log is a flight.
 
-    frame: the log as read by read_log; time_s: seconds since the start (as io.ethos_log._time_seconds);
+    frame: the log as read by read_log_bytes; time_s: seconds since the start (as io.ethos_log._time_seconds);
     roles: from sensor_roles.assign_roles; motor_metrics: the result of the flight analysis (dict) or None if
     the analysis found no flight; params: config.Params (min_flight_s, active_current_a).
     """

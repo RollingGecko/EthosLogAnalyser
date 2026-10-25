@@ -55,7 +55,7 @@ def metric_columns(metrics_texts):
 def battery_valid(metrics, params):
     """Which flights have usable battery values: boolean array in the order of ``metrics``.
 
-    Same rule as the folder analysis (analysis/fleet.py, analysis/quality.py): a flight with a stuck current
+    Same rule as the statistics (analysis/fleet.py, analysis/quality.py): a flight with a stuck current
     sensor or a voltage dropout does not count for battery values. The number of cells is the configured one,
     or - if none is configured - estimated from the highest start voltage of the given flights.
     """

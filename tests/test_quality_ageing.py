@@ -7,10 +7,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from helpers import tmpdir, write_ethos_csv
+from helpers import analyse_folder_logs, tmpdir, write_ethos_csv
 import ethosloganalyser as ela
 from ethosloganalyser.analysis.ageing import ageing_model, battery_mix, check_consistency, depth_effect, forecast
-from ethosloganalyser.analysis.fleet import in_period, parse_date
+from ethosloganalyser.analysis.periods import parse_date
 from ethosloganalyser.analysis.quality import detect_data_errors, rest_voltage_invalid
 from ethosloganalyser.config import CHEM, Params
 from ethosloganalyser.report.text import summary_lines
@@ -214,7 +214,7 @@ def test_two_battery_groups_are_recognised_but_not_noise():
     assert battery_mix(rng.normal(8700, 180, 90)) is None
 
 
-# ---------------------------------------------------------------- period filter
+# ---------------------------------------------------------------- dates typed by the user
 
 def test_dates_are_parsed_in_the_usual_formats():
     assert parse_date("2026-04-19") == date(2026, 4, 19)
@@ -224,14 +224,7 @@ def test_dates_are_parsed_in_the_usual_formats():
         parse_date("April")
 
 
-def test_period_is_inclusive_and_open_ended():
-    p = Params(date_from="2026-01-01")
-    assert in_period(date(2026, 1, 1), p) and not in_period(date(2025, 12, 31), p)
-    p = Params(date_from="2026-01-01", date_to="2026-06-30")
-    assert in_period(date(2026, 6, 30), p) and not in_period(date(2026, 7, 1), p)
-
-
-# ---------------------------------------------------------------- whole folder
+# ---------------------------------------------------------------- several flights
 
 def _flight(unplugged=False, stuck=False, glide=False, short=False, drop=0.09):
     """Synthetic 13S Li-Ion flight of about 4 min with 40 s of log after landing (short: about 2 min)."""
@@ -254,7 +247,7 @@ def test_unplugged_battery_after_landing_is_a_data_error_not_a_deep_discharge():
     for k in range(3):
         t, u, i = _flight(unplugged=(k == 1))
         write_ethos_csv(d, f"Viper-Jet-2026-05-0{k + 1}-12-00-00.csv", t, u, i, start=f"2026-05-0{k + 1} 12:00:00")
-    res = ela.analyse_folder(d, Params(chem="Li-Ion", nominal_mah=9000))
+    res = analyse_folder_logs(d, Params(chem="Li-Ion", nominal_mah=9000))
     assert res.meta["quality"] == {"rest_voltage_invalid": {2}}
     assert "deep_discharge" not in res.meta["flags"]
     assert res.df.loc[1, "U_ende_Quelle"] == "estimated"
@@ -267,7 +260,7 @@ def test_stuck_current_flight_is_kept_out_of_the_battery_values():
     for k in range(3):
         t, u, i = _flight(stuck=(k == 0))
         write_ethos_csv(d, f"Viper-Jet-2026-05-0{k + 1}-12-00-00.csv", t, u, i, start=f"2026-05-0{k + 1} 12:00:00")
-    res = ela.analyse_folder(d, Params(chem="Li-Ion", nominal_mah=9000))
+    res = analyse_folder_logs(d, Params(chem="Li-Ion", nominal_mah=9000))
     assert res.meta["quality"]["current_stuck"] == {1}
     first = res.df.iloc[0]
     assert not first["Akku_gueltig"]
@@ -276,16 +269,6 @@ def test_stuck_current_flight_is_kept_out_of_the_battery_values():
         assert np.isnan(first[col]), col
     assert first["SoC_ende_pct"] == first["SoC_ende_U_pct"]
     assert res.df.iloc[1:]["SoC_ende_Q_pct"].notna().all()
-
-
-def test_period_filter_skips_files_outside_without_reading_them():
-    d = tmpdir()
-    for day in ("2025-08-01", "2026-05-01", "2026-05-02"):
-        t, u, i = _flight()
-        write_ethos_csv(d, f"Viper-Jet-{day}-12-00-00.csv", t, u, i, start=f"{day} 12:00:00")
-    res = ela.analyse_folder(d, Params(chem="Li-Ion", date_from="2026-01-01"))
-    assert len(res.df) == 2 and res.meta["outside_period"] == 1
-    assert res.df["datum"].min() >= pd.Timestamp("2026-01-01")
 
 
 def test_rest_voltage_between_flight_minimum_and_end_of_flight_voltage_is_caught():
@@ -297,7 +280,7 @@ def test_rest_voltage_between_flight_minimum_and_end_of_flight_voltage_is_caught
         if k == 1:
             u = np.where(t > 253, 13 * 3.55, u)          # too low for the end of the flight, above the flight minimum
         write_ethos_csv(d, f"Viper-Jet-2026-05-0{k + 1}-12-00-00.csv", t, u, i, start=f"2026-05-0{k + 1} 12:00:00")
-    res = ela.analyse_folder(d, Params(chem="Li-Ion", nominal_mah=9000))
+    res = analyse_folder_logs(d, Params(chem="Li-Ion", nominal_mah=9000))
     r = res.df.iloc[1]
     assert r["U_min_Zelle_V"] < 3.55 < r["U_last_Zelle_V"]
     assert res.meta["quality"] == {"rest_voltage_invalid": {2}}
@@ -311,7 +294,7 @@ def test_short_flights_are_kept_out_of_capacity_and_internal_resistance_trends()
         t, u, i = _flight(short=(k == len(days) - 1), drop=0.16)      # normal flights about 70 % deep
         write_ethos_csv(d, f"Viper-Jet-{day}-12-00-00.csv", t, u, i, start=f"{day} 12:00:00")
     p = Params(chem="Li-Ion", nominal_mah=9000)
-    res = ela.analyse_folder(d, p)
+    res = analyse_folder_logs(d, p)
     last = int(res.df["Flug"].max())
     assert res.meta["short_flights"] == {last}
     assert np.isnan(res.df.iloc[-1]["Kap_gesch_mAh"])

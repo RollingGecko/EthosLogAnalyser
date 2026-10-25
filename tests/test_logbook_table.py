@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from helpers import EXAMPLES, ela, write_glider_log
+from helpers import EXAMPLE_FILES, EXAMPLES, analyse_logs, ela, write_glider_log
 from ethosloganalyser.analysis.logbook import logbook
 from ethosloganalyser.analysis.periods import FlightFilter
 from ethosloganalyser.config import Params
@@ -139,8 +139,8 @@ def database(tmp_path_factory):
     db.close()
 
 
-def test_the_logbook_of_the_database_equals_the_folder_analysis(database):
-    folder = ela.analyse_folder(str(EXAMPLES), LI_ION_13S)
+def test_the_logbook_of_the_database_equals_the_analysis_of_the_files(database):
+    folder = analyse_logs(EXAMPLE_FILES, LI_ION_13S)
     table = build_logbook_table(flight_store.logbook_rows(database.connection), lambda aircraft: LI_ION_13S)
     flights = table[table["is_flight"] & (table["aircraft"] == "Viper-Jet")]
     expected, actual = logbook(folder.df), logbook(flights)

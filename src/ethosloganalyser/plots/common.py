@@ -61,22 +61,6 @@ def _bottom_labels_only(ax):
             a.set_xlabel("")
 
 
-def _legend(*axes, loc="best", ncol=1):
-    """One shared legend for charts with a secondary y axis."""
-    h, l = [], []
-    for a in axes:
-        hh, ll = a.get_legend_handles_labels()
-        h += hh
-        l += ll
-    if h:
-        axes[0].legend(h, l, fontsize=7, loc=loc, ncol=ncol, framealpha=0.85)
-
-
-def _axis_color(a, color, label, side="left"):
-    a.set_ylabel(label, color=color, fontsize=8)
-    a.tick_params(axis="y", colors=color, labelsize=8)
-
-
 def _plot_trend(ax, df, col, color, title, flags=None, flag_label=None, hlines=(), label=None, trend=True, marker="o",
                 note=None, model=None):
     """Values of one column per flight with optional trend line.

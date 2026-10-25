@@ -19,6 +19,7 @@ import numpy as np
 
 from ..analysis.fleet import analyse_flights
 from ..analysis.flight import analyse_frame
+from ..analysis.motor_curve import steady_points
 from ..db import flight_store, sensor_roles
 from ..i18n import fmt_datetime
 from ..plots.flight import FLIGHT_VIEWS
@@ -99,6 +100,9 @@ def _analyse_stored_flight(connection, log_id, file_name, start_text, stored_par
     if row is None:
         return None
     series = row.pop("_series")
+    # the steady-state points for the overall motor curve depend only on this flight: worked out once here, so
+    # the cross-flight analysis of a filter does not repeat them for every flight
+    series["steady_points"] = steady_points(series["rpm"], series["p"])
     row["datei"] = file_name
     row["pfad"] = flight_path(log_id)
     return row, series
@@ -127,9 +131,12 @@ def prepare_aircraft(connection, aircraft, base_params, progress=None, should_ca
     return prepared
 
 
-def aircraft_result(prepared, params, aircraft):
-    """Analysis result of all prepared flights of an aircraft (as analyse_folder gives it for one model)."""
-    rows = [dict(row) for row, _series in prepared.values()]
-    series = {row["pfad"]: flight_series for row, flight_series in prepared.values()}
+def aircraft_result(prepared, params, aircraft, log_ids=None):
+    """Analysis result of the prepared flights of an aircraft: all of them, or only those in log_ids (e.g. the
+    flights that pass the filter of the statistics). The cross-flight part (cell count, trends, flight numbers
+    1, 2, ...) covers exactly these flights."""
+    chosen = prepared.values() if log_ids is None else [prepared[log_id] for log_id in log_ids if log_id in prepared]
+    rows = [dict(row) for row, _series in chosen]
+    series = {row["pfad"]: flight_series for row, flight_series in chosen}
     meta = {"model": aircraft, "models": {aircraft: len(rows)}}
     return analyse_flights(rows, series, params, meta)

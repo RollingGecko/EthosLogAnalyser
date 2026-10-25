@@ -155,19 +155,6 @@ def fill_text(text, lines):
     text.configure(state="disabled")
 
 
-def scrolled(widget_parent, widget, horizontal=False):
-    """Adds a vertical (and optionally horizontal) scrollbar to a Text or Treeview and packs both."""
-    from tkinter import ttk
-    vertical_bar = ttk.Scrollbar(widget_parent, orient="vertical", command=widget.yview)
-    widget.configure(yscrollcommand=vertical_bar.set)
-    vertical_bar.pack(side="right", fill="y")
-    if horizontal:
-        horizontal_bar = ttk.Scrollbar(widget_parent, orient="horizontal", command=widget.xview)
-        widget.configure(xscrollcommand=horizontal_bar.set)
-        horizontal_bar.pack(side="bottom", fill="x")
-    return widget
-
-
 def scrollable_frame(parent, background):
     """A frame inside parent that scrolls vertically when its content is taller than the window (mouse wheel
     and scrollbar). The frame is as wide as the visible area and at least as tall, so rows with a weight still

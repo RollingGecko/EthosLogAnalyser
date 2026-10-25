@@ -13,7 +13,7 @@ from ..analysis.quality import QUALITY_LABELS, quality_messages
 from ..config import (CAP_SOURCE_LABELS, CHEM, CORR_LABELS, SOC_TOL_PCT, SPIKE_CAUSES, SPIKE_COLS, SPIKE_LABELS,
                       VOLTAGE_SOURCE_LABELS, label, model_label)
 from ..i18n import N_, fmt_date, fmt_datetime, tr
-from ..analysis.fleet import MIN_DEPTH_PCT, parse_date
+from ..analysis.fleet import MIN_DEPTH_PCT
 from ..utils import _f, _mmss, _ranges, _window_change, fmt_duration
 
 
@@ -53,19 +53,9 @@ def summary_lines(res, p):
     cells = meta["cells"]
 
     L.append(("h", tr("ÜBERSICHT")))
-    L.append(("info", tr("{n} Flüge ausgewertet ({first} – {last}), {skipped} Dateien übersprungen",
-                         n=n, first=fmt_date(df["datum"].min()), last=fmt_date(df["datum"].max()),
-                         skipped=len(res.skipped))))
-    models = meta.get("models") or {}
-    if len(models) > 1:          # several models in the folder: say which one is analysed (never mixed)
-        others = ", ".join(model_label(m) for m in sorted(models) if m != meta.get("model"))
-        L.append(("info", tr("Modell: {model} – weitere Modelle im Ordner (getrennt ausgewertet): {others}",
-                             model=model_label(meta.get("model")), others=others)))
-    if p.date_from or p.date_to:
-        L.append(("info", tr("Zeitraum-Filter: {start} – {end}; {n} Dateien außerhalb nicht ausgewertet",
-                             start=fmt_date(parse_date(p.date_from)) if p.date_from else "…",
-                             end=fmt_date(parse_date(p.date_to)) if p.date_to else "…",
-                             n=meta.get("outside_period", 0))))
+    L.append(("info", tr("{aircraft}: {n} Flüge ausgewertet ({first} – {last})",
+                         aircraft=model_label(meta.get("model")), n=n, first=fmt_date(df["datum"].min()),
+                         last=fmt_date(df["datum"].max()))))
     line = tr("Akku: {cells}S {chem}", cells=cells, chem=p.chem)
     if p.cells <= 0:
         line += tr("  (Zellenzahl automatisch erkannt)")
@@ -198,12 +188,6 @@ def summary_lines(res, p):
                  "schaltet, weiß die App nicht; sie nennt den Namen der Ethos-Quelle."),
               tr("Flugphasen und Wh je 100 m Steigen sind indikativ (Höhenwerte geglättet).")]:
         L.append(("info", "• " + s))
-    if res.skipped:
-        L.append(("h", tr("ÜBERSPRUNGENE DATEIEN")))
-        for nme, msg in res.skipped[:40]:
-            L.append(("info", f"• {nme}: {msg}"))
-        if len(res.skipped) > 40:
-            L.append(("info", tr("… und {n} weitere", n=len(res.skipped) - 40)))
     return L
 
 

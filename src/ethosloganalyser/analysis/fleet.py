@@ -1,20 +1,16 @@
 # -*- coding: utf-8 -*-
-"""Analysis of a whole log folder (cross-section over all flights)."""
-
-import os
-import glob
-from datetime import datetime
+"""Cross-flight analysis of the flights of one aircraft (cell count, state of charge, ageing, motor curve, timer,
+data errors, flags). The flights come from the flight database (gui/database_flights.py)."""
 
 import numpy as np
 import pandas as pd
 
 from ..analysis.ageing import ageing_model, battery_mix, check_consistency
 from ..analysis.evaluate import evaluate, usage_correlations
-from ..analysis.flight import analyse_file
 from ..analysis.motor_curve import flight_deviation, overall_curve, steady_points
 from ..analysis.quality import BATTERY_INVALID, detect_data_errors, rest_voltage_invalid
 from ..config import CHEM, Params, SOC_TOL_PCT, soc_pct
-from ..io.ethos_log import UNKNOWN_MODEL, _file_datetime, model_from_filename
+from ..io.ethos_log import UNKNOWN_MODEL
 
 
 # minimum depth of discharge [%] for the capacity estimate and the internal-resistance trend
@@ -22,52 +18,11 @@ MIN_DEPTH_PCT = 40.0
 
 
 class Result:
-    def __init__(self, df, skipped, total, series, meta):
-        self.df, self.skipped, self.total, self.series, self.meta = df, skipped, total, series, meta
+    """Cross-flight analysis of the flights of one aircraft: the flight table, the time series per flight
+    ({"pfad": series}) and the results that concern all flights (meta)."""
 
-
-def parse_date(text):
-    """Date from user input: YYYY-MM-DD, DD.MM.YYYY or DD/MM/YYYY; empty -> None. Raises ValueError."""
-    text = (text or "").strip()
-    if not text:
-        return None
-    for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y", "%d.%m.%y", "%d/%m/%y"):
-        try:
-            return datetime.strptime(text, fmt).date()
-        except ValueError:
-            pass
-    raise ValueError(text)
-
-
-def in_period(dt, p):
-    """True if the flight date lies within the period p.date_from .. p.date_to (both inclusive, ISO dates)."""
-    d0, d1 = parse_date(p.date_from), parse_date(p.date_to)
-    d = dt.date() if isinstance(dt, datetime) else dt
-    return (d0 is None or d >= d0) and (d1 is None or d <= d1)
-
-
-def find_logs(folder):
-    """All CSV files in folder and its subfolders, sorted."""
-    return sorted(glob.glob(os.path.join(folder, "**", "*.csv"), recursive=True))
-
-
-def models_in(files):
-    """Logs grouped by model (from the file name): {model: dict(files=[...], latest=datetime of the newest log)}."""
-    out = {}
-    for f in files:
-        g = out.setdefault(model_from_filename(f), dict(files=[], latest=None))
-        g["files"].append(f)
-        dt = _file_datetime(f)
-        if g["latest"] is None or dt > g["latest"]:
-            g["latest"] = dt
-    return out
-
-
-def default_model(models):
-    """The model with the newest log (models as from models_in), None if there is none."""
-    if not models:
-        return None
-    return max(models, key=lambda m: (models[m]["latest"], m))
+    def __init__(self, df, series, meta):
+        self.df, self.series, self.meta = df, series, meta
 
 
 def _timer_s(series, q_limit):
@@ -80,45 +35,22 @@ def _timer_s(series, q_limit):
     return float(t[-1] + (q_limit - q[-1]) / (i_mean / 3.6))
 
 
-def analyse_folder(folder, p: Params, progress=None, model=None):
-    """Analyses the logs of ONE model in folder (subfolders included); models are never mixed.
+def _steady_points_of(flight_series):
+    """Steady-state points of a flight for the motor curve; worked out already when the flight was prepared
+    (gui/database_flights.py), otherwise now."""
+    cached = flight_series.get("steady_points")
+    return cached if cached is not None else steady_points(flight_series["rpm"], flight_series["p"])
 
-    model: model name as from model_from_filename; None or a model that is not in the folder -> the model with
-    the newest log. meta["model"] is the analysed model, meta["models"] {model: number of logs} all models found.
+
+def analyse_flights(rows, series, p: Params, meta):
+    """Cross-flight analysis of the flights of ONE aircraft (cell count, state of charge, capacity and ageing,
+    reference values, motor curve, timer, data errors, flags). Models are never mixed.
+
+    rows: per-flight results of analysis.flight.analyse_frame without "_series"; series: {row["pfad"]: series};
+    meta: dict with at least "model" (completed and returned in the Result).
     """
-    groups = models_in(find_logs(folder))
-    chosen = model if model in groups else default_model(groups)
-    files = groups[chosen]["files"] if chosen is not None else []
-    rows, skipped, series = [], [], {}
-    meta = {"model": chosen, "models": {m: len(g["files"]) for m, g in groups.items()}}
-    if p.date_from or p.date_to:          # period filter by the date in the file name (cheap, before reading)
-        inside = [f for f in files if in_period(_file_datetime(f), p)]
-        meta["outside_period"] = len(files) - len(inside)
-        files = inside
-    for n, f in enumerate(files):
-        res, msg = analyse_file(f, p)
-        if res is None:
-            skipped.append((os.path.basename(f), msg))
-        else:
-            series[res["pfad"]] = res.pop("_series")
-            rows.append(res)
-        if progress:
-            progress(n + 1, len(files))
-    return analyse_flights(rows, series, p, meta, skipped=skipped, total=len(files))
-
-
-def analyse_flights(rows, series, p: Params, meta, skipped=(), total=None):
-    """Cross-flight analysis of the flights of ONE model (cell count, state of charge, capacity and ageing,
-    reference values, motor curve, timer, data errors, flags).
-
-    rows: per-flight results of analysis.flight.analyse_file without "_series"; series: {row["pfad"]: series};
-    meta: dict with at least "model" (completed and returned in the Result). Used by analyse_folder and for
-    flights stored in the flight database.
-    """
-    skipped = list(skipped)
-    total = len(rows) + len(skipped) if total is None else total
     if not rows:
-        return Result(pd.DataFrame(), skipped, total, series, meta)
+        return Result(pd.DataFrame(), series, meta)
 
     model = meta.get("model")
     df = pd.DataFrame(rows).sort_values("datum").reset_index(drop=True)
@@ -274,7 +206,7 @@ def analyse_flights(rows, series, p: Params, meta, skipped=(), total=None):
 
     # overall motor curve from the steady-state points of all flights (not from flights whose current is
     # invalid: their power is wrong); deviation of each flight from it
-    steady = {path: steady_points(series[path]["rpm"], series[path]["p"]) for path in df["pfad"]}
+    steady = {path: _steady_points_of(series[path]) for path in df["pfad"]}
     curve = overall_curve([steady[path] for path, bad in zip(df["pfad"], batt_bad) if not bad])
     meta["motor_curve"] = curve
     df["P_Kurve_Abw_pct"] = [round(flight_deviation(curve, *steady[path]), 1) if not bad else np.nan
@@ -321,4 +253,4 @@ def analyse_flights(rows, series, p: Params, meta, skipped=(), total=None):
     df["Auffaellig"] = [
         ", ".join(code for code, fl in flags.items() if int(r["Flug"]) in fl) for _, r in df.iterrows()]
     meta["corr"] = usage_correlations(df)
-    return Result(df, skipped, total, series, meta)
+    return Result(df, series, meta)

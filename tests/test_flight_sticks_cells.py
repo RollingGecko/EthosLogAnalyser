@@ -9,7 +9,6 @@ import helpers
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 from ethosloganalyser.analysis.fleet import Result
-from ethosloganalyser.analysis.flight import analyse_file
 from ethosloganalyser.config import CHEM, Params
 from ethosloganalyser.i18n import get_language, set_language
 from ethosloganalyser.plots.flight import battery_voltage, cell_count, figure_flight, fit_y
@@ -84,7 +83,7 @@ def _flight_log(folder, sticks=("QR", "HR", "SR"), gas=True, attitude=True):
 
 def _result(path, cells=13):
     p = Params(cells=cells, chem="Li-Ion", nominal_mah=9000)
-    row, msg = analyse_file(str(path), p)
+    row, msg = helpers.analyse_log(path, p)
     assert row is not None, msg
     series = {row["pfad"]: row.pop("_series")}
     df = pd.DataFrame([row])
@@ -92,7 +91,7 @@ def _result(path, cells=13):
     df["Zellen"] = cells if cells else np.nan
     df["Ri_Zelle_mOhm"] = df["Ri_mOhm"] / (cells or 1)
     df["Timer_s"] = np.nan
-    return Result(df, [], 1, series, {}), p, row["pfad"]
+    return Result(df, series, {}), p, row["pfad"]
 
 
 def test_stick_channels_are_scaled_to_percent():

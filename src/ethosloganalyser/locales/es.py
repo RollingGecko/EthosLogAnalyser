@@ -11,8 +11,6 @@ CATALOG = {
     "flug{no}_{view}.png": "vuelo{no}_{view}.png",
 
     # ---------------- window, tabs, settings ----------------
-    "Noch nicht ausgewertet – Ordner und Akku im Reiter „Daten & Einstellungen“ festlegen.":
-        "Aún sin analizar – elija la carpeta y la batería en la pestaña «Datos y ajustes».",
     "Daten & Einstellungen": "Datos y ajustes",
     "Zusammenfassung": "Resumen",
     "Akku": "Batería",
@@ -21,11 +19,6 @@ CATALOG = {
     "Funk & Bordnetz": "Radio y alimentación a bordo",
     "Einzelflug": "Vuelo individual",
     "Tabelle": "Tabla",
-    "Logdaten": "Datos de log",
-    "Ordner mit Ethos-CSV-Logs (Unterordner werden mit durchsucht):":
-        "Carpeta con logs CSV de Ethos (se incluyen las subcarpetas):",
-    "Ordner wählen …": "Elegir carpeta …",
-    "Auswerten": "Analizar",
     "Auswertung": "Análisis",
     "Zellchemie": "Química de celda",
     "LiPo, LiHV oder Li-Ion": "LiPo, LiHV o Li-Ion",
@@ -47,9 +40,7 @@ CATALOG = {
     "Export": "Exportar",
     "Tabelle als CSV speichern …": "Guardar tabla como CSV …",
     "Bericht + alle Diagramme speichern …": "Guardar informe + todos los gráficos …",
-    "Übersprungene Dateien": "Archivos omitidos",
     "Datei": "Archivo",
-    "Grund": "Motivo",
 
     # ---------------- single-flight tab ----------------
     "Flug:": "Vuelo:",
@@ -71,19 +62,9 @@ CATALOG = {
     "keine Spitzen": "sin picos",
 
     # ---------------- messages ----------------
-    "Werte aus …": "Analizando …",
-    ", Kapazität unbekannt": ", capacidad desconocida",
-    "{folder}  ·  {n} Flüge ausgewertet, {skipped} von {total} Dateien übersprungen  ·  Akku {cells}S {chem}{cap}":
-        "{folder}  ·  {n} vuelos analizados, {skipped} de {total} archivos omitidos  ·  batería {cells}S {chem}{cap}",
     "Eingabefehler": "Error de entrada",
     "Bitte gültige Zahlen in den Einstellungen eintragen.": "Introduzca números válidos en los ajustes.",
-    "Ordner": "Carpeta",
-    "Bitte zuerst einen gültigen Ordner wählen.": "Elija primero una carpeta válida.",
-    "Fehler bei der Auswertung": "Error en el análisis",
-    "Fehler bei der Auswertung.": "Error en el análisis.",
-    "Bitte zuerst auswerten.": "Analice primero.",
     "Zielordner für Bericht und Diagramme": "Carpeta de destino para informe y gráficos",
-    "Ordner mit Ethos-Logfiles wählen": "Elegir carpeta con archivos de log de Ethos",
     "Gespeichert": "Guardado",
     "Bericht, Tabelle und Diagramme wurden in\n{folder}\ngespeichert.":
         "El informe, la tabla y los gráficos se han guardado en\n{folder}",
@@ -166,8 +147,6 @@ CATALOG = {
     # ---------------- summary report ----------------
     "Keine auswertbaren Flüge gefunden.": "No se encontraron vuelos analizables.",
     "ÜBERSICHT": "VISTA GENERAL",
-    "{n} Flüge ausgewertet ({first} – {last}), {skipped} Dateien übersprungen":
-        "{n} vuelos analizados ({first} – {last}), {skipped} archivos omitidos",
     "Akku: {cells}S {chem}": "Batería: {cells}S {chem}",
     "  (Zellenzahl automatisch erkannt)": "  (número de celdas detectado automáticamente)",
     ", Nennkapazität {cap:.0f} mAh": ", capacidad nominal {cap:.0f} mAh",
@@ -261,7 +240,6 @@ CATALOG = {
         "La app no sabe qué interruptor acciona, p. ej., el tren de aterrizaje; muestra el nombre de la fuente de Ethos.",
     "Flugphasen und Wh je 100 m Steigen sind indikativ (Höhenwerte geglättet).":
         "Las fases de vuelo y los Wh por cada 100 m de ascenso son orientativos (altura suavizada).",
-    "ÜBERSPRUNGENE DATEIEN": "ARCHIVOS OMITIDOS",
 
     # ---------------- state of charge lines ----------------
     "Ladezustand: Start ≈ {start} %, Ende ≈ {end:.0f} %  (Ladungszählung: {drawn:.0f} mAh entnommen von {cap:.0f} mAh "
@@ -543,18 +521,6 @@ CATALOG = {
         "Capacidad normalizada",
     "Messfehler":
         "Errores de medición",
-    "Zeitraum von":
-        "Periodo desde",
-    "TT.MM.JJJJ, leer = ohne Grenze":
-        "DD/MM/AAAA, vacío = sin límite",
-    "Zeitraum bis":
-        "Periodo hasta",
-    "z. B. nur die Flüge eines Akkus":
-        "p. ej. solo los vuelos de una batería",
-    "Der Beginn des Zeitraums liegt nach dem Ende.":
-        "El inicio del periodo es posterior a su fin.",
-    "Bitte ein gültiges Datum eintragen (TT.MM.JJJJ) oder das Feld leer lassen.":
-        "Introduzca una fecha válida (DD/MM/AAAA) o deje el campo vacío.",
     "Auf {depth:.0f} % Entladetiefe bezogen.":
         "Referida a una profundidad de descarga del {depth:.0f} %.",
     "80 % der Nennkapazität":
@@ -585,8 +551,6 @@ CATALOG = {
         "Capacidad restante (SoH): aprox. {soh:.0f} % de la capacidad inicial  (actualmente ≈ {cur:.0f} ± {err} mAh, valor inicial ≈ {start:.0f} mAh; capacidad nominal no introducida)",
     "Restlebensdauer: ca. {n:.0f} Flüge (90 %-Bereich {lo:.0f}–{hi:.0f}) – das frühere der Kriterien 80 % SoH und +50 % Ri":
         "Vida útil restante: aprox. {n:.0f} vuelos (intervalo del 90 %: {lo:.0f}–{hi:.0f}), el primero de los criterios 80 % SoH y +50 % Ri",
-    "Zeitraum-Filter: {start} – {end}; {n} Dateien außerhalb nicht ausgewertet":
-        "Filtro de periodo: {start} – {end}; {n} archivos fuera del periodo no analizados",
     "Hinweis auf mehrere Akkus: Die Kapazitätswerte bilden zwei Gruppen (≈ {low:.0f} mAh in {n_low} Flügen, ≈ {high:.0f} mAh in {n_high} Flügen). Alterungsaussagen über diesen Zeitraum gelten dann für keinen einzelnen Akku. Zeitraum auf einen Akku eingrenzen (Daten & Einstellungen → Zeitraum).":
         "Indicio de varias baterías: los valores de capacidad forman dos grupos (≈ {low:.0f} mAh en {n_low} vuelos, ≈ {high:.0f} mAh en {n_high} vuelos). Las conclusiones sobre el envejecimiento en este periodo no se aplican entonces a ninguna batería concreta. Limite el periodo a una batería (Datos y ajustes → Periodo).",
     "Kapazitäts-SoH nicht bestimmbar: zu wenige Flüge mit gültiger Kapazitätsschätzung (≥ 40 % Entladetiefe; vorhanden {n}, nötig {min}).":
@@ -731,24 +695,12 @@ CATALOG = {
         "Potencia frente a la curva global de todos los vuelos: {dev:+.1f} % (mediana a las mismas rpm)",
     "(unbekannt)":
         "(desconocido)",
-    "{folder}  ·  Modell {model}  ·  {n} Flüge ausgewertet, {skipped} von {total} Dateien übersprungen  ·  Akku {cells}S {chem}{cap}":
-        "{folder}  ·  modelo {model}  ·  {n} vuelos analizados, {skipped} de {total} archivos omitidos  ·  batería {cells}S {chem}{cap}",
-    "Modell:":
-        "Modelo:",
-    "Im Ordner liegen Logs mehrerer Modelle; ausgewertet wird immer eines.":
-        "La carpeta contiene registros de varios modelos; se analiza siempre uno.",
-    "Modell: {model} – weitere Modelle im Ordner (getrennt ausgewertet): {others}":
-        "Modelo: {model} – otros modelos en la carpeta (se analizan por separado): {others}",
-    "{model} ({n} Logs)":
-        "{model} ({n} registros)",
     "Für das Modell {model} sind noch keine Akku-Einstellungen gespeichert: Bitte im Reiter „Daten & Einstellungen“ die Zellchemie auswählen und die Nennkapazität eintragen. Bis dahin wird LiPo angenommen – Ladezustand, Alterung und Restkapazität können falsch sein.":
         "Todavía no hay ajustes de batería guardados para el modelo {model}: elija la química de celda e introduzca la capacidad nominal en la pestaña «Datos y ajustes». Hasta entonces se supone LiPo; el estado de carga, el envejecimiento y la capacidad restante pueden ser incorrectos.",
     "Für dieses Modell noch nicht eingestellt: bitte Zellchemie auswählen und Nennkapazität eintragen (bis dahin wird LiPo angenommen).":
         "Aún no configurado para este modelo: elija la química de celda e introduzca la capacidad nominal (hasta entonces se supone LiPo).",
     "Akku-Einstellungen für dieses Modell fehlen":
         "Faltan los ajustes de batería de este modelo",
-    "{status}  ·  {hint}":
-        "{status}  ·  {hint}",
     "Logbuch":
         "Libro de vuelo",
     "Summen":
@@ -1010,4 +962,14 @@ CATALOG = {
     'OK': 'Aceptar',
     'Abbrechen': 'Cancelar',
     'nur mit Notiz oder Auffälligkeit': 'solo con nota o anomalía',
+    # statistics from the flight database (WP-19)
+    'Statistik  ·  {n} von {total} Flügen der Datenbank': 'Estadística  ·  {n} de {total} vuelos de la base de datos',
+    'Filter: {filter}': 'Filtro: {filter}',
+    'Die Statistik zeigt gerade keine Flüge:\n{reason}': 'La estadística no muestra vuelos en este momento:\n{reason}',
+    'Kein Flug passt zum Filter.': 'Ningún vuelo coincide con el filtro.',
+    'Dieser Bereich ist noch experimentell: Werte und Auswertungen können sich ändern.': 'Esta área es todavía experimental: los valores y análisis pueden cambiar.',
+    'Bitte im Filter ein Flugzeug wählen: Die Statistik wertet immer genau ein Flugzeug aus (gefiltert sind Flüge von {aircraft}).': 'Elija un avión en el filtro: la estadística siempre analiza exactamente un avión (los vuelos filtrados son de {aircraft}).',
+    'Für diese Flüge von {aircraft} sind keine Spannungs- und Stromdaten des Flugakkus im Log. Die Statistik-Seiten brauchen sie bisher.': 'Estos vuelos de {aircraft} no tienen tensión ni corriente de la batería de vuelo en el log. Por ahora las páginas de estadística las necesitan.',
+    'Monat {month:02d}': 'mes {month:02d}',
+    '{aircraft}: {n} Flüge ausgewertet ({first} – {last})': '{aircraft}: {n} vuelos analizados ({first} – {last})',
 }

@@ -7,12 +7,25 @@ can use the same filter.
 """
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 import pandas as pd
 
 MONTHS = tuple(range(1, 13))
+
+
+def parse_date(text):
+    """Date from user input: YYYY-MM-DD, DD.MM.YYYY or DD/MM/YYYY; empty -> None. Raises ValueError."""
+    text = (text or "").strip()
+    if not text:
+        return None
+    for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y", "%d.%m.%y", "%d/%m/%y"):
+        try:
+            return datetime.strptime(text, fmt).date()
+        except ValueError:
+            pass
+    raise ValueError(text)
 
 
 @dataclass(frozen=True)

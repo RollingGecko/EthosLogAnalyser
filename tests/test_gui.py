@@ -12,6 +12,7 @@ import pytest
 from helpers import EXAMPLES
 from annotation_checks import check_annotations
 from logbook_checks import check_empty_logbook, check_logbook
+from statistics_checks import check_statistics, check_two_aircraft
 
 # In CI (environment variable REQUIRE_GUI_TEST) the test must run - skipping it there would be an error.
 REQUIRED = bool(os.environ.get("REQUIRE_GUI_TEST"))
@@ -37,7 +38,9 @@ def test_gui_analyses_example_logs(monkeypatch, tmp_path):
 
     # do not store settings in the real home folder, start in German, capture message boxes
     settings = tmp_path / "settings.json"
-    settings.write_text('{"language": "de"}', encoding="utf-8")
+    # a settings file of an older version: log folder and period are ignored without an error
+    settings.write_text('{"language": "de", "folder": "/no/such/log/folder", "date_from": "20.09.2026", '
+                        '"date_to": "kein Datum", "reserve_pct": "20"}', encoding="utf-8")
     monkeypatch.setattr(config, "SETTINGS_FILE", str(settings))
     monkeypatch.setattr(config, "DEFAULT_DATABASE_FILE", str(tmp_path / "db" / "flugbuch.db"))
     errors = []
@@ -60,17 +63,8 @@ def test_gui_analyses_example_logs(monkeypatch, tmp_path):
         check_logbook(root, monkeypatch)                        # filled without any folder analysis
         check_annotations(root)                                 # notes and anomalies
         _wait_for_flight(root)
-        h["folder_var"].set(str(EXAMPLES))                      # statistics: folder analysis
-        h["run"]()
-        root.update()
+        check_statistics(root)                                  # statistics from the database, shared filter
         assert not errors, errors
-        assert h["nb"].index("current") == h["nb"].index(h["tabs"]["statistics"])
-        assert h["statistics_nb"].index("current") == h["statistics_nb"].index(h["tabs"]["summary"])
-        assert "3 Flüge ausgewertet" in h["status"].get()       # status bar text (German UI)
-        # first start without any battery settings: the assumed LiPo is not a setting -> hint
-        assert h["battery_hint"].winfo_manager() == "grid"
-        assert "Akku-Einstellungen für dieses Modell fehlen" in h["status"].get()
-        assert h["summary"].get("1.0", "2.0").startswith("Für das Modell Viper-Jet sind noch keine Akku-Einst")
         assert len(h["fbox"]["values"]) == 3
         for view in FLIGHT_VIEWS:
             h["view_var"].set(view)
@@ -82,9 +76,8 @@ def test_gui_analyses_example_logs(monkeypatch, tmp_path):
         _check_fullscreen(root)
         _check_whole_page_double_click(root)
         _check_language_switch(root, settings)
-        _check_period_filter(root, errors)
-        _check_two_models(root, errors, settings, tmp_path)
         _check_database(root, errors, settings, tmp_path, monkeypatch)
+        check_two_aircraft(root, settings)                      # Viper-Jet and Glider in the opened copy
     finally:
         root.destroy()
 
@@ -99,127 +92,27 @@ def _check_language_switch(root, settings):
     h["nb"].select(h["tabs"]["flight"])
     for code, database_status, scope, status_text, heading in [
             ("en", "Flight database  ·  3 flights, 1 aircraft", "3 of 3 flights of the database",
-             "3 flights analysed", "OVERVIEW"),
+             "Statistics  ·  3 of 3 flights", "OVERVIEW"),
             ("es", "Base de datos de vuelos  ·  3 vuelos, 1 aeronaves", "3 de 3 vuelos de la base de datos",
-             "3 vuelos analizados", "VISTA GENERAL"),
+             "Estadística  ·  3 de 3 vuelos", "VISTA GENERAL"),
             ("de", "Flug-Datenbank  ·  3 Flüge, 1 Flugzeuge", "3 von 3 Flügen der Datenbank",
-             "3 Flüge ausgewertet", "ÜBERSICHT")]:
+             "Statistik  ·  3 von 3 Flügen", "ÜBERSICHT")]:
         h["set_language"](code)
         root.update()
         h = root._akku                                    # widgets were rebuilt
         assert get_language() == code
         assert h["status"].get().startswith(database_status)                    # single-flight area: the database
         assert h["lb_scope"].get() == scope                                     # the logbook is filled at once
-        assert heading in h["summary"].get("1.0", "3.0").splitlines()[:2]   # after the battery hint, if any
+        assert heading in h["summary"].get("1.0", "4.0").splitlines()[:3]   # after the notice and battery hint
         assert h["flight_page"].current_key() == flight                       # same flight selected
         assert h["view_var"].get() == view
         assert h["nb"].index("current") == h["nb"].index(h["tabs"]["flight"])
         assert json.loads(settings.read_text(encoding="utf-8"))["language"] == code    # remembered
-        h["nb"].select(h["tabs"]["statistics"])                                 # statistics: result of the analysis
+        h["nb"].select(h["tabs"]["statistics"])                                 # statistics: flights of the filter
         root.update()
         assert status_text in h["status"].get()
         h["nb"].select(h["tabs"]["flight"])
         root.update()
-
-
-def _check_period_filter(root, errors):
-    """The period fields limit the analysis to the flights in that period; invalid input is rejected."""
-    h = root._akku
-    h["params"]["date_from"].set("20.09.2026")
-    h["run"]()
-    root.update()
-    h = root._akku
-    assert not errors, errors
-    assert "2 Flüge ausgewertet" in h["status"].get()
-    assert "Zeitraum-Filter: 20.09.2026 – …; 1 Dateien außerhalb nicht ausgewertet" in h["summary"].get("1.0", "end")
-    h["params"]["date_from"].set("kein Datum")
-    h["run"]()
-    root.update()
-    assert errors and "Datum" in errors[-1][1]
-    errors.clear()
-    h["params"]["date_from"].set("")
-
-
-def _check_two_models(root, errors, settings, tmp_path):
-    """A folder with two models: selector visible, status names the model, battery settings kept per model."""
-    import json
-    import shutil
-    h = root._akku
-    assert h["model_bar"].winfo_manager() == ""                       # one model so far: no selector
-    d = tmp_path / "two"
-    d.mkdir()
-    files = sorted(EXAMPLES.glob("*.csv"))
-    for f in files:
-        shutil.copy(f, d / f.name)
-    for f, stamp in zip(files[:2], ("2025-06-01-10-00-00", "2025-06-01-11-00-00")):
-        shutil.copy(f, d / f"Edge-540-{stamp}.csv")
-    h["params"]["nominal_mah"].set("9000")                          # settings before models existed ...
-    h["folder_var"].set(str(d))
-    h["run"]()
-    root.update()
-    h = root._akku
-    assert not errors, errors
-    assert h["model_bar"].winfo_manager() == "grid"
-    assert h["model_box"].get() == "Viper-Jet (3 Logs)"                   # newest model by default
-    assert "Modell Viper-Jet" in h["status"].get() and "3 Flüge ausgewertet" in h["status"].get()
-    assert "Modell: Viper-Jet – weitere Modelle im Ordner (getrennt ausgewertet): Edge-540" in \
-        h["summary"].get("1.0", "end")
-    assert h["params"]["nominal_mah"].get() == "9000"               # ... stay with the first model
-
-    h["model_box"].set("Edge-540 (2 Logs)")                               # switch the model
-    h["model_box"].event_generate("<<ComboboxSelected>>")
-    for _ in range(5):
-        root.update()
-    h = root._akku
-    assert "Modell Edge-540" in h["status"].get() and "2 Flüge ausgewertet" in h["status"].get()
-    assert h["params"]["nominal_mah"].get() == "0"                  # new model: default battery settings
-    _check_battery_hint(root, settings)
-    h["params"]["nominal_mah"].set("2200")
-    h["params"]["chem"].set("LiPo")
-    h["run"]()
-    root.update()
-    stored = json.loads(settings.read_text(encoding="utf-8"))
-    assert stored["models"]["Edge-540"]["nominal_mah"] == "2200"
-    assert "unset" not in stored["models"]["Edge-540"]
-    assert stored["models"]["Viper-Jet"]["nominal_mah"] == "9000"
-    assert stored["model"] == "Edge-540"
-
-    h["use_model"]("Viper-Jet")                                      # back: its own settings again
-    assert h["params"]["nominal_mah"].get() == "9000"
-    assert not h["settings"].battery_unset                           # set-up model: no hint
-    h["folder_var"].set(str(EXAMPLES))
-    h["run"]()
-    root.update()
-    h = root._akku
-    assert h["model_bar"].winfo_manager() == ""
-    assert "Modell" not in h["status"].get()                         # one model: status as before
-
-
-def _check_battery_hint(root, settings):
-    """A model without stored battery settings shows a hint (settings tab, status line, summary) until the user
-    chooses the cell chemistry or enters a capacity; the hint is remembered until then."""
-    import json
-    h = root._akku
-    hint = "Für das Modell Edge-540 sind noch keine Akku-Einstellungen gespeichert"
-    assert h["battery_hint"].winfo_manager() == "grid"
-    assert "Akku-Einstellungen für dieses Modell fehlen" in h["status"].get()
-    assert h["summary"].get("1.0", "2.0").startswith(hint)
-    stored = json.loads(settings.read_text(encoding="utf-8"))
-    assert stored["models"]["Edge-540"]["unset"] is True              # kept across a restart
-    assert "unset" not in stored["models"]["Viper-Jet"]
-
-    h["chem_box"].event_generate("<<ComboboxSelected>>")            # cell chemistry chosen (even if LiPo)
-    root.update()
-    assert h["battery_hint"].winfo_manager() == ""
-    assert "Akku-Einstellungen" not in h["status"].get() and "Modell Edge-540" in h["status"].get()
-    assert hint not in h["summary"].get("1.0", "end")
-
-    h["settings"].battery_unset = True                               # again, now with the capacity
-    h["battery_hint"].grid()
-    h["params"]["nominal_mah"].set("abc")                            # no number: hint stays
-    assert h["settings"].battery_unset
-    h["params"]["nominal_mah"].set("0")
-    assert h["settings"].battery_unset
 
 
 def _check_fullscreen(root):
