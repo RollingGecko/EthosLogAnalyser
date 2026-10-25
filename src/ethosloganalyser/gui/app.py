@@ -44,14 +44,16 @@ from ..report.text import flight_detail_lines
 # time after the program start before database flights are prepared in the background
 START_DELAY_MS = 700
 
-# areas of the window (tabs at the top) in their order; the statistics area holds the pages PAGE_KEYS
-AREA_KEYS = ("logbook", "flight", "statistics", "settings")
+# areas of the window (tabs at the top) in their order; the statistics area holds the pages PAGE_KEYS.
+# The single flight is no tab of its own: it is a page inside the logbook area (PAGE "flight"), opened by a
+# double-click in the flight list and left with the button "‹ Logbuch".
+AREA_KEYS = ("logbook", "statistics", "settings")
+FLIGHT_PAGE_KEY = "flight"
 
 
 def tab_title(key):
     """Title of an area or statistics page in the current language."""
-    titles = {"logbook": tr("Logbuch"), "flight": tr("Einzelflug"), "statistics": tr("Statistik"),
-              "settings": tr("Daten & Einstellungen")}
+    titles = {"logbook": tr("Logbuch"), "statistics": tr("Statistik"), "settings": tr("Daten & Einstellungen")}
     return titles[key] if key in titles else page_title(key)
 
 
@@ -115,6 +117,8 @@ class MainWindow:
         self.notebook = ttk.Notebook(self.content)
         self.notebook.pack(fill="both", expand=True, padx=6, pady=(4, 6))
         self.tabs = self._add_tabs(self.notebook, AREA_KEYS)
+        self.tabs[FLIGHT_PAGE_KEY] = ttk.Frame(self.tabs["logbook"])    # shown instead of the logbook, see select_page
+        self.flight_open = False
         statistics_header = ttk.Frame(self.tabs["statistics"], padding=(10, 8, 10, 0))
         statistics_header.pack(fill="x")
         self.statistics_notebook = ttk.Notebook(self.tabs["statistics"], style="Pages.TNotebook")
@@ -147,6 +151,7 @@ class MainWindow:
             self.flight_page.restore(snap["flight_page"])
             self.notebook.select(snap["tab"])
             self.statistics_notebook.select(snap["statistics_tab"])
+            self._show_flight_page(snap["flight_open"])
         else:
             self.select_page("logbook")
         self.root._akku = self.test_handles()
@@ -164,12 +169,32 @@ class MainWindow:
         return frames
 
     def select_page(self, key):
-        """Shows an area, or a statistics page inside the statistics area."""
+        """Shows an area, a statistics page inside the statistics area, or the single flight (inside the logbook
+        area, which stays highlighted in the tab bar)."""
         if key in PAGE_KEYS:
             self.notebook.select(self.tabs["statistics"])
             self.statistics_notebook.select(self.tabs[key])
+        elif key == FLIGHT_PAGE_KEY:
+            self.notebook.select(self.tabs["logbook"])
+            self._show_flight_page(True)
         else:
+            was_open = self.flight_open
             self.notebook.select(self.tabs[key])
+            if key == "logbook" and was_open:
+                self._show_flight_page(False)
+                self.flight_annotations.save_note()           # the area did not change, so no tab event does this
+                self.logbook_page.refresh()                   # notes and anomalies may have changed
+
+    def _show_flight_page(self, visible):
+        """Shows the single flight instead of the logbook page (or the logbook again); both stay built, so the
+        filter, the sorting and the selection of the logbook are kept."""
+        self.flight_open = visible
+        if visible:
+            self.logbook_page.frame.pack_forget()
+            self.tabs[FLIGHT_PAGE_KEY].pack(fill="both", expand=True)
+        else:
+            self.tabs[FLIGHT_PAGE_KEY].pack_forget()
+            self.logbook_page.frame.pack(fill="both", expand=True)
 
     def read_params(self):
         return self.settings.read_params(self.messagebox)
@@ -287,7 +312,7 @@ class MainWindow:
             self.messagebox.showinfo(tr("Einzelflug"), tr("Dieser Log ist nicht als Flug gezählt. Zum Ansehen im "
                                                           "Logbuch in der Spalte „Flug“ auf ☑ umschalten."))
             return
-        self.select_page("flight")
+        self.select_page(FLIGHT_PAGE_KEY)
 
     def switch_logbook_flight(self, log_id):
         """Switch in the flight list: decides by hand whether a log is a flight; every page reads it again."""
@@ -350,6 +375,7 @@ class MainWindow:
     def snapshot(self):
         """What the user is looking at - restored after a language switch."""
         return {"tab": self.notebook.index("current"), "statistics_tab": self.statistics_notebook.index("current"),
+                "flight_open": self.flight_open,
                 "flight_page": self.flight_page.snapshot()}
 
     def change_language(self, code):
@@ -404,6 +430,7 @@ class MainWindow:
             select_flight=flight_page.select_flight, redraw=flight_page.redraw, set_xlim=flight_page.set_xlim,
             goto_spike=flight_page.goto_spike, spike_var=flight_page.spike_var, details=flight_page.details,
             flight_builder=flight_page.builder, flight_canvas=flight_page.canvas,
+            flight_frame=self.tabs[FLIGHT_PAGE_KEY], is_flight_open=lambda: self.flight_open,
             lb_page=logbook_page, lb_model=self.logbook_model, filter_state=self.filter_state,
             lb_filter=logbook_page.filter_bar, lb_flights=logbook_page.flight_list,
             lb_totals=logbook_page.totals, lb_scope=logbook_page.scope, lb_missing=logbook_page.missing,

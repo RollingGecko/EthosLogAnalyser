@@ -58,6 +58,7 @@ def check_logbook(root, monkeypatch):
     _check_tables(root, h)
     _check_filter(root, h)
     _check_open_flight(root, h)
+    _check_single_flight_is_not_a_tab(root, h)
     _check_flight_switch(root, h, monkeypatch)
     _select_newest_flight(root, h)
 
@@ -156,12 +157,36 @@ def _check_open_flight(root, h):
     item = next(i for i in lst.get_children() if lst.item(i)["values"][0] == 2)
     h["lb_open_row"](item)                                           # what a double-click on the row does
     root.update()
-    assert nb.index("current") == nb.index(tabs["flight"])
+    assert h["is_flight_open"]() and nb.index("current") == nb.index(tabs["logbook"])     # "Logbuch" stays the tab
+    assert h["flight_frame"].winfo_ismapped() and not h["lb_page"].frame.winfo_ismapped()
     row = h["lb_model"].table.set_index("Flug").loc[2]
     assert h["flight_var"].get().startswith(f"{row['datum']:%d.%m.%Y %H:%M} | Viper-Jet")
     assert h["details"].get("1.0", "2.0").startswith("Flug 2 – ")
     assert h["status"].get().startswith("Flug-Datenbank  ·  3 Flüge")     # the database state on both areas
-    nb.select(tabs["logbook"])
+    h["select_page"]("logbook")
+    root.update()
+    assert not h["is_flight_open"]() and h["lb_page"].frame.winfo_ismapped()
+
+
+def _check_single_flight_is_not_a_tab(root, h):
+    """The tab bar has Logbook, Statistics and Data & settings only. The way back keeps the choices of the logbook
+    (filter, sorting) and a language switch keeps the single flight open."""
+    nb, lst = h["nb"], h["lb_list"]
+    assert [nb.tab(tab, "text") for tab in nb.tabs()] == ["Logbuch", "Statistik", "Daten & Einstellungen"]
+    choose(h["lb_filter"].month_box, 9)                               # September: two flights
+    h["lb_sort"]["sort"]("dauer_s")
+    root.update()
+    before = (list_column(lst, "number"), lst.heading("dauer_s")["text"], h["filter_state"].value)
+    h["lb_open_row"](lst.get_children()[0])
+    root.update()
+    assert h["is_flight_open"]()
+    back = next(w for w in widgets(h["flight_page"].selection_bar) if w.winfo_class() == "TButton")
+    back.invoke()                                                     # "‹ Logbuch"
+    root.update()
+    assert not h["is_flight_open"]() and nb.index("current") == nb.index(h["tabs"]["logbook"])
+    assert (list_column(lst, "number"), lst.heading("dauer_s")["text"], h["filter_state"].value) == before
+    h["lb_filter"].reset_button.invoke()
+    h["lb_sort"]["sort"]("number")
     root.update()
 
 

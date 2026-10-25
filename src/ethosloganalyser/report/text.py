@@ -70,7 +70,7 @@ def summary_lines(res, p):
 
     # ---------------- battery ----------------
     L.append(("h", tr("AKKU ÜBER ALLE FLÜGE")))
-    L.append(("info", tr("Details zu jedem einzelnen Flug (auch zum letzten) stehen im Reiter Einzelflug.")))
+    L.append(("info", tr("Details zu jedem einzelnen Flug (auch zum letzten) stehen im Einzelflug (Doppelklick auf den Flug im Logbuch).")))
     med = lambda c: float(valid[c].median()) if valid[c].notna().any() else np.nan
     L.append(("info", tr("Typischer Flug (Median): {dur}, {drawn} mAh entnommen, Ladezustand am Ende ≈ {soc} %, "
                          "Spitze {imax} A / {pmax} W, min. {umin} V/Zelle unter Last",

@@ -142,7 +142,7 @@ CATALOG = {
     "mindestens 3 Stromspitzen ohne Manöver, Start oder Landung. Servos auf Schwergängigkeit, Anschlag (Brummen in "
     "Endlage) und Defekte prüfen; Zeitpunkte siehe Einzelflug.":
         "al menos 3 picos de corriente sin maniobra, despegue ni aterrizaje. Compruebe si los servos van duros, "
-        "topan (zumbido en el extremo) o están defectuosos; los instantes, en la pestaña Vuelo individual.",
+        "topan (zumbido en el extremo) o están defectuosos; los instantes, en el vuelo individual.",
 
     # ---------------- summary report ----------------
     "Keine auswertbaren Flüge gefunden.": "No se encontraron vuelos analizables.",
@@ -153,8 +153,8 @@ CATALOG = {
     "Gesamt entnommen: {ah:.1f} Ah": "Total consumido: {ah:.1f} Ah",
     "  (≈ {cycles:.1f} Vollzyklen)": "  (≈ {cycles:.1f} ciclos completos)",
     "AKKU ÜBER ALLE FLÜGE": "BATERÍA EN TODOS LOS VUELOS",
-    "Details zu jedem einzelnen Flug (auch zum letzten) stehen im Reiter Einzelflug.":
-        "Los detalles de cada vuelo (también del último) están en la pestaña Vuelo individual.",
+    "Details zu jedem einzelnen Flug (auch zum letzten) stehen im Einzelflug (Doppelklick auf den Flug im Logbuch).":
+        "Los detalles de cada vuelo (también del último) están en el vuelo individual (doble clic en el vuelo del libro de vuelo).",
     "Typischer Flug (Median): {dur}, {drawn} mAh entnommen, Ladezustand am Ende ≈ {soc} %, Spitze {imax} A / "
     "{pmax} W, min. {umin} V/Zelle unter Last":
         "Vuelo típico (mediana): {dur}, {drawn} mAh consumidos, estado de carga al final ≈ {soc} %, pico {imax} A / "
@@ -405,8 +405,8 @@ CATALOG = {
     "Mittelwert": "Media",
     "kein Empfängerstrom im Log": "sin corriente del receptor en el log",
     "Empfängerstrom-Spitzen je Flug nach Anlass": "Picos de corriente del receptor por vuelo según causa",
-    "Schwarz = ohne erkennbaren Anlass: Servos prüfen. Details im Reiter Einzelflug.":
-        "Negro = sin causa aparente: compruebe los servos. Detalles en la pestaña Vuelo individual.",
+    "Schwarz = ohne erkennbaren Anlass: Servos prüfen. Details im Einzelflug (Doppelklick im Logbuch).":
+        "Negro = sin causa aparente: compruebe los servos. Detalles en el vuelo individual (doble clic en el libro de vuelo).",
     "Senderakku min. [V]": "Batería de la emisora mín. [V]",
     "Tiefster Wert des Senderakkus im Flug.": "Valor más bajo de la batería de la emisora en vuelo.",
 

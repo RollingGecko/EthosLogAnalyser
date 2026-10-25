@@ -140,7 +140,7 @@ CATALOG = {
     "mindestens 3 Stromspitzen ohne Manöver, Start oder Landung. Servos auf Schwergängigkeit, Anschlag (Brummen in "
     "Endlage) und Defekte prüfen; Zeitpunkte siehe Einzelflug.":
         "at least 3 current spikes without manoeuvre, take-off or landing. Check servos for binding, end stops "
-        "(buzzing at end position) and defects; see the single flight tab for the times.",
+        "(buzzing at end position) and defects; see the single flight for the times.",
 
     # ---------------- summary report ----------------
     "Keine auswertbaren Flüge gefunden.": "No flights that could be analysed were found.",
@@ -151,8 +151,8 @@ CATALOG = {
     "Gesamt entnommen: {ah:.1f} Ah": "Total drawn: {ah:.1f} Ah",
     "  (≈ {cycles:.1f} Vollzyklen)": "  (≈ {cycles:.1f} full cycles)",
     "AKKU ÜBER ALLE FLÜGE": "BATTERY ACROSS ALL FLIGHTS",
-    "Details zu jedem einzelnen Flug (auch zum letzten) stehen im Reiter Einzelflug.":
-        "Details of each flight (including the last one) are in the single flight tab.",
+    "Details zu jedem einzelnen Flug (auch zum letzten) stehen im Einzelflug (Doppelklick auf den Flug im Logbuch).":
+        "Details of each flight (including the last one) are in the single flight (double-click the flight in the logbook).",
     "Typischer Flug (Median): {dur}, {drawn} mAh entnommen, Ladezustand am Ende ≈ {soc} %, Spitze {imax} A / "
     "{pmax} W, min. {umin} V/Zelle unter Last":
         "Typical flight (median): {dur}, {drawn} mAh drawn, state of charge at the end ≈ {soc} %, peak {imax} A / "
@@ -392,8 +392,8 @@ CATALOG = {
     "Mittelwert": "Mean",
     "kein Empfängerstrom im Log": "no receiver current in the log",
     "Empfängerstrom-Spitzen je Flug nach Anlass": "Receiver current spikes per flight by cause",
-    "Schwarz = ohne erkennbaren Anlass: Servos prüfen. Details im Reiter Einzelflug.":
-        "Black = no apparent cause: check servos. Details in the single flight tab.",
+    "Schwarz = ohne erkennbaren Anlass: Servos prüfen. Details im Einzelflug (Doppelklick im Logbuch).":
+        "Black = no apparent cause: check servos. Details in the single flight (double-click in the logbook).",
     "Senderakku min. [V]": "Transmitter battery min. [V]",
     "Tiefster Wert des Senderakkus im Flug.": "Lowest value of the transmitter battery in flight.",
 
