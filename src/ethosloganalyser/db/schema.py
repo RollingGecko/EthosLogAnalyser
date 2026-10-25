@@ -8,7 +8,7 @@ The database is one SQLite file. It is recognised by ``PRAGMA application_id`` a
 # "ELA1" - marks an SQLite file as an EthosLogAnalyser flight database
 APPLICATION_ID = 0x454C4131
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 # One statement per entry, executed in this order when a new database is created.
 CREATE_STATEMENTS = (
@@ -79,23 +79,75 @@ CREATE_STATEMENTS = (
     """,
 )
 
+# Schema version 2 (notes and anomalies, WP-18). Used for new databases and as the migration from version 1.
+VERSION_2_STATEMENTS = (
+    # values worked out from the stored time series of every log (also for logs without battery data), as JSON;
+    # NULL = not worked out yet (databases from schema version 1 are filled in the background)
+    "ALTER TABLE flight ADD COLUMN signal_metrics TEXT",
+    # the user's free-text note on a flight (one per log; no row = no note)
+    """
+    CREATE TABLE flight_note (
+        log_id     INTEGER PRIMARY KEY REFERENCES log_file(id) ON DELETE CASCADE,
+        text       TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    )
+    """,
+    # anomalies of a flight: found by a rule (origin "auto", replaced on every recalculation) or entered by the
+    # user (origin "manual", never touched by a recalculation). message: for "auto" a language-neutral message
+    # (JSON: msgid and values, translated when shown), for "manual" the user's text. value: the value the rule
+    # judged (used to tell whether it changed clearly since it was acknowledged).
+    """
+    CREATE TABLE anomaly (
+        id           INTEGER PRIMARY KEY,
+        log_id       INTEGER NOT NULL REFERENCES log_file(id) ON DELETE CASCADE,
+        rule         TEXT NOT NULL,
+        origin       TEXT NOT NULL,
+        severity     TEXT NOT NULL,
+        message      TEXT NOT NULL,
+        value        REAL,
+        acknowledged INTEGER NOT NULL DEFAULT 0,
+        created_at   TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX anomaly_by_log ON anomaly (log_id)",
+    # acknowledgements of automatic anomalies, kept apart so they survive every recalculation (key: flight + rule)
+    """
+    CREATE TABLE anomaly_acknowledgement (
+        log_id          INTEGER NOT NULL REFERENCES log_file(id) ON DELETE CASCADE,
+        rule            TEXT NOT NULL,
+        value           REAL,
+        acknowledged_at TEXT NOT NULL,
+        PRIMARY KEY (log_id, rule)
+    )
+    """,
+)
+
 # MIGRATIONS[n] upgrades a database from schema version n to n + 1 (list of SQL statements).
-MIGRATIONS = {}
+MIGRATIONS = {1: VERSION_2_STATEMENTS}
 
 
 def create_schema(connection):
     """Creates all tables in an empty database and marks it as a flight database of the current version."""
     with connection:
-        for statement in CREATE_STATEMENTS:
+        for statement in CREATE_STATEMENTS + VERSION_2_STATEMENTS:
             connection.execute(statement)
         connection.execute(f"PRAGMA application_id = {APPLICATION_ID}")
         connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
 
 def migrate(connection, from_version):
-    """Brings a database of an older schema version up to SCHEMA_VERSION."""
-    with connection:
+    """Brings a database of an older schema version up to SCHEMA_VERSION.
+
+    All steps run in one explicit transaction (the sqlite3 module does not start one for CREATE or ALTER on its
+    own): if a step fails, the file keeps its old version and content.
+    """
+    connection.execute("BEGIN")
+    try:
         for version in range(from_version, SCHEMA_VERSION):
             for statement in MIGRATIONS[version]:
                 connection.execute(statement)
         connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+    except Exception:
+        connection.rollback()
+        raise
+    connection.commit()

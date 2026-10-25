@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Section "Database" on the page Data & settings: new, open, save as, empty, import with report.
+"""Section "Database" on the page Data & settings: new, open, save as, empty, import with report
+(gui/import_report.py).
 
 DatabaseController owns the open flight database and runs imports in the background; it lives as long as
 the window. DatabasePanel draws the section and is created again when the window content is rebuilt
@@ -12,21 +13,11 @@ import threading
 
 from ..config import Params, default_database_path
 from ..db import DatabaseError, FlightDatabase, import_paths
-from ..db import importer
 from ..db.reanalysis import outdated_log_ids, reanalyse_outdated
-from ..i18n import N_, tr
+from ..i18n import tr
+from .import_report import report_summary, show_import_report
 
 POLL_MS = 100
-
-OUTCOME_LABELS = {
-    importer.NEW: N_("neu"),
-    importer.DUPLICATE: N_("doppelt"),
-    importer.SUSPICIOUS: N_("mögliches Duplikat"),
-    importer.UNREADABLE: N_("nicht lesbar"),
-}
-
-# order of the import report: what needs attention first
-OUTCOME_ORDER = (importer.UNREADABLE, importer.SUSPICIOUS, importer.DUPLICATE, importer.NEW)
 
 
 def format_size(size_bytes):
@@ -34,38 +25,6 @@ def format_size(size_bytes):
     if size_bytes < 1024 * 1024:
         return tr("{size} kB", size=f"{size_bytes / 1024:.0f}")
     return tr("{size} MB", size=f"{size_bytes / (1024 * 1024):.1f}")
-
-
-def report_summary(report):
-    """One line about an import: new (thereof flights), duplicates, possible duplicates, unreadable."""
-    text = tr("{new} neu (davon {flights} Flüge), {duplicate} doppelt, {suspicious} mögliche Duplikate, "
-              "{unreadable} nicht lesbar",
-              new=report.count(importer.NEW) + report.count(importer.SUSPICIOUS), flights=report.flight_count,
-              duplicate=report.count(importer.DUPLICATE), suspicious=report.count(importer.SUSPICIOUS),
-              unreadable=report.count(importer.UNREADABLE))
-    if report.cancelled:
-        text += " – " + tr("abgebrochen")
-    return text
-
-
-def entry_detail(entry):
-    """What the import report says about one file."""
-    if entry.outcome == importer.DUPLICATE:
-        return tr("gleicher Inhalt wie {file} (übersprungen)", file=entry.other_file)
-    if entry.outcome == importer.SUSPICIOUS:
-        return tr("gleiches Modell und gleiche Startzeit wie {file} (importiert, markiert)", file=entry.other_file)
-    if entry.outcome == importer.UNREADABLE:
-        return str(entry.reason)
-    return tr("Flug") if entry.is_flight else tr("kein Flug")
-
-
-def report_rows(report):
-    """(file name, outcome label, detail) of every file, problems first."""
-    rows = []
-    for outcome in OUTCOME_ORDER:
-        for entry in report.with_outcome(outcome):
-            rows.append((entry.file_name, tr(OUTCOME_LABELS[outcome]), entry_detail(entry)))
-    return rows
 
 
 class BackgroundTask:
@@ -134,12 +93,19 @@ class DatabaseController:
         self.messagebox = messagebox
         self.database = None
         self.task = None
+        self.task_changes_flights = False            # False: the running task changes only notes or anomalies
         self.progress = None                         # (done, total, text) while a background task runs
         self.last_report = None
         self.listeners = []
         # raised whenever the content may have changed (other database, import, recalculation, emptied), so
         # views built from the database know when to read it again
         self.generation = 0
+        # raised when only notes or anomalies changed: the logbook updates its symbols, the prepared single flights
+        # stay valid (they depend on generation only)
+        self.annotations_generation = 0
+        # called after the flights themselves may have changed (opened, emptied, imported, recalculated, switched
+        # between flight and no flight) - e.g. to judge the anomalies again
+        self.content_hooks = []
 
     # ---------------- state ----------------
     @property
@@ -150,6 +116,22 @@ class DatabaseController:
     def busy(self):
         """True from the start of a background task until its result has been taken over."""
         return self.task is not None
+
+    @property
+    def busy_with_flights(self):
+        """True while an import or recalculation of flights runs. A recalculation of the anomalies does not count:
+        it is stopped when the user starts something else (and done again afterwards)."""
+        return self.task is not None and self.task_changes_flights
+
+    def _stop_annotation_task(self):
+        """Stops a running recalculation of the anomalies, so the user can import, open or empty at once. It is
+        requested again (content hooks) and runs after the new work."""
+        if self.task is None or self.task_changes_flights:
+            return
+        self.task.cancel_and_wait()
+        self.task = None
+        self.progress = None
+        self._content_changed()
 
     def stats(self):
         return self.database.stats() if self.database is not None else None
@@ -166,14 +148,20 @@ class DatabaseController:
         for listener in list(self.listeners):
             listener()
 
+    def _content_changed(self):
+        for hook in list(self.content_hooks):
+            hook()
+
     # ---------------- open, new, save as, empty ----------------
     def _use(self, database):
+        self._stop_annotation_task()
         if self.database is not None:
             self.database.close()
         self.database = database
         self.generation += 1
         self._changed()
         self._reanalyse_if_needed()
+        self._content_changed()
 
     def open_path(self, path):
         """Opens (or creates) the database at path. Shows an error and returns False if that fails."""
@@ -212,14 +200,23 @@ class DatabaseController:
 
     def clear(self):
         """Deletes all logs and flights from the open database (the log files themselves stay untouched)."""
+        self._stop_annotation_task()
         self.database.clear()
         self.generation += 1
+        self.annotations_generation += 1
         self.last_report = None
         self._changed()
+        self._content_changed()
 
     def flights_changed(self):
         """Tells the views that flights were changed in place (e.g. a log switched between flight and no flight)."""
         self.generation += 1
+        self._changed()
+        self._content_changed()
+
+    def annotations_changed(self):
+        """Tells the views that notes or anomalies changed (the flights themselves did not)."""
+        self.annotations_generation += 1
         self._changed()
 
     def start(self, saved, offer_import):
@@ -241,30 +238,39 @@ class DatabaseController:
                 offer_import(folder)
 
     # ---------------- background work ----------------
-    def _run_in_background(self, work, on_finished):
+    def _run_in_background(self, work, on_finished, changes_flights=True):
+        """Runs work in a background task. changes_flights=False: the work changes only notes or anomalies."""
         def on_progress(done, total, text=""):
             self.progress = (done, total, text)
             self._changed()
 
         def on_done(kind, value):
+            if self.task is not task:
+                return                              # a stopped recalculation of the anomalies; nothing to take over
             self.task = None
             self.progress = None
             if kind == "error":
                 self.messagebox.showerror(tr("Datenbank"), tr("Fehler bei der Verarbeitung:\n{error}", error=value))
             else:
                 on_finished(value)
-            self.generation += 1
+            if changes_flights:
+                self.generation += 1
+            self.annotations_generation += 1
             self._changed()
+            if changes_flights:
+                self._content_changed()
 
-        self.task = BackgroundTask(self.root, self.path, work, on_progress, on_done)
-        self.progress = (0, 0, "")
-        self.task.start()
+        task = BackgroundTask(self.root, self.path, work, on_progress, on_done)
+        self.task, self.task_changes_flights = task, changes_flights
+        self.progress = (0, 0, "") if changes_flights else None     # a quick recalculation shows no bar
+        task.start()
         self._changed()
 
     def start_import(self, paths, params, on_report=None):
         """Imports files and folders in the background; on_report(report) is called when it is finished."""
-        if self.busy or self.database is None or not paths:
+        if self.busy_with_flights or self.database is None or not paths:
             return False
+        self._stop_annotation_task()
 
         def work(database, progress, should_cancel):
             return import_paths(database, paths, params, progress=progress, should_cancel=should_cancel)
@@ -275,6 +281,14 @@ class DatabaseController:
                 on_report(report)
 
         self._run_in_background(work, finished)
+        return True
+
+    def run_annotation_task(self, work, on_finished=None):
+        """Runs work(database, progress, should_cancel) in the background; it may change only notes and anomalies.
+        Returns False if another task is running or no database is open."""
+        if self.busy or self.database is None:
+            return False
+        self._run_in_background(work, on_finished or (lambda _result: None), changes_flights=False)
         return True
 
     def _reanalyse_if_needed(self):
@@ -292,36 +306,6 @@ class DatabaseController:
         if self.database is not None:
             self.database.close()
             self.database = None
-
-
-def show_import_report(root, report):
-    """Window with the import report: summary and every file with its outcome."""
-    import tkinter as tk
-    from tkinter import font as tkfont, ttk
-
-    window = tk.Toplevel(root)
-    window.title(tr("Import-Bericht"))
-    window.geometry("900x480")
-    window.transient(root)
-    frame = ttk.Frame(window, padding=10)
-    frame.pack(fill="both", expand=True)
-    family = tkfont.nametofont("TkDefaultFont").actual("family")
-    ttk.Label(frame, text=report_summary(report), font=(family, 10, "bold")).pack(anchor="w", pady=(0, 8))
-    table = ttk.Frame(frame)
-    table.pack(fill="both", expand=True)
-    tree = ttk.Treeview(table, columns=("file", "outcome", "detail"), show="headings")
-    for column, title, width in (("file", tr("Datei"), 300), ("outcome", tr("Ergebnis"), 140),
-                                 ("detail", tr("Hinweis"), 420)):
-        tree.heading(column, text=title)
-        tree.column(column, width=width, stretch=column == "detail")
-    for row in report_rows(report):
-        tree.insert("", "end", values=row)
-    scrollbar = ttk.Scrollbar(table, orient="vertical", command=tree.yview)
-    tree.configure(yscrollcommand=scrollbar.set)
-    scrollbar.pack(side="right", fill="y")
-    tree.pack(side="left", fill="both", expand=True)
-    ttk.Button(frame, text=tr("Schließen"), command=window.destroy).pack(anchor="e", pady=(8, 0))
-    return dict(window=window, tree=tree)
 
 
 class DatabasePanel:
@@ -434,9 +418,10 @@ class DatabasePanel:
             "{logs} Logs: {flights} Flüge, {other} ohne Flug · Flugzeuge: {aircraft} · {size}",
             logs=stats.log_count, flights=stats.flight_count, other=stats.non_flight_count,
             aircraft=stats.aircraft_count, size=format_size(stats.size_bytes)))
-        state = "disabled" if controller.busy or controller.database is None else "normal"
+        busy = controller.busy_with_flights
+        state = "disabled" if busy or controller.database is None else "normal"
         for key, button in self.actions.items():
-            button.configure(state="normal" if key in ("new", "open") and not controller.busy else state)
+            button.configure(state="normal" if key in ("new", "open") and not busy else state)
         if controller.progress is not None:
             done, total, text = controller.progress
             self.progress_bar.grid()

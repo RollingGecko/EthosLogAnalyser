@@ -21,7 +21,7 @@ import json
 import numpy as np
 import pandas as pd
 
-from ..analysis.quality import BATTERY_INVALID, detect_data_errors
+from ..analysis.quality import BATTERY_INVALID, cell_count, detect_data_errors
 from ..config import CHEM
 
 # values of the stored per-flight metrics that the logbook needs
@@ -30,9 +30,6 @@ METRIC_KEYS = ("entnommen_mAh", "I_mittel_A", "I_max_A", "U_min_V", "U_ruhe_star
 # columns of the logbook flight table, in this order
 TABLE_COLUMNS = ["log_id", "aircraft", "file_name", "datum", "Flug", "dauer_s", "entnommen_mAh", "Akku_gueltig",
                  "is_flight", "auto_flight", "possible_duplicate"]
-
-# the same margin as the cell count estimate of the folder analysis (analysis/fleet.py)
-CELL_ESTIMATE_MARGIN_V = 0.05
 
 
 def metric_columns(metrics_texts):
@@ -63,11 +60,8 @@ def battery_valid(metrics, params):
     or - if none is configured - estimated from the highest start voltage of the given flights.
     """
     chemistry = CHEM[params.chem]
-    cells = params.cells
-    if cells <= 0:
-        start_voltage = metrics["U_ruhe_start_V"].fillna(metrics["U_start_V"])
-        highest = start_voltage.max()
-        cells = int(np.ceil(highest / (chemistry["full"] + CELL_ESTIMATE_MARGIN_V))) if np.isfinite(highest) else 0
+    highest_start_voltage = metrics["U_ruhe_start_V"].fillna(metrics["U_start_V"]).max()
+    cells = cell_count(params.cells, highest_start_voltage, chemistry)
     lowest_cell_voltage = (metrics["U_min_V"] / cells).round(3) if cells > 0 else np.nan
     flight_table = pd.DataFrame({"I_mittel_A": metrics["I_mittel_A"], "I_max_A": metrics["I_max_A"],
                                  "U_min_Zelle_V": lowest_cell_voltage})

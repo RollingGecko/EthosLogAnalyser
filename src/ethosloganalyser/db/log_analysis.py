@@ -19,6 +19,7 @@ from ..io.ethos_log import _time_seconds, _to_num, read_log_bytes
 from . import sensor_roles
 from .flight_detection import FlightDetection, detect_flight
 from .series_codec import encode_series
+from .signal_metrics import signal_metrics
 
 # Raise when the per-flight metrics change (analysis/flight.py, sensor roles, flight detection): flights stored
 # with an older version are then calculated again from their raw log in the background (reanalysis.py).
@@ -57,6 +58,7 @@ class AnalysedLog:
     skip_reason: Optional[Msg]
     analysis_params: Dict
     sensors: List[SensorSeries] = field(default_factory=list)
+    signal_metrics: Dict = field(default_factory=dict)     # see signal_metrics.py
 
 
 def _plain_value(value):
@@ -152,4 +154,5 @@ def analyse_log_content(content, file_name, start_time, params):
     log_duration = float(finite_time.max() - finite_time.min()) if len(finite_time) else 0.0
     return AnalysedLog(start_time=start_time, log_duration_s=log_duration, detection=detection,
                        metrics=metrics, skip_reason=reason, analysis_params=analysis_params_of(params),
-                       sensors=_sensor_series(frame, time_s, roles))
+                       sensors=_sensor_series(frame, time_s, roles),
+                       signal_metrics=signal_metrics(time_s, frame, roles))

@@ -17,6 +17,7 @@ from ..utils import fmt_duration
 from .flight_filter import FilterBar
 from .logbook_flight_list import FlightList
 from .logbook_group_tree import GroupTree
+from .logbook_model import ANNOTATIONS_CHANGED
 
 TOTAL_KEYS = ("flights", "days", "total", "longest", "shortest", "mah")
 
@@ -69,6 +70,10 @@ class LogbookPage:
         self.non_flights_button = ttk.Checkbutton(row, text=tr("Nicht-Flüge anzeigen"), variable=self.show_non_flights,
                                                   command=self._non_flights_toggled)
         self.non_flights_button.pack(side="right")
+        self.only_annotated = tk.BooleanVar(value=self.model.only_annotated)
+        self.annotated_button = ttk.Checkbutton(row, text=tr("nur mit Notiz oder Auffälligkeit"),
+                                                variable=self.only_annotated, command=self._annotated_toggled)
+        self.annotated_button.pack(side="right", padx=(0, 12))
 
     def _build_totals(self, parent, family):
         import tkinter as tk
@@ -126,7 +131,8 @@ class LogbookPage:
         self.group_tree = GroupTree(bottom, self.model.group_by, self._group_by_changed, self._group_selected)
         self.group_tree.frame.pack(side="left", fill="y", padx=(0, 6))
         self.flight_list = FlightList(bottom, lambda log_id: self.on_open_flight and self.on_open_flight(log_id),
-                                      lambda log_id: self.on_switch_flight and self.on_switch_flight(log_id))
+                                      lambda log_id: self.on_switch_flight and self.on_switch_flight(log_id),
+                                      hint_lines=self.model.hint_lines)
         self.flight_list.frame.pack(side="left", fill="both", expand=True)
         self.sorter = self.flight_list.sorter
         self.open_row = self.flight_list.open_row
@@ -137,8 +143,13 @@ class LogbookPage:
 
     # ---------------- reading the database, showing ----------------
     def refresh(self):
-        """Reads the flights from the database again if they or the battery settings changed."""
-        if self.model.refresh():
+        """Reads the flights from the database again if they or the battery settings changed. If only notes or
+        anomalies changed, only the flight list is shown again (quick: no totals, no chart)."""
+        changed = self.model.refresh()
+        if changed == ANNOTATIONS_CHANGED:
+            if not self._show_pending and self.state["view"] is not None:
+                self.flight_list.show(self.model.listed(self.filter_state.value))
+        elif changed:
             self.filter_state.set_choices(self.model.aircraft_names(), self.model.years())
             self.schedule_show()
 
@@ -222,6 +233,10 @@ class LogbookPage:
     # ---------------- choices on the page ----------------
     def _non_flights_toggled(self):
         self.model.show_non_flights = bool(self.show_non_flights.get())
+        self.flight_list.show(self.model.listed(self.filter_state.value))
+
+    def _annotated_toggled(self):
+        self.model.only_annotated = bool(self.only_annotated.get())
         self.flight_list.show(self.model.listed(self.filter_state.value))
 
     def _group_by_changed(self, group_by):

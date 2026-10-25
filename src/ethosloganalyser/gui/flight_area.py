@@ -17,9 +17,10 @@ PREPARING_PROGRESS = N_("Vorbereitet: {done} von {total} Flügen")
 class DatabaseFlightArea:
     """Connects a FlightPage with the FlightCache: flight list, views per flight, preparing in the background."""
 
-    def __init__(self, page, cache):
+    def __init__(self, page, cache, annotations_panel=None):
         self.page = page
         self.cache = cache
+        self.annotations_panel = annotations_panel   # FlightAnnotationsPanel: note and anomalies of the flight
         self.waiting_for = None           # aircraft whose preparation the page is waiting for
         page.before_select = self._before_select
         page.message_for = self._message_for
@@ -34,6 +35,8 @@ class DatabaseFlightArea:
         choices = [(flight_choice_label(flight, model_label(flight.aircraft)), flight.log_id)
                    for flight in self.cache.flights]
         self.page.set_choices(choices, self._resolve, selected_key=selected, empty_message=tr(EMPTY_DATABASE))
+        if not choices and self.annotations_panel is not None:
+            self.annotations_panel.show_flight(None)
         if changed:
             self.cache.prepare_newest()
 
@@ -66,6 +69,8 @@ class DatabaseFlightArea:
 
     def _before_select(self, log_id):
         self.waiting_for = None
+        if self.annotations_panel is not None and self.annotations_panel.log_id != log_id:
+            self.annotations_panel.show_flight(log_id)
         flight = self.cache.flight(log_id)
         views = available_views(self.cache.roles(log_id)) if flight is not None and flight.has_metrics else []
         self.page.show_views(views)

@@ -10,6 +10,7 @@ import sys
 import pytest
 
 from helpers import EXAMPLES
+from annotation_checks import check_annotations
 from logbook_checks import check_empty_logbook, check_logbook
 
 # In CI (environment variable REQUIRE_GUI_TEST) the test must run - skipping it there would be an error.
@@ -57,6 +58,7 @@ def test_gui_analyses_example_logs(monkeypatch, tmp_path):
         h["db_panel"].report["window"].destroy()
         _wait_for_flight(root)
         check_logbook(root, monkeypatch)                        # filled without any folder analysis
+        check_annotations(root)                                 # notes and anomalies
         _wait_for_flight(root)
         h["folder_var"].set(str(EXAMPLES))                      # statistics: folder analysis
         h["run"]()
