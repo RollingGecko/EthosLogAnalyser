@@ -91,7 +91,7 @@ def _check_language_switch(root, settings):
 
     h = root._akku
     flight, view = h["flight_page"].current_key(), h["view_var"].get()
-    h["nb"].select(h["tabs"]["flight"])
+    h["select_page"]("flight")
     for code, database_status, scope, status_text, heading in [
             ("en", "Flight database  ·  3 flights, 1 aircraft", "3 of 3 flights of the database",
              "Statistics  ·  3 of 3 flights", "OVERVIEW"),
@@ -108,12 +108,12 @@ def _check_language_switch(root, settings):
         assert heading in h["summary"].get("1.0", "4.0").splitlines()[:3]   # after the notice and battery hint
         assert h["flight_page"].current_key() == flight                       # same flight selected
         assert h["view_var"].get() == view
-        assert h["nb"].index("current") == h["nb"].index(h["tabs"]["flight"])
+        assert h["is_flight_open"]() and h["nb"].index("current") == h["nb"].index(h["tabs"]["logbook"])   # stays open
         assert json.loads(settings.read_text(encoding="utf-8"))["language"] == code    # remembered
         h["nb"].select(h["tabs"]["statistics"])                                 # statistics: flights of the filter
         root.update()
         assert status_text in h["status"].get()
-        h["nb"].select(h["tabs"]["flight"])
+        h["select_page"]("flight")
         root.update()
 
 

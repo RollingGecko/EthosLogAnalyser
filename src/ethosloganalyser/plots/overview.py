@@ -231,7 +231,7 @@ def figure_funk(res, p):
         a.text(0.5, 0.5, tr("kein Empfängerstrom im Log"), transform=a.transAxes, ha="center", color="grey")
     a.set_title(tr("Empfängerstrom-Spitzen je Flug nach Anlass"), loc="left")
     flight_hover(a, df)
-    _note(a, tr("Schwarz = ohne erkennbaren Anlass: Servos prüfen. Details im Reiter Einzelflug."))
+    _note(a, tr("Schwarz = ohne erkennbaren Anlass: Servos prüfen. Details im Einzelflug (Doppelklick im Logbuch)."))
     a.set_xlabel(tr("Flug Nr."), fontsize=8)
     _plot_trend(ax[2][1], df, "TxBat_min_V", "tab:purple", tr("Senderakku min. [V]"), trend=False,
                 note=tr("Tiefster Wert des Senderakkus im Flug."))

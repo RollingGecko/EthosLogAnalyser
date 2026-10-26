@@ -6,7 +6,7 @@ Desktop app (Python/Tkinter) for analysing **FrSky Ethos flight logs** (CSV), fo
 
 All logs are imported into one **flight database** (a file; duplicates are recognised, the log files stay
 untouched). From it the app shows a **logbook** (totals, tables per aircraft, year and month, flight list with notes and anomaly
-hints), every **single flight** and the **statistics** of one aircraft – with one filter (aircraft, year, month,
+hints), every **single flight** (opened from the logbook) and the **statistics** of one aircraft – with one filter (aircraft, year, month,
 date range) shared by logbook and statistics.
 
 ## What it analyses

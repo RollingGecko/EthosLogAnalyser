@@ -34,12 +34,11 @@ The result is `dist\EthosLogAnalyser.exe`. GitHub also builds a test EXE on ever
 
 ## Window layout
 
-The window has four areas, shown as tabs at the top:
+The window has three areas, shown as tabs at the top:
 
 | Area | Contents |
 |---|---|
-| Logbook (Logbuch) | start page: totals, tables per aircraft, year and month, list of flights (see *Logbook* below) |
-| Single flight (Einzelflug) | one flight from the flight database: time series in four views and the detail report |
+| Logbook (Logbuch) | start page: totals, tables per aircraft, year and month, list of flights (see *Logbook* below); a double-click on a flight opens the **single flight** here (see *Single-flight view*) |
 | Statistics (Statistik) | the filter and pages over the filtered flights of one aircraft: Summary, Battery, Load & flight profile, Drive, Radio & onboard power, Table (smaller tabs inside the area); see *Statistics* below |
 | Data & settings (Daten & Einstellungen) | flight database, battery settings per aircraft, analysis settings, anomaly rules, language, export |
 
@@ -111,7 +110,7 @@ The language applies to the whole user interface, the text reports, the charts a
 | Statistics → Drive (Antrieb) | power vs. RPM curve, power demand at reference RPM, current sensor vs. ESC counter |
 | Statistics → Radio & onboard power (Funk & Bordnetz) | RSSI, VFR, receiver battery, receiver current and its spikes, transmitter battery |
 | Statistics → Table (Tabelle) | all metrics per flight |
-| Single flight (Einzelflug) | time series in four views, detail report compared with the median of all flights of the aircraft |
+| Logbook → single flight (Einzelflug) | time series in four views, detail report compared with the median of all flights of the aircraft; opened by a double-click in the logbook |
 | Logbook (Logbuch) | flights, flying days, total log duration, longest/shortest flight, total drawn charge; tables per aircraft, year and month; filter; sortable list of all flights, with a switch to correct whether a log is a flight |
 
 ### Working with charts
@@ -126,7 +125,7 @@ The same functions are available in every chart (built in one place, `plots/hove
 
 ### Single-flight view
 
-The area *Single flight* shows the flights of the flight database:
+The single flight has no tab of its own: it is opened from the logbook (a **double-click** on a row of the flight list) and replaces the logbook page; the *Logbook* tab stays highlighted. **‹ Logbook** (top left) returns to the logbook with its filter, sorting and list as they were. A log that is not counted as a flight cannot be opened (switch it to ☑ in the column *Flug* first). If you change the language or the database while a flight is open, it stays open. The page shows the flights of the flight database:
 
 - **Flight** (Flug): every log marked as a flight, oldest first, as *date time | aircraft | duration | drawn mAh*. The newest flight is selected at the start; *‹ back* / *next ›* step through the list. **‹ Logbook** goes back to the logbook.
 - The charts and details compare the flight with **all flights of the same aircraft** in the database, with the battery settings of that aircraft (*Data & settings → Battery*, kept per model). The filter of logbook and statistics does not apply here.
