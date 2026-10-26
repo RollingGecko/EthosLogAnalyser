@@ -151,9 +151,10 @@ button to start an analysis:
 
 - The **filter bar** at the top is the same filter as in the logbook (aircraft, year, month, from / to): a change
   here is seen in the logbook at once and the other way round. Logs that are not flights never count.
-- **One aircraft at a time**: if the filtered flights belong to several aircraft, the statistics say “Please choose
-  an aircraft in the filter” instead of mixing them. With only one aircraft in the filtered flights nothing needs
-  to be chosen.
+- **One aircraft at a time**: if the filtered flights belong to several aircraft – because several are ticked in
+  the filter or because it is set to *all* – the statistics say “Please choose an aircraft in the filter” instead of
+  mixing them (the logbook does show several aircraft). With only one aircraft in the filtered flights nothing
+  needs to be chosen. With nothing ticked there are no flights and the statistics say that no flight matches.
 - The **Summary** starts with the notice that this area is still experimental (also in the exported report),
   followed by the filter (if set) and the battery hint (if the battery settings of the aircraft are missing).
 - Flights are numbered within the filter (flight 1 is the oldest flight of the filter), as the cross-flight
@@ -188,6 +189,14 @@ Column widths and the row height of the tables follow the font, so headings and 
 #### Filter
 
 The filter bar offers **aircraft**, **year**, **month** and a date range **from / to** (dd.mm.yyyy; the end day is included; an entry that is not a date turns red and is ignored; an empty field means no limit). *Reset* removes all restrictions. The filter acts on the whole logbook: totals, tables and list. It is one shared setting (`gui/flight_filter.py`): the statistics show and change the same filter.
+
+**Several values per field.** Aircraft, year and month are lists of check buttons: a click on the field opens the list, a click on a value ticks or unticks it, and the list stays open until you click outside of it or press Esc (Tab moves between the values, the space bar ticks one). **Select all** and **Deselect all** at the top tick everything or nothing. The field shows what is ticked: *all*, e.g. *2024, 2025*, or – if the names do not fit – *3 of 5*; with nothing ticked it says *none*.
+
+- Within one field the values are alternatives: years 2024 and 2025 show the flights of 2024 *or* 2025. Between the fields all conditions must hold: aircraft *and* year *and* month *and* from / to.
+- Year and month are combined separately: years 2024 and 2025 with months 06 and 07 show June and July of **both** years (not single pairs such as “06/2024 and 07/2025”).
+- With everything ticked the filter does not restrict anything (*all*); a new aircraft or year that appears after an import is then included automatically. If you have narrowed the selection, new values stay unticked until you tick them. When an aircraft or year disappears from the database it is removed from the selection.
+- With nothing ticked no flight is shown (“0 of N flights of the database”, no error); *Select all* brings them back.
+- The scope line, the status line and the statistics summary name the selection (*Filter: 2024, 2025, months 06, 07*; for more than two values only the number: *3 years*).
 
 #### Non-flights and corrections
 

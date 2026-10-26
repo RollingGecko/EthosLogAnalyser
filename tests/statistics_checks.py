@@ -9,7 +9,7 @@ settings per aircraft and the hint for several aircraft.
 import json
 import time
 
-from logbook_checks import choose
+from logbook_checks import choose, pick
 
 
 def wait_for_statistics(root, state="ready"):
@@ -66,30 +66,31 @@ def _check_pages(root, h):
 def _check_shared_filter(root, h):
     """The filter bar of the statistics and the one of the logbook show and change the same filter."""
     stats_filter, logbook_filter = h["stats_filter"], h["lb_filter"]
-    years = list(stats_filter.year_box["values"])
-    assert years == ["alle", "2026"]
-    choose(stats_filter.month_box, 9)                       # September in the statistics ...
-    root.update()
-    assert logbook_filter.month_var.get() == "09"           # ... is the filter of the logbook too
+    assert [label for _value, label in stats_filter.year_box.options] == ["2026"]
+    pick(root, stats_filter.month_box, 9)                   # September in the statistics ...
+    assert logbook_filter.month_box.summary == "09"         # ... is the filter of the logbook too
     assert h["statistics"].view.n_flights == 2
     assert summary_lines(h, 4)[1] == "Filter: Monat 09"
     assert "2 von 3 Flügen" in h["status"].get() and "Filter: Monat 09" in h["status"].get()
     h["select_page"]("logbook")
     root.update()
     assert h["lb_scope"].get().startswith("2 von 3 Flügen der Datenbank")
-    choose(logbook_filter.month_box, 10)                    # October in the logbook ...
-    root.update()
-    assert stats_filter.month_var.get() == "10" and h["statistics"].view.n_flights == 1
+    pick(root, logbook_filter.month_box, 10)                # October in the logbook ...
+    assert stats_filter.month_box.summary == "10" and h["statistics"].view.n_flights == 1
     h["select_page"]("summary")
     root.update()
     assert "1 von 3 Flügen" in h["status"].get()
-    choose(stats_filter.month_box, 1)                       # January: no flight
-    root.update()
+    pick(root, stats_filter.month_box, 1)                   # January: no flight
     assert h["statistics"].view.state == "no_match"
     assert h["statistics"].message.get() == "Kein Flug passt zum Filter."
+    pick(root, stats_filter.month_box)                      # nothing chosen at all: 0 of 3 flights, no error
+    assert h["statistics"].view.state == "no_match" and h["statistics"].view.n_flights == 0
+    assert "0 von 3 Flügen" in h["status"].get() and "keine Monate" in h["status"].get()
+    pick(root, stats_filter.month_box, 9, 10)               # two months: the flights of both
+    assert h["statistics"].view.n_flights == 3 and summary_lines(h, 4)[1] == "Filter: Monate 09, 10"
     stats_filter.reset_button.invoke()
     root.update()
-    assert logbook_filter.month_var.get() == "alle" and h["statistics"].view.n_flights == 3
+    assert logbook_filter.month_box.summary == "alle" and h["statistics"].view.n_flights == 3
 
 
 def check_two_aircraft(root, settings):
@@ -102,18 +103,20 @@ def check_two_aircraft(root, settings):
     assert h["statistics"].message.get().startswith("Bitte im Filter ein Flugzeug wählen")
     assert "Bitte im Filter ein Flugzeug wählen" in h["summary"].get("1.0", "end")
     stats_filter = h["stats_filter"]
-    assert list(stats_filter.aircraft_box["values"]) == ["alle", "Glider", "Viper-Jet"]
-    choose(stats_filter.aircraft_box, 1)                    # the glider: no battery data
-    root.update()
+    assert [label for _value, label in stats_filter.aircraft_box.options] == ["Glider", "Viper-Jet"]
+    pick(root, stats_filter.aircraft_box, "Glider")         # the glider: no battery data
     assert h["statistics"].view.state == "no_battery_data"
     assert "keine Spannungs- und Stromdaten" in h["statistics"].message.get()
     h["select_page"]("akku")
     root.update()
     assert any("keine Spannungs- und Stromdaten" in text.get_text() for text in h["tab_canvas"]("akku").figure.texts)
-    choose(stats_filter.aircraft_box, 2)                    # the Viper-Jet: its statistics as before
+    pick(root, stats_filter.aircraft_box, "Viper-Jet")      # the Viper-Jet: its statistics as before
     wait_for_statistics(root)
     assert h["statistics"].view.n_flights == 3 and h["statistics"].message.get() == ""
     _check_battery_per_aircraft(root, h, settings)
+    pick(root, stats_filter.aircraft_box, "Glider", "Viper-Jet")     # both ticked: the statistics ask for one again
+    wait_for_statistics(root, "several_aircraft")
+    assert h["statistics"].message.get().startswith("Bitte im Filter ein Flugzeug wählen")
     stats_filter.reset_button.invoke()
     h["select_page"]("summary")
     root.update()

@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
-"""The shared flight filter: aircraft, year, month and a date range.
+"""The shared flight filter: aircraft, year and month (each with several values) and a date range.
 
 ``FilterState`` holds the one setting and the choices that exist (aircraft, years). ``FilterBar`` is a row of
 widgets that shows the state and changes it. The logbook and the statistics each show a bar; both show the same
 setting and a change in one is seen in the other at once.
+
+A selection that covers every existing value is no restriction at all: the state stores it as ``None`` ("alle"),
+so a new aircraft or year that appears after an import is included as long as the user has not narrowed the
+selection.
 """
 
 import dataclasses
@@ -11,8 +15,10 @@ import dataclasses
 from ..analysis.periods import MONTHS, FlightFilter, parse_date
 from ..config import model_label
 from ..i18n import fmt_date, tr
+from .multi_select import MultiSelect
 
 INVALID_DATE_COLOR = "#b00020"
+SELECTION_FIELDS = ("aircraft", "year", "month")     # the fields of FlightFilter that hold a selection
 
 
 class FilterState:
@@ -36,10 +42,37 @@ class FilterState:
         for listener in list(self._listeners):
             listener()
 
+    def _choices(self, field):
+        """The values the user can choose from for a selection field (months are always 1..12)."""
+        return {"aircraft": self.aircraft_choices, "year": self.year_choices, "month": MONTHS}[field]
+
+    def _collapsed(self, flight_filter):
+        """The filter with every selection that covers all existing values replaced by ``None`` (no
+        restriction). Without known choices nothing can be said, so the selection stays."""
+        changes = {}
+        for field in SELECTION_FIELDS:
+            selection, choices = getattr(flight_filter, field), self._choices(field)
+            if selection is not None and choices and selection.issuperset(choices):
+                changes[field] = None
+        return dataclasses.replace(flight_filter, **changes) if changes else flight_filter
+
+    def _without_vanished(self, flight_filter):
+        """The filter without aircraft and years that no longer exist. If nothing is left of a restriction
+        (all its values vanished), the restriction is dropped; an empty selection the user made on purpose
+        stays empty."""
+        changes = {}
+        for field in ("aircraft", "year"):
+            selection = getattr(flight_filter, field)
+            if selection is not None:
+                kept = selection & frozenset(self._choices(field))
+                if kept != selection:
+                    changes[field] = kept or None
+        return dataclasses.replace(flight_filter, **changes) if changes else flight_filter
+
     def set(self, **changes):
         """Changes fields of the filter (aircraft, year, month, date_from, date_to); listeners are told if
-        something changed."""
-        new_value = dataclasses.replace(self.value, **changes)
+        something changed. A selection field takes a single value or a collection, ``None`` for "alle"."""
+        new_value = self._collapsed(dataclasses.replace(self.value, **changes))
         if new_value != self.value:
             self.value = new_value
             self._notify()
@@ -49,18 +82,15 @@ class FilterState:
         self.set(**{field.name: None for field in dataclasses.fields(FlightFilter)})
 
     def set_choices(self, aircraft, years):
-        """Sets what the user can choose from (after the database changed). A restriction to an aircraft or
-        a year that no longer exists is removed."""
+        """Sets what the user can choose from (after the database changed). Aircraft and years that no longer
+        exist are removed from the selection; if every remaining value is then selected, nothing is restricted."""
         aircraft, years = list(aircraft), list(years)
-        stale = {}
-        if self.value.aircraft is not None and self.value.aircraft not in aircraft:
-            stale["aircraft"] = None
-        if self.value.year is not None and self.value.year not in years:
-            stale["year"] = None
-        if (aircraft, years) == (self.aircraft_choices, self.year_choices) and not stale:
-            return
+        changed_choices = (aircraft, years) != (self.aircraft_choices, self.year_choices)
         self.aircraft_choices, self.year_choices = aircraft, years
-        self.value = dataclasses.replace(self.value, **stale)
+        new_value = self._collapsed(self._without_vanished(self.value))
+        if not changed_choices and new_value == self.value:
+            return
+        self.value = new_value
         self._notify()
 
 
@@ -76,7 +106,8 @@ def _is_invalid_input(text):
 
 
 class FilterBar:
-    """Row of widgets for a FilterState: aircraft, year, month, from and to date, reset."""
+    """Row of widgets for a FilterState: aircraft, year and month (several values each), from and to date,
+    reset."""
 
     def __init__(self, parent, state):
         import tkinter as tk
@@ -84,31 +115,28 @@ class FilterBar:
 
         self.state = state
         self.frame = ttk.Frame(parent)
-        self._aircraft_names = []                # aircraft names in the order of the aircraft box
-        self.aircraft_var, self.year_var, self.month_var = tk.StringVar(), tk.StringVar(), tk.StringVar()
         self.from_var, self.to_var = tk.StringVar(), tk.StringVar()
 
         ttk.Label(self.frame, text=tr("Filter:"), font=("", 10, "bold")).pack(side="left", padx=(0, 8))
-        self.aircraft_box = self._add_box(tr("Flugzeug"), self.aircraft_var, 16)
-        self.year_box = self._add_box(tr("Jahr"), self.year_var, 6)
-        self.month_box = self._add_box(tr("Monat"), self.month_var, 5)
+        self.aircraft_box = self._add_box(tr("Flugzeug"), "aircraft", 16)
+        self.year_box = self._add_box(tr("Jahr"), "year", 10)
+        self.month_box = self._add_box(tr("Monat"), "month", 10)
         self.from_entry = self._add_date_entry(tr("von"), self.from_var, "date_from")
         self.to_entry = self._add_date_entry(tr("bis"), self.to_var, "date_to")
         self.reset_button = ttk.Button(self.frame, text=tr("Zurücksetzen"), command=state.reset)
         self.reset_button.pack(side="left", padx=(12, 0))
 
-        self.aircraft_box.bind("<<ComboboxSelected>>", self._aircraft_chosen)
-        self.year_box.bind("<<ComboboxSelected>>", self._year_chosen)
-        self.month_box.bind("<<ComboboxSelected>>", self._month_chosen)
         state.add_listener(self.sync)
         self.frame.bind("<Destroy>", self._on_destroy)
         self.sync()
 
     # ---------------- building ----------------
-    def _add_box(self, title, variable, width):
+    def _add_box(self, title, field, width):
+        """A multi-select field for one selection field of the filter ("aircraft", "year" or "month"); a change
+        of the ticked values goes to the state."""
         from tkinter import ttk
         ttk.Label(self.frame, text=title + ":").pack(side="left", padx=(8, 3))
-        box = ttk.Combobox(self.frame, textvariable=variable, state="readonly", width=width)
+        box = MultiSelect(self.frame, width, lambda chosen: self.state.set(**{field: chosen}))
         box.pack(side="left")
         return box
 
@@ -128,15 +156,10 @@ class FilterBar:
     # ---------------- showing the state ----------------
     def sync(self):
         """Shows the current filter and choices (called when the state changes)."""
-        everything = tr("alle")
         flt = self.state.value
-        self._aircraft_names = list(self.state.aircraft_choices)
-        self.aircraft_box["values"] = [everything] + [model_label(name) for name in self._aircraft_names]
-        self.year_box["values"] = [everything] + [str(year) for year in self.state.year_choices]
-        self.month_box["values"] = [everything] + [f"{month:02d}" for month in MONTHS]
-        self.aircraft_var.set(model_label(flt.aircraft) if flt.aircraft is not None else everything)
-        self.year_var.set(str(flt.year) if flt.year is not None else everything)
-        self.month_var.set(f"{flt.month:02d}" if flt.month is not None else everything)
+        self.aircraft_box.show([(name, model_label(name)) for name in self.state.aircraft_choices], flt.aircraft)
+        self.year_box.show([(year, str(year)) for year in self.state.year_choices], flt.year)
+        self.month_box.show([(month, f"{month:02d}") for month in MONTHS], flt.month)
         for entry, variable, value in ((self.from_entry, self.from_var, flt.date_from),
                                        (self.to_entry, self.to_var, flt.date_to)):
             if value is not None or not _is_invalid_input(variable.get()):
@@ -144,18 +167,6 @@ class FilterBar:
                 entry.configure(foreground="")
 
     # ---------------- changes made by the user ----------------
-    def _aircraft_chosen(self, _event=None):
-        index = self.aircraft_box.current()
-        self.state.set(aircraft=self._aircraft_names[index - 1] if index > 0 else None)
-
-    def _year_chosen(self, _event=None):
-        index = self.year_box.current()
-        self.state.set(year=self.state.year_choices[index - 1] if index > 0 else None)
-
-    def _month_chosen(self, _event=None):
-        index = self.month_box.current()
-        self.state.set(month=MONTHS[index - 1] if index > 0 else None)
-
     def _date_entered(self, entry, variable, field):
         """Takes over a typed date (empty = no limit); an input that is no date is marked and ignored."""
         try:

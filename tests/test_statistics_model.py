@@ -56,6 +56,17 @@ def model(database):
     return statistics
 
 
+def test_several_chosen_aircraft_ask_for_one_but_one_chosen_aircraft_is_analysed(model):
+    model.state.set(aircraft={"Glider", "Viper-Jet"})                 # both chosen (here: every aircraft)
+    assert model.view().state == SEVERAL_AIRCRAFT
+    model.state.set(aircraft=frozenset())                             # nothing chosen: no flight, no error
+    view = model.view()
+    assert view.state == NO_MATCH and view.n_flights == 0 and view.n_total == 4 and view.message == \
+        "Kein Flug passt zum Filter."
+    model.state.set(aircraft={"Glider"}, year={2020, 2026})           # one aircraft within several years
+    assert model.view().aircraft_names == ("Glider",)
+
+
 def test_several_aircraft_ask_for_one(model):
     view = model.view()
     assert view.state == SEVERAL_AIRCRAFT and view.aircraft_names == ("Glider", "Viper-Jet")
@@ -129,6 +140,16 @@ def test_filter_description_and_report_lines(model):
     assert filter_description(FlightFilter()) == ""
     assert filter_description(FlightFilter(aircraft="Jet", year=2026, month=6)) == "2026, Monat 06"
     assert filter_description(FlightFilter(date_from=date(2026, 5, 1))) == "01.05.2026 – …"
+    assert filter_description(FlightFilter(year={2025, 2024}, month={7, 6})) == "2024, 2025, Monate 06, 07"
+    assert filter_description(FlightFilter(year={2023, 2024, 2025}, month={1, 2, 3})) == "3 Jahre, 3 Monate"
+    assert filter_description(FlightFilter(year=frozenset(), month=frozenset())) == "keine Jahre, keine Monate"
+    assert filter_description(FlightFilter(aircraft={"Jet", "Glider"})) == ""      # aircraft are named elsewhere
+    set_language("en")
+    assert filter_description(FlightFilter(year={2024, 2025}, month={6, 7})) == "2024, 2025, months 06, 07"
+    assert filter_description(FlightFilter(year={2022, 2023, 2024})) == "3 years"
+    set_language("es")
+    assert filter_description(FlightFilter(month={6, 7, 8})) == "3 meses"
+    set_language("de")
     model.state.set(aircraft="Glider")
     lines = report_lines(model.view(), filter_text="2026")
     assert lines[0] == ("notice", EXPERIMENTAL_NOTICE) and lines[1] == ("info", "Filter: 2026")
