@@ -134,6 +134,21 @@ The single flight has no tab of its own: it is opened from the logbook (a **doub
 - Only the **views** for which the log has data are offered. A flight whose log has no voltage and current of the flight battery (e.g. a glider) is listed, but shows a note instead of the charts – the views need these values so far.
 - Without flights in the database the page explains how to import logs.
 - In the logbook a **double-click** on a flight opens it here (if it is in the database).
+- Below the selection bar the page has two tabs: **Charts** (Diagramme) with the views described here, the buttons *Save image*, *Enlarge whole page* and *Hide details*, and below the charts the details, the note and the anomalies; and **Flight recorder** (Flugrekorder), see below. The selection bar (‹ Logbook, flight, ‹ back, next ›) belongs to both tabs.
+
+#### Flight recorder
+
+The tab *Flight recorder* plays the selected flight back in real time from the time series stored in the flight database. It does not need the prepared values of the aircraft, so it is there at once – also while “Flights are being prepared …” and for flights without battery data (e.g. a glider).
+
+- **Artificial horizon** in the middle: blue sky, brown ground, a horizon line that turns with the bank and moves with the pitch, a pitch ladder every 10°, the bank scale at the top with a pointer that turns with the horizon, the fixed aircraft symbol and the digits *Bank 23° · Pitch −4°* (bank positive = right wing down, pitch positive = nose up). Inverted flight and a roll across ±180° are shown as they are. The attitude comes only from the attitude sensor (columns `R.angle` and `P.angle`), never from the sticks; if only one of them is in the log, the other counts as 0; without both, the horizon is hidden and a note says so. If the newest value is older than 2 s, the horizon turns grey and says *no attitude data*.
+- **Provisional sign convention** (to be checked with a known manoeuvre, ticket TW-053): in the Viper-Jet logs a positive `P.angle` goes with losing height, so it is shown as nose down; a positive `R.angle` is shown as right wing down.
+- **No interpolation**: at every moment the last log row holds (about one row every 0.27 s). The picture therefore changes about 3.7 times per second at 1×; for details use 0.25× or step row by row.
+- **Timeline** at the bottom, over the full width: a click jumps, dragging moves the position (also while the flight plays; it plays on when you let go). The green band below the track marks where telemetry is there, so gaps within the flight show. The time *3:12 / 8:58* is log time.
+- **Buttons**: *▶ Play* / *■ Stop*, ⏮ first row, ◀ / ▶ one log row back / forward, ⏭ end; **Speed** in fixed steps 0.25×, 0.5×, 1×, 2×, 4×, 8×, 16× (default 1×; at high speeds rows are skipped).
+- **Keys** while the tab is shown (click into the recorder first): space play/stop, ←/→ one row, Shift+←/→ 10 s, Home/End.
+- **End of the playback**: the recorder ends with the flight, i.e. with the last log row that still has telemetry (any sensor of the aircraft; sticks, switches and the transmitter battery do not count). Some logs run on for minutes after the landing without telemetry; that part is not shown. Play at the end starts again from the beginning.
+- The playback stops when you choose another flight (it starts at 0), the tab *Charts*, *‹ Logbook* or another area. A language switch keeps the tab, the position and the speed.
+- The layout follows the window size: in a smaller window the instruments move closer together, in a very small one only the horizon and the timeline remain. Sizes follow the font, so they fit at a Windows display scaling of 125 % and 150 %. Further instruments (altitude, vertical speed, RPM and throttle, battery, transmitter sticks, aircraft) follow in later versions.
 
 
 - **Mouse wheel**: zoom around the cursor; **drag**: pan; *Whole flight* (Ganzer Flug) resets the zoom.

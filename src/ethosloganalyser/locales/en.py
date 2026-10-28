@@ -956,4 +956,13 @@ CATALOG = {
     'keine Monate': 'no months',
     '{count} Monate': '{count} months',
     'Monate {months}': 'months {months}',
+    'Diagramme': 'Charts',
+    'Flugrekorder': 'Flight recorder',
+    '▶ Abspielen': '▶ Play',
+    '■ Stopp': '■ Stop',
+    'Tempo': 'Speed',
+    'Roll {bank}° · Nick {pitch}°': 'Bank {bank}° · Pitch {pitch}°',
+    'keine Lagedaten': 'no attitude data',
+    'Für diesen Flug sind keine Lagedaten (R.angle, P.angle) im Log.': 'This flight has no attitude data (R.angle, P.angle) in its log.',
+    'Dieser Log enthält keine Zeitreihen.': 'This log contains no time series.',
 }

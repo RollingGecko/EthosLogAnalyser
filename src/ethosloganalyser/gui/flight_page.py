@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
-"""Single-flight page: flight selection, views, time window (zoom, pan, drag), details, current spikes.
+"""Single-flight page: flight selection and two tabs, "Charts" and "Flight recorder".
+
+The selection bar (back to the logbook, flight, previous, next) is shared by both tabs. The tab Charts holds the
+views, the time window (zoom, pan, drag), the details and current spikes and, below them, the note and anomalies;
+the tab Flight recorder (gui/recorder_page.py) plays the flight back.
 
 The page shows flights it is given as choices [(label, key)]; resolve(key) returns (result, params, path)
 for drawing with plots/flight.py, where result is an analysis result (analysis/fleet.Result) that contains
 the flight under path - or None if the flight cannot be drawn (yet); the page then shows message_for(key).
-before_select(key) is called first, e.g. to show only the views the flight has data for (show_views).
+before_select(key) is called first, e.g. to show only the views the flight has data for (show_views). The
+recorder gets the key of every selected flight, also of one that cannot be drawn as charts.
 """
 
 import numpy as np
@@ -16,10 +21,12 @@ from ..plots.hover import Hover
 from ..report.text import flight_detail_lines
 from ..utils import fmt_duration
 from .common import fill_text, make_text
+from .recorder_page import RecorderPage
 from .table_fit import characters_for
 
 
 FLIGHT_BOX_CHARACTERS, SPIKE_BOX_CHARACTERS, MAX_BOX_CHARACTERS = 46, 44, 90      # widths in characters
+CHARTS, RECORDER = "charts", "recorder"                                             # the tabs of the page
 
 
 class FlightPage:
@@ -49,8 +56,10 @@ class FlightPage:
 
         self.frame = parent
         self._build_selection_bar(parent)
-        self._build_view_bar(parent)
-        self._build_time_bar(parent)
+        charts = self._build_tabs(parent, family)
+        self._build_view_bar(charts)
+        self._build_time_bar(charts)
+        parent = charts
         self.readout_hint = tr(
             "Maus über das Diagramm bewegen: Werte zum Zeitpunkt.   Mausrad: zoomen  ·  Ziehen mit linker Maustaste: "
             "verschieben  ·  Doppelklick oder Rechtsklick: Diagramm vergrößern")
@@ -85,6 +94,40 @@ class FlightPage:
                                     ("motion_notify_event", self._on_motion)):
             self.canvas.mpl_connect(event_name, handler)
 
+    def _build_tabs(self, parent, family):
+        """The tabs Charts and Flight recorder below the selection bar. Returns the frame of the tab Charts."""
+        from tkinter import ttk
+        self.tabs = ttk.Notebook(parent, style="Pages.TNotebook")
+        self.tabs.pack(fill="both", expand=True)
+        self.tab_frames = {CHARTS: ttk.Frame(self.tabs), RECORDER: ttk.Frame(self.tabs)}
+        self.tabs.add(self.tab_frames[CHARTS], text=tr("Diagramme"))
+        self.tabs.add(self.tab_frames[RECORDER], text=tr("Flugrekorder"))
+        self.recorder = RecorderPage(self.tab_frames[RECORDER], family)
+        self.tabs.bind("<<NotebookTabChanged>>", self._tab_changed)
+        return self.tab_frames[CHARTS]
+
+    def current_tab(self):
+        """CHARTS or RECORDER."""
+        return RECORDER if self.tabs.index("current") == 1 else CHARTS
+
+    def select_tab(self, tab):
+        self.tabs.select(self.tab_frames[tab])
+
+    def _tab_changed(self, _event=None):
+        """The recorder plays only while its tab is shown."""
+        if self.current_tab() == RECORDER:
+            self.recorder.activate()
+        else:
+            self.recorder.deactivate()
+
+    def stop_playback(self):
+        """Stops the recorder, e.g. when the single flight is left."""
+        self.recorder.deactivate()
+
+    def page_shown(self):
+        """The single flight is shown again: the recorder takes over if its tab is the current one."""
+        self._tab_changed()
+
     def _build_selection_bar(self, parent):
         import tkinter as tk
         from tkinter import ttk
@@ -100,19 +143,20 @@ class FlightPage:
         self.flight_box.bind("<<ComboboxSelected>>", self.select_flight)
         ttk.Button(bar, text=tr("‹ zurück"), command=lambda: self.step_flight(-1)).pack(side="left")
         ttk.Button(bar, text=tr("vor ›"), command=lambda: self.step_flight(1)).pack(side="left", padx=(2, 14))
+
+    def _build_view_bar(self, parent):
+        import tkinter as tk
+        from tkinter import ttk
+        # views in a row of their own: the labels are much longer in some languages
+        bar = ttk.Frame(parent, padding=(6, 4, 6, 4))
+        bar.pack(fill="x")
+        # buttons of the charts on the right (in the tab Charts, as they do not apply to the recorder)
         self.details_button = ttk.Button(bar, text=tr("Details ausblenden"), command=self.toggle_details)
         self.details_button.pack(side="right")
         ttk.Button(bar, text=tr("Bild speichern …"), command=self.save_png).pack(side="right", padx=6)
         ttk.Button(bar, text=tr("Ganze Seite vergrößern"),
                    command=lambda: self.charts.open_fullscreen(self.builder, tr("Einzelflug"), flight=True)).pack(
             side="right")
-
-    def _build_view_bar(self, parent):
-        import tkinter as tk
-        from tkinter import ttk
-        # views in a row of their own: the labels are much longer in some languages
-        bar = ttk.Frame(parent, padding=(6, 0, 6, 4))
-        bar.pack(fill="x")
         ttk.Label(bar, text=tr("Ansicht:")).pack(side="left", padx=(0, 4))
         self.view_var = tk.StringVar(value=FLIGHT_VIEWS[0])
         self.view_buttons = {}
@@ -235,6 +279,7 @@ class FlightPage:
             return
         if self.before_select is not None:
             self.before_select(key)
+        self.recorder.set_flight(key)              # also for a flight without charts (e.g. no battery data)
         selected = self.resolve(key)
         if selected is None:
             self.show_message(self.message_for(key))
@@ -373,7 +418,8 @@ class FlightPage:
     def snapshot(self):
         """What the user is looking at on this page - restored after a language switch."""
         return {"view": self.view_var.get(), "details": self.details_visible, "flight": self.current_key(),
-                "xlim": self.axes[0].get_xlim() if self.axes else None}
+                "xlim": self.axes[0].get_xlim() if self.axes else None, "tab": self.current_tab(),
+                "recorder": self.recorder.snapshot()}
 
     def restore(self, snap):
         self.view_var.set(snap["view"])
@@ -385,3 +431,5 @@ class FlightPage:
             self.set_xlim(*snap["xlim"])
         if not snap["details"]:
             self.toggle_details()
+        self.recorder.restore(snap.get("recorder"))
+        self.select_tab(snap.get("tab", CHARTS))
