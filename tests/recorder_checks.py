@@ -193,18 +193,22 @@ def check_recorder_font_fit(root, factor):
     style = ttk.Style(root)
     family = tkfont.nametofont("TkDefaultFont").actual("family")
     style.configure(".", font=(family, round(10 * factor)))           # the font of buttons and labels
+    # a normal window as wide as the screen allows (Tk limits a window to the screen, the screen of a test machine
+    # may be small) and a small window
+    screen = (root.winfo_screenwidth(), root.winfo_screenheight())
+    sizes = ((min(1280, screen[0] - 40), min(720, screen[1] - 80)), (600, 400))
     try:
-        for width, height in ((1280, 720), (600, 400)):
+        for width, height in sizes:
             window = tk.Toplevel(root)                                  # a new window per size (no window manager)
             window.geometry(f"{width}x{height}")
             try:
                 page = RecorderPage(window, family)
                 root.update()
-                assert page.frame.winfo_width() == width
+                width = page.frame.winfo_width()                        # what the window really got
                 assert page.timeline.frame.winfo_reqheight() <= timeline_height(page.line_height), (factor, width)
                 assert page.layout.rects[TIMELINE].height == timeline_height(page.line_height)
                 controls = page.timeline.controls
-                if width >= 1280 or factor == 1.0:
+                if width >= 900 or factor == 1.0:
                     assert controls.winfo_reqwidth() <= width - 16, (factor, width, controls.winfo_reqwidth())
             finally:
                 window.destroy()
