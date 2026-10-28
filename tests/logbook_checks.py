@@ -296,15 +296,18 @@ def _check_flight_switch(root, h, monkeypatch):
     flights.switch_row(non_flight, event_time=2000)                    # switch it back ...
     root.update()
     assert h["lb_totals"]["flights"].get().startswith("3  (") and len(h["fbox"]["values"]) == 3
-    again = next(i for i in lst.get_children() if flights.log_id_of(i) == log_id)
-    assert lst.set(again, "is_flight") == "☑"
-    flights.switch_row(again, event_time=2200)                         # the second click of a double-click is ignored
+    def row_of_log():
+        """The row of the log now (a refresh in the background may have built the list again)."""
+        return next(i for i in lst.get_children() if flights.log_id_of(i) == log_id)
+
+    assert lst.set(row_of_log(), "is_flight") == "☑"
+    flights.switch_row(row_of_log(), event_time=2200)                  # the second click of a double-click is ignored
     root.update()
     assert h["lb_totals"]["flights"].get().startswith("3  (")
-    flights.switch_row(again, event_time=5000)                         # a later click switches it off ...
+    flights.switch_row(row_of_log(), event_time=5000)                  # a later click switches it off ...
     root.update()
     assert h["lb_totals"]["flights"].get().startswith("2  (") and len(lst.get_children()) == 3
-    flights.switch_row(next(i for i in lst.get_children() if flights.log_id_of(i) == log_id), event_time=9000)
+    flights.switch_row(row_of_log(), event_time=9000)
     root.update()
     assert h["lb_totals"]["flights"].get().startswith("3  (")          # ... and on again: as detected
 

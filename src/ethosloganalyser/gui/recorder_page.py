@@ -82,10 +82,16 @@ class RecorderPage:
                     lambda: self._move(lambda clock: clock.jump(JUMP_S)),
                     lambda: self._move(lambda clock: clock.go_to_start()),
                     lambda: self._move(lambda clock: clock.go_to_end()))
-        for sequence, handler in zip(KEY_SEQUENCES, handlers):
-            self.canvas.bind_class(self.key_tag, sequence, lambda _event, act=handler: (act(), "break")[1])
+        self.key_actions = dict(zip(KEY_SEQUENCES, handlers))
+        for sequence in KEY_SEQUENCES:
+            self.canvas.bind_class(self.key_tag, sequence, lambda _event, key=sequence: (self.press_key(key), "break")[1])
         self.canvas.bind("<ButtonPress-1>", lambda _event: self.canvas.focus_set())
         self.timeline.track.bind("<ButtonPress-1>", lambda _event: self.canvas.focus_set(), add="+")
+
+    def press_key(self, sequence):
+        """What a key of KEY_SEQUENCES does (also called by the GUI test, as a window in the background of a test
+        machine may not get the keyboard focus)."""
+        self.key_actions[sequence]()
 
     # ---------------- flights ----------------
     def set_flight(self, key):
