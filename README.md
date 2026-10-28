@@ -41,6 +41,7 @@ Three real flight logs to try are in `examples/logs/` (*Data & settings → Data
 - [Methodology](docs/methodology.md) – how internal resistance, state of charge, capacity, timer and spikes are computed
 - [Ethos log format](docs/ethos-log-format.md) – which columns the app expects
 - [Flight database](docs/database.md) – import, duplicate and flight detection, storage and schema
+- [Code map](docs/code-map.md) – every Python file: purpose, names other files use, dependencies, and where to look for typical changes
 - [Translations](docs/translations.md) – how the user interface is translated and how to add or improve a language
 - [Acceptance testing a pull request](docs/acceptance-testing.md) – test EXE of a pull request before merging
 - [Releasing](docs/releasing.md) – how a new version is published
