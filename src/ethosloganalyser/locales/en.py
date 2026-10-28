@@ -963,6 +963,8 @@ CATALOG = {
     'Tempo': 'Speed',
     'Roll {bank}° · Nick {pitch}°': 'Bank {bank}° · Pitch {pitch}°',
     'keine Lagedaten': 'no attitude data',
-    'Für diesen Flug sind keine Lagedaten (R.angle, P.angle) im Log.': 'This flight has no attitude data (R.angle, P.angle) in its log.',
+    'Für diesen Flug sind keine Daten für die Anzeigen des Flugrekorders im Log (Lage, Höhe, Steigen/Sinken, Antrieb, Akku).': 'This flight has no data for the instruments of the flight recorder in its log (attitude, altitude, vertical speed, drive, battery).',
+    'Steigen/Sinken': 'Vertical speed',
+    'U/min': 'rpm',
     'Dieser Log enthält keine Zeitreihen.': 'This log contains no time series.',
 }
