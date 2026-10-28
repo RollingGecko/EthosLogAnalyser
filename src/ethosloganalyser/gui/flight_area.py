@@ -1,8 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Area Single flight: the single-flight page filled with the flights of the flight database."""
+"""Area Single flight: the single-flight page filled with the flights of the flight database.
+
+The charts need the prepared analysis of the aircraft (FlightCache); the flight recorder only reads the stored
+time series of the one log (recorder/flight_track.load_track), so it works at once and also for flights without
+battery data.
+"""
 
 from ..config import model_label
 from ..i18n import N_, tr
+from ..recorder.flight_track import load_track
 from .database_flights import available_views, flight_choice_label, flight_path
 
 EMPTY_DATABASE = N_("Noch keine Flüge in der Datenbank.\n\nLogs importieren: „Daten & Einstellungen“ → Bereich "
@@ -24,6 +30,7 @@ class DatabaseFlightArea:
         self.waiting_for = None           # aircraft whose preparation the page is waiting for
         page.before_select = self._before_select
         page.message_for = self._message_for
+        page.recorder.load_track = self._load_track
         cache.add_listener(self._on_cache_change)
         page.frame.bind("<Destroy>", lambda event: cache.remove_listener(self._on_cache_change)
                         if event.widget is page.frame else None, add="+")
@@ -52,6 +59,11 @@ class DatabaseFlightArea:
         return True
 
     # ---------------- callbacks of the page ----------------
+    def _load_track(self, log_id):
+        """The track of a log for the flight recorder (None without an open database)."""
+        database = self.cache.database.database
+        return load_track(database.connection, log_id) if database is not None else None
+
     def _resolve(self, log_id):
         flight = self.cache.flight(log_id)
         if flight is None or not flight.has_metrics:

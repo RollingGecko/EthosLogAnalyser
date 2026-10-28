@@ -6,6 +6,9 @@ the flight switch, double-clicking a row.
 """
 
 
+from recorder_checks import check_recorder_font_fit
+
+
 def widgets(parent):
     """All widgets below parent."""
     found = []
@@ -419,6 +422,7 @@ def check_font_fit(root, scalings=(1.0, 1.25, 1.5)):
             finally:
                 frame.destroy()
             _check_filter_bar_fit(root, factor)
+            check_recorder_font_fit(root, factor)
             h["lb_flights"].fit_columns(["Viper-Jet"], refit=True)
             for marked in (False, True):                               # the sort mark ▲/▼ is part of the heading
                 if marked:

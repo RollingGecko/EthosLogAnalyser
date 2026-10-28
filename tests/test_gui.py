@@ -12,6 +12,7 @@ import pytest
 from helpers import EXAMPLES
 from annotation_checks import check_annotations
 from logbook_checks import check_empty_logbook, check_font_fit, check_import_report_fit, check_logbook
+from recorder_checks import check_recorder, check_recorder_without_attitude
 from statistics_checks import check_statistics, check_two_aircraft
 
 # In CI (environment variable REQUIRE_GUI_TEST) the test must run - skipping it there would be an error.
@@ -75,11 +76,13 @@ def test_gui_analyses_example_logs(monkeypatch, tmp_path):
         h["set_xlim"](10, 70)
         root.update()
         _check_single_flight_from_database(root)
+        check_recorder(root)                                    # flight recorder tab of the single flight
         _check_fullscreen(root)
         _check_whole_page_double_click(root)
         _check_language_switch(root, settings)
         _check_database(root, errors, settings, tmp_path, monkeypatch)
         check_two_aircraft(root, settings)                      # Viper-Jet and Glider in the opened copy
+        check_recorder_without_attitude(root)                   # the glider has no attitude sensor
     finally:
         root.destroy()
 

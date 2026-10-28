@@ -192,7 +192,9 @@ class MainWindow:
         if visible:
             self.logbook_page.frame.pack_forget()
             self.tabs[FLIGHT_PAGE_KEY].pack(fill="both", expand=True)
+            self.flight_page.page_shown()
         else:
+            self.flight_page.stop_playback()              # the flight recorder does not play on in the background
             self.tabs[FLIGHT_PAGE_KEY].pack_forget()
             self.logbook_page.frame.pack(fill="both", expand=True)
 
@@ -225,8 +227,13 @@ class MainWindow:
 
     def _on_area_changed(self, _event=None):
         """Another area was chosen: the logbook picks up changed battery settings, the status line follows; changed
-        battery settings also judge the anomalies again. A note being typed is saved when the area is left."""
+        battery settings also judge the anomalies again. A note being typed is saved when the area is left; the
+        flight recorder stops."""
         self.flight_annotations.save_note()
+        if self.current_area() != "logbook":
+            self.flight_page.stop_playback()
+        elif self.flight_open:
+            self.flight_page.page_shown()
         if self.current_area() == "logbook":
             self.logbook_page.refresh()
         self.anomalies.check_settings()
@@ -429,7 +436,7 @@ class MainWindow:
             fbox=flight_page.flight_box, flight_var=flight_page.flight_var, view_var=flight_page.view_var,
             select_flight=flight_page.select_flight, redraw=flight_page.redraw, set_xlim=flight_page.set_xlim,
             goto_spike=flight_page.goto_spike, spike_var=flight_page.spike_var, details=flight_page.details,
-            flight_builder=flight_page.builder, flight_canvas=flight_page.canvas,
+            flight_builder=flight_page.builder, flight_canvas=flight_page.canvas, recorder=flight_page.recorder,
             flight_frame=self.tabs[FLIGHT_PAGE_KEY], is_flight_open=lambda: self.flight_open,
             lb_page=logbook_page, lb_model=self.logbook_model, filter_state=self.filter_state,
             lb_filter=logbook_page.filter_bar, lb_flights=logbook_page.flight_list,
