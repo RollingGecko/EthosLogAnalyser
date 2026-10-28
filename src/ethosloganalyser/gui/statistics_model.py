@@ -79,13 +79,37 @@ def flight_table(flights):
                          "has_metrics": [flight.has_metrics for flight in flights]})
 
 
+MAX_LISTED = 2        # up to this many chosen years or months are named in the filter text, more are counted
+
+
+def years_description(years):
+    """The chosen years in words: "2025", "2024, 2025", "3 Jahre" (counted when there are many), "keine Jahre"."""
+    if not years:
+        return tr("keine Jahre")
+    if len(years) > MAX_LISTED:
+        return tr("{count} Jahre", count=len(years))
+    return ", ".join(str(year) for year in sorted(years))
+
+
+def months_description(months):
+    """The chosen months in words: "Monat 06", "Monate 06, 07", "3 Monate" (counted when there are many),
+    "keine Monate"."""
+    if not months:
+        return tr("keine Monate")
+    if len(months) > MAX_LISTED:
+        return tr("{count} Monate", count=len(months))
+    if len(months) == 1:
+        return tr("Monat {month:02d}", month=next(iter(months)))
+    return tr("Monate {months}", months=", ".join(f"{month:02d}" for month in sorted(months)))
+
+
 def filter_description(flight_filter):
     """The filter in words, without the aircraft (for the status line and the report); "" without a filter."""
     parts = []
     if flight_filter.year is not None:
-        parts.append(str(flight_filter.year))
+        parts.append(years_description(flight_filter.year))
     if flight_filter.month is not None:
-        parts.append(tr("Monat {month:02d}", month=flight_filter.month))
+        parts.append(months_description(flight_filter.month))
     if flight_filter.date_from is not None or flight_filter.date_to is not None:
         start = fmt_date(flight_filter.date_from) if flight_filter.date_from is not None else "…"
         end = fmt_date(flight_filter.date_to) if flight_filter.date_to is not None else "…"

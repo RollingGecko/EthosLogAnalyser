@@ -947,4 +947,13 @@ CATALOG = {
     'Für diese Flüge von {aircraft} sind keine Spannungs- und Stromdaten des Flugakkus im Log. Die Statistik-Seiten brauchen sie bisher.': 'These flights of {aircraft} have no flight battery voltage and current in the log. The statistics pages need them so far.',
     'Monat {month:02d}': 'month {month:02d}',
     '{aircraft}: {n} Flüge ausgewertet ({first} – {last})': '{aircraft}: {n} flights analysed ({first} – {last})',
+    'keine': 'none',
+    '{count} von {total}': '{count} of {total}',
+    'Alle auswählen': 'Select all',
+    'Alle abwählen': 'Deselect all',
+    'keine Jahre': 'no years',
+    '{count} Jahre': '{count} years',
+    'keine Monate': 'no months',
+    '{count} Monate': '{count} months',
+    'Monate {months}': 'months {months}',
 }

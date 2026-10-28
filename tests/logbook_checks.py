@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """GUI checks of the logbook page (called from test_gui.py, which owns the one window of the test session).
 
-Everything here drives the widgets the way the user does: choosing in the combo boxes, clicking on the flight
-switch, double-clicking a row.
+Everything here drives the widgets the way the user does: ticking values in the lists of the filter, clicking on
+the flight switch, double-clicking a row.
 """
 
 
@@ -19,6 +19,18 @@ def choose(box, index):
     """Chooses an entry of a combo box like the user does."""
     box.current(index)
     box.event_generate("<<ComboboxSelected>>")
+
+
+def pick(root, box, *values):
+    """Opens the list of a multi-select field of the filter, ticks only the given values ("Alle abwählen", then
+    each value) and closes the list again, like the user does."""
+    box.open()
+    root.update()
+    box.select_none_button.invoke()
+    for value in values:
+        box.tick(value)
+    box.close()
+    root.update()
 
 
 def enter_date(root, entry, variable, text):
@@ -113,24 +125,27 @@ def _check_filter(root, h):
     from ethosloganalyser.gui.flight_filter import FilterBar
 
     bar, state = h["lb_filter"], h["filter_state"]
-    assert list(bar.aircraft_box["values"]) == ["alle", "Viper-Jet"] and list(bar.year_box["values"]) == ["alle", "2026"]
+    assert [label for _value, label in bar.aircraft_box.options] == ["Viper-Jet"]
+    assert [label for _value, label in bar.year_box.options] == ["2026"]
+    assert [label for _value, label in bar.month_box.options] == [f"{month:02d}" for month in range(1, 13)]
+    assert bar.aircraft_box.summary == bar.year_box.summary == bar.month_box.summary == "alle"
     second = FilterBar(ttk.Frame(root), state)                       # e.g. the filter on the statistics page
-    choose(bar.month_box, 9)                                          # September
-    root.update()
+    pick(root, bar.month_box, 9)                                      # September
     assert h["lb_scope"].get() == "2 von 3 Flügen der Datenbank  ·  Filter aktiv"
     assert h["lb_totals"]["flights"].get().startswith("2  (") and len(h["lb_list"].get_children()) == 2
-    assert second.month_var.get() == "09" and state.value.month == 9      # one setting for every bar
-    choose(second.year_box, 1)                                        # changed in the other bar
-    root.update()
-    assert bar.year_var.get() == "2026" and state.value.year == 2026
+    assert second.month_box.summary == "09" and state.value.month == frozenset({9})   # one setting for every bar
+    pick(root, second.year_box, 2026)                                 # the only year: that is every year
+    assert bar.year_box.summary == "alle" and state.value.year is None
+    pick(root, second.month_box, 9, 10)                               # changed in the other bar
+    assert bar.month_box.summary == "09, 10" and state.value.month == frozenset({9, 10})
+    assert len(h["lb_list"].get_children()) == 3
     bar.reset_button.invoke()
     root.update()
-    assert bar.month_var.get() == bar.year_var.get() == "alle" and second.month_var.get() == "alle"
+    assert bar.month_box.summary == bar.year_box.summary == "alle" and second.month_box.summary == "alle"
     assert h["lb_scope"].get() == "3 von 3 Flügen der Datenbank"
 
-    choose(bar.aircraft_box, 1)
-    root.update()
-    assert state.value.aircraft == "Viper-Jet" and h["lb_totals"]["flights"].get().startswith("3  (")
+    pick(root, bar.aircraft_box, "Viper-Jet")                         # the only aircraft: that is every aircraft
+    assert state.value.aircraft is None and h["lb_totals"]["flights"].get().startswith("3  (")
     bar.reset_button.invoke()
     enter_date(root, bar.from_entry, bar.from_var, "20.09.2026")      # flights of 27.09. and 18.10.
     assert h["lb_totals"]["flights"].get().startswith("2  (") and len(h["lb_list"].get_children()) == 2
@@ -148,6 +163,65 @@ def _check_filter(root, h):
     state.set(year=2026)
     state.set(year=None)
     root.update()
+    _check_multi_select(root, h)
+
+
+def _check_multi_select(root, h):
+    """The list of check buttons: ticking several values, none and all; it stays open while ticking and closes on
+    Esc or a click outside of it; only one list is open at a time."""
+    bar, state = h["lb_filter"], h["filter_state"]
+    box = bar.month_box
+    box.open()
+    root.update()
+    assert box.is_open and box.popup.winfo_ismapped() and box.ticked() == frozenset(range(1, 13))
+    box.select_none_button.invoke()                                   # "Alle abwählen": 0 of 3 flights, no error
+    root.update()
+    assert box.is_open and box.summary == "keine" and state.value.month == frozenset() and box.ticked() == frozenset()
+    assert h["lb_scope"].get() == "0 von 3 Flügen der Datenbank  ·  Filter aktiv"
+    assert len(h["lb_list"].get_children()) == 0 and h["lb_totals"]["flights"].get().startswith("0")
+    box.tick(9)
+    box.tick(10)                                                      # September and October
+    root.update()
+    assert box.is_open and box.summary == "09, 10" and len(h["lb_list"].get_children()) == 3
+    box.tick(10)                                                      # October off again
+    root.update()
+    assert box.summary == "09" and len(h["lb_list"].get_children()) == 2
+    box.select_all_button.invoke()                                    # "Alle auswählen": back to no restriction
+    root.update()
+    assert box.summary == "alle" and state.value.month is None and not state.value.is_active
+    assert h["lb_scope"].get() == "3 von 3 Flügen der Datenbank" and len(h["lb_list"].get_children()) == 3
+
+    middle = (box.popup.winfo_rootx() + box.popup.winfo_width() // 2, box.popup.winfo_rooty() + 5)
+    box.popup.event_generate("<ButtonPress-1>", rootx=middle[0], rooty=middle[1])
+    root.update()
+    assert box.is_open                                                # a click inside does not close it
+    box.popup.event_generate("<ButtonPress-1>", rootx=0, rooty=0)     # a click outside does
+    root.update()
+    assert not box.is_open
+
+    box.open()
+    root.update()
+    box.popup.focus_force()
+    box.popup.event_generate("<Escape>")                              # Esc closes it
+    root.update()
+    assert not box.is_open
+
+    box.open()
+    bar.year_box.open()                                               # opening another list closes this one
+    root.update()
+    assert bar.year_box.is_open and not box.is_open
+    bar.year_box.close()
+    state.set(month={9})                                              # a list that is open follows the filter
+    box.open()
+    root.update()
+    assert box.ticked() == frozenset({9})
+    state.set(month=frozenset({9, 10}))
+    root.update()
+    assert box.ticked() == frozenset({9, 10})
+    box.close()
+    bar.reset_button.invoke()
+    root.update()
+    assert not box.is_open and box.summary == "alle"
 
 
 def _check_open_flight(root, h):
@@ -173,7 +247,7 @@ def _check_single_flight_is_not_a_tab(root, h):
     (filter, sorting) and a language switch keeps the single flight open."""
     nb, lst = h["nb"], h["lb_list"]
     assert [nb.tab(tab, "text") for tab in nb.tabs()] == ["Logbuch", "Statistik", "Daten & Einstellungen"]
-    choose(h["lb_filter"].month_box, 9)                               # September: two flights
+    pick(root, h["lb_filter"].month_box, 9)                           # September: two flights
     h["lb_sort"]["sort"]("dauer_s")
     root.update()
     before = (list_column(lst, "number"), lst.heading("dauer_s")["text"], h["filter_state"].value)
@@ -282,6 +356,38 @@ def check_import_report_fit(root, tree):
     assert tree.get_children() and not widths_fit(tree, detail_free, heading_font, cell_font)
 
 
+def _check_filter_bar_fit(root, factor):
+    """The buttons of the filter's selection fields show their short text completely at the font the style gives
+    to buttons (scaled like the display scaling), also for wide names and for texts like "3 von 5"."""
+    from tkinter import font as tkfont, ttk
+    from ethosloganalyser.gui.flight_filter import FilterBar, FilterState
+    from ethosloganalyser.gui.multi_select import ARROW
+
+    style = ttk.Style(root)
+    family = tkfont.nametofont("TkDefaultFont").actual("family")
+    state = FilterState()
+    state.set_choices(["WWWWWWWWWWWWWWWWWWWWWWWW", "Viper-Jet", "MMMMMMMM"], [2022, 2023, 2024, 2025, 2026])
+    frame = ttk.Frame(root)
+    try:
+        style.configure(".", font=(family, round(10 * factor)))        # the font of the buttons at this scaling
+        button_font = tkfont.Font(root=root, font=style.lookup("TButton", "font"))
+        bar = FilterBar(frame, state)
+        for selection in ({"aircraft": {"WWWWWWWWWWWWWWWWWWWWWWWW"}, "year": {2022, 2023, 2024, 2025},
+                           "month": {1, 2, 3, 4, 5}},
+                          {"aircraft": {"Viper-Jet", "MMMMMMMM"}, "year": {2024, 2025}, "month": {6, 7}},
+                          {"aircraft": frozenset(), "year": frozenset(), "month": frozenset()}, {}):
+            state.reset()
+            state.set(**selection)
+            root.update_idletasks()
+            for box in (bar.aircraft_box, bar.year_box, bar.month_box):
+                shown = box.button.cget("text")
+                assert shown.endswith(ARROW)
+                assert button_font.measure(shown) <= box.button.winfo_reqwidth(), (factor, selection, shown)
+    finally:
+        style.configure(".", font=(family, 10))                         # as set by gui/style.py
+        frame.destroy()
+
+
 def check_font_fit(root, scalings=(1.0, 1.25, 1.5)):
     """The logbook tables, the flight list and the statistics table are sized again for fonts as they are at the
     display scalings 100 %, 125 % and 150 %, and no heading or value is wider than its column. The row height
@@ -312,6 +418,7 @@ def check_font_fit(root, scalings=(1.0, 1.25, 1.5)):
                     assert not widths_fit(tree, _texts(tree), heading_font, cell_font), (factor, tree["columns"])
             finally:
                 frame.destroy()
+            _check_filter_bar_fit(root, factor)
             h["lb_flights"].fit_columns(["Viper-Jet"], refit=True)
             for marked in (False, True):                               # the sort mark ▲/▼ is part of the heading
                 if marked:
