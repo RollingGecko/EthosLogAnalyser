@@ -24,10 +24,11 @@ from .recorder_instruments import BEZEL, RIM, SCALE, SYMBOL
 STALE = "#7d8590"
 FACE = "#24282e"
 TROUGH = "#3a3f47"
+UNIT_MIN_RADIUS = 50                  # the dial face shows the unit only from this radius (it is in the number too)
 DIAL_UNITS = {roles.ALTITUDE: "m", roles.VERTICAL_SPEED: "m/s", roles.MOTOR_CURRENT: "A"}
 
 
-def _fitting_size(family, start, smallest, fits):
+def fitting_size(family, start, smallest, fits):
     """Largest pixel size from start down to smallest at which fits(font, bold font) is True."""
     from tkinter import font as tkfont
     size = max(int(round(start)), smallest)
@@ -74,8 +75,8 @@ class GaugePanel:
         back, front = (tag, tag + "-back"), (tag, tag + "-front")
         canvas.create_rectangle(rect.x, rect.y, rect.right, rect.bottom, fill=BEZEL, outline=RIM, width=2, tags=back)
         title = tr(PANEL_TITLES[self.name])
-        title_size = _fitting_size(family, line_height * 0.8, 7,
-                                   lambda _font, bold: bold.measure(title) <= parts.text_width)
+        title_size = fitting_size(family, line_height * 0.8, 7,
+                                  lambda _font, bold: bold.measure(title) <= parts.text_width)
         canvas.create_text(*parts.title, text=title, fill=SCALE, font=(family, -title_size, "bold"), tags=back)
         if parts.dial is not None:
             self._place_dial(line_height, family, back, front)
@@ -99,16 +100,17 @@ class GaugePanel:
         label_font = (family, -max(7, round(radius * 0.17)))
         for value, x, y in scale_labels(dial, scale, arc):
             canvas.create_text(x, y, text=label_text(value, scale), fill=SCALE, font=label_font, tags=back)
-        unit = dial_unit(role, scale)
-        widest_unit_line = max(unit.split("\n"), key=len)
-        unit_size = _fitting_size(family, radius * 0.14, 7,
-                                  lambda font, _bold: font.measure(widest_unit_line) <= radius * 0.7)
-        canvas.create_text(dial.cx, dial.cy + radius * 0.32, text=unit, fill=SCALE, justify="center",
-                           font=(family, -unit_size), tags=back)
+        if radius >= UNIT_MIN_RADIUS:        # on a small dial the unit would run into the numbers of the scale
+            unit = dial_unit(role, scale)
+            widest_unit_line = max(unit.split("\n"), key=len)
+            unit_size = fitting_size(family, radius * 0.14, 7,
+                                     lambda font, _bold: font.measure(widest_unit_line) <= radius * 0.7)
+            canvas.create_text(dial.cx, dial.cy + radius * 0.32, text=unit, fill=SCALE, justify="center",
+                               font=(family, -unit_size), tags=back)
         canvas.create_oval(*hub_box(dial), fill=SYMBOL, outline=BEZEL, tags=front)
         widest = widest_text(role, self.scales)
-        size = _fitting_size(family, max(line_height * 0.95, radius * 0.15), 7,
-                             lambda _font, bold: bold.measure(widest) <= self.parts.text_width)
+        size = fitting_size(family, max(line_height * 0.95, radius * 0.15), 7,
+                            lambda _font, bold: bold.measure(widest) <= self.parts.text_width)
         from tkinter import font as tkfont
         width = tkfont.Font(family=family, size=-size, weight="bold").measure(widest)
         x, y = self.parts.value_line
@@ -121,7 +123,7 @@ class GaugePanel:
         left, right, y = self.parts.bar_label_line
         name = tr(QUANTITY_NAMES[role])
         widest = widest_text(role, self.scales)
-        size = _fitting_size(family, line_height * 0.8, 7, lambda font, bold: font.measure(name) + font.measure("  ")
+        size = fitting_size(family, line_height * 0.8, 7, lambda font, bold: font.measure(name) + font.measure("  ")
                              + bold.measure(widest) <= right - left)
         canvas.create_text(left, y, text=name, anchor="w", fill=SCALE, font=(family, -size), tags=back)
         canvas.coords(self.bar_number, right, y)
@@ -188,7 +190,7 @@ class ReadoutPanel:
         names = {role: tr(QUANTITY_NAMES[role]) for role in line_roles}
         widest = {role: widest_text(role, scales) for role in line_roles}
         spacing = min(line_height * 1.6, (rect.height - 2 * padding) / len(line_roles))
-        size = _fitting_size(family, min(line_height * 0.9, spacing * 0.7), 7, lambda font, bold: all(
+        size = fitting_size(family, min(line_height * 0.9, spacing * 0.7), 7, lambda font, bold: all(
             font.measure(names[role]) + font.measure("  ") + bold.measure(widest[role])
             <= rect.width - 2 * padding for role in line_roles))
         height = spacing * len(line_roles)

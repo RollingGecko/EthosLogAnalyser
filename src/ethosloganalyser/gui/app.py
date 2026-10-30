@@ -134,6 +134,8 @@ class MainWindow:
                                           self.filter_state)
         self.flight_page = FlightPage(self.tabs["flight"], self.charts, self.family, self.filedialog,
                                       back=lambda: self.select_page("logbook"))
+        self.flight_page.recorder.stick_mode = self.settings.stick_mode
+        self.settings.on_stick_mode_changed = self.flight_page.recorder.set_stick_mode
         self.flight_annotations = FlightAnnotationsPanel(self.flight_page.side_frame, self.database)
         self.flight_annotations.frame.pack(fill="both", expand=True)
         self.flight_area = DatabaseFlightArea(self.flight_page, self.flight_cache, self.flight_annotations)
@@ -428,7 +430,7 @@ class MainWindow:
         return dict(
             window=self, database=self.database, flight_cache=self.flight_cache, flight_area=self.flight_area,
             select_page=self.select_page, statistics_nb=self.statistics_notebook, flight_page=flight_page,
-            db_panel=settings_page.db_panel,
+            db_panel=settings_page.db_panel, stick_mode_box=settings_page.stick_mode_box,
             model_box=settings_page.model_box, use_model=self.settings.use_model, battery_hint=settings_page.battery_hint,
             chem_box=settings_page.chem_box, settings=self.settings, params=self.settings.fields,
             status=self.status, nb=self.notebook, tabs=self.tabs, lang_var=settings_page.lang_var,

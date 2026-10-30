@@ -5,13 +5,14 @@ import itertools
 
 import pytest
 
+from ethosloganalyser.recorder.dials import panel_parts
 from ethosloganalyser.recorder.layout import (AIRCRAFT, ALTITUDE, BATTERY, COMPACT, HORIZON, MINIMAL, NORMAL, RADIO,
                                               READOUTS, RPM_THROTTLE, SIDE_GAUGES, TIMELINE, VERTICAL_SPEED, Rect,
                                               recorder_layout, timeline_height)
 
 ALL = {HORIZON, ALTITUDE, VERTICAL_SPEED, RPM_THROTTLE, BATTERY, RADIO, AIRCRAFT}
-SIZES = [((1920, 1080), 16), ((1920, 1080), 24), ((1280, 720), 24), ((900, 600), 16), ((600, 400), 16),
-         ((600, 400), 24)]
+SIZES = [(size, line_height) for size in [(1920, 1080), (1280, 720), (900, 600)] for line_height in (16, 20, 24)] \
+    + [((600, 400), 16), ((600, 400), 24)]
 
 
 def _check(layout, width, height):
@@ -26,7 +27,8 @@ def _check(layout, width, height):
 
 @pytest.mark.parametrize("size, line_height", SIZES)
 @pytest.mark.parametrize("present", [{HORIZON}, ALL, {HORIZON, ALTITUDE}, {ALTITUDE, BATTERY}, set(),
-                                     {HORIZON, RADIO, AIRCRAFT}, ALL - {HORIZON}])
+                                     {HORIZON, RADIO, AIRCRAFT}, ALL - {HORIZON}, ALL - {AIRCRAFT}, {RADIO},
+                                     {HORIZON, RADIO}])
 def test_no_rectangle_overlaps_another_or_leaves_the_page(size, line_height, present):
     layout = recorder_layout(*size, present, line_height)
     _check(layout, *size)
@@ -93,3 +95,38 @@ def test_minimal_mode_shows_the_horizon_and_numbers_only():
 def test_a_page_too_small_for_anything_but_the_timeline():
     layout = recorder_layout(300, 60, {HORIZON}, 24)
     assert layout.rects[TIMELINE].height == 60 and HORIZON not in layout.rects
+
+
+@pytest.mark.parametrize("size, line_height", SIZES)
+def test_the_radio_sits_in_the_bottom_row_with_and_without_the_aircraft(size, line_height):
+    layout = recorder_layout(*size, ALL, line_height)
+    without = recorder_layout(*size, ALL - {RADIO}, line_height)
+    if layout.mode == MINIMAL:
+        assert RADIO not in layout.rects and RADIO not in without.rects          # the minimal layout has no radio
+        return
+    rects = layout.rects
+    assert RADIO in rects and rects[RADIO].y >= rects[HORIZON].bottom - 1 and rects[RADIO].right <= size[0]
+    if layout.mode == NORMAL:
+        assert rects[RADIO].x > size[0] / 2 and rects[AIRCRAFT].x >= rects[RADIO].right or rects[AIRCRAFT].right <= rects[RADIO].x
+    assert RADIO not in without.rects
+    assert recorder_layout(*size, ALL - {AIRCRAFT}, line_height).rects[RADIO].width > 0
+
+
+@pytest.mark.parametrize("size, line_height, smallest", [
+    ((1920, 1080), 16, 100), ((1920, 1080), 20, 90), ((1920, 1080), 24, 80), ((1280, 720), 16, 55),
+    ((1280, 720), 24, 38)])
+def test_the_gauges_stay_readable_with_the_radio(size, line_height, smallest):
+    """The radio takes room from the gauges; their dials must keep a radius that holds the numbers."""
+    rects = recorder_layout(*size, ALL, line_height).rects
+    assert rects[RADIO].width > 0
+    for name in SIDE_GAUGES:
+        parts = panel_parts(rects[name], line_height, True, name in (ALTITUDE, VERTICAL_SPEED, BATTERY, RPM_THROTTLE))
+        assert parts.dial is not None and parts.dial.radius >= smallest, (name, parts.dial.radius)
+
+
+def test_without_the_radio_the_gauges_move_up_and_the_layout_stays_valid():
+    with_radio = recorder_layout(1920, 1080, {HORIZON, ALTITUDE, BATTERY, RADIO}, 16)
+    without = recorder_layout(1920, 1080, {HORIZON, ALTITUDE, BATTERY}, 16)
+    assert RADIO not in without.rects
+    assert without.rects[HORIZON].width >= with_radio.rects[HORIZON].width
+    assert without.rects[ALTITUDE].height >= with_radio.rects[ALTITUDE].height

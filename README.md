@@ -16,7 +16,7 @@ several values to tick – and a date range) shared by logbook and statistics.
 - **Drive:** power vs. RPM curve, current sensor plausibility against the ESC counter.
 - **Radio & onboard power:** RSSI, VFR, receiver and transmitter battery, receiver current spikes classified by cause (switch, manoeuvre, take-off/landing or no apparent cause).
 - **Single flight:** time series with zoom and crosshair, detail report compared with the median of all flights, note and anomalies per flight.
-- **Flight recorder** (tab of the single flight): plays the flight back in real time with an artificial horizon and a timeline (play/stop, speed, drag to any moment).
+- **Flight recorder** (tab of the single flight): plays the flight back in real time with an artificial horizon, cockpit gauges, a radio with the stick positions (stick mode 1–4 selectable) and a timeline (play/stop, speed, drag to any moment).
 - **Statistics** (still experimental): the pages above over the filtered flights of one aircraft.
 
 ## Download
