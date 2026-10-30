@@ -176,16 +176,17 @@ def largest_flight(tmp_path_factory):
 
 
 def test_one_row_of_a_real_log_matches_the_columns_of_the_log(largest_flight):
-    """Row 731 (log time 199.85 s) of the flight of 20 July 2026: Altitude(m) 104.7 (start 2.475 -> 102 m),
+    """Row 731 of the log (log time 199.85 s) of the flight of 20 July 2026, which is row 730 of the track (the
+    flight starts at log time 0.18 s): Altitude(m) 104.7 (8.3 m at the start of the flight is 0 -> 96 m),
     VSpeed(m/s) 10.0, ESC RPM 33 100, Gas -454 (28 %), VFAS 49.04 V (13 cells: 3.77 V), Current 5.3 A."""
     track = largest_flight
     scales = flight_scales(track, cells=13)
-    row = track.row_at(200.0)
-    assert row == 731
+    row = track.row_at(199.86 - track.origin)
+    assert row == 730 and track.time[row] + track.origin == pytest.approx(199.85, abs=0.005)
     texts = {role: reading(track, role, row, scales).text for role in readout_lines(track)}
-    assert texts == {roles.ALTITUDE: "102 m", roles.VERTICAL_SPEED: "+10,0 m/s", roles.RPM: "33 100 U/min",
+    assert texts == {roles.ALTITUDE: "96 m", roles.VERTICAL_SPEED: "+10,0 m/s", roles.RPM: "33 100 U/min",
                      roles.THROTTLE: "28 %", roles.BATTERY_VOLTAGE: "49,0 V · 3,77 V/Zelle",
                      roles.MOTOR_CURRENT: "5 A"}
-    assert scales.dials[roles.ALTITUDE].full == 250 and scales.dials[roles.RPM].full == 120000
+    assert scales.dials[roles.ALTITUDE].full == 200 and scales.dials[roles.RPM].full == 120000
     assert scales.dials[roles.MOTOR_CURRENT].full == 120 and scales.dials[roles.VERTICAL_SPEED].full == 10
-    assert scales.voltage_range == (39.0, 55.0)
+    assert scales.voltage_range == (41.0, 55.0)

@@ -162,10 +162,11 @@ def largest_flight(tmp_path_factory):
 
 
 def test_one_row_of_a_real_log_matches_the_columns_of_the_log(largest_flight):
-    """Row 731 (log time 199.85 s) of the flight of 20 July 2026: QR -263, HR -799, SR 0, Gas -454."""
+    """Row 731 of the log (log time 199.85 s) of the flight of 20 July 2026, which is row 730 of the track (the
+    flight starts at log time 0.18 s): QR -263, HR -799, SR 0, Gas -454."""
     track = largest_flight
-    row = track.row_at(200.0)
-    assert row == 731
+    row = track.row_at(199.86 - track.origin)
+    assert row == 730 and track.time[row] + track.origin == pytest.approx(199.85, abs=0.005)
     left, right = radio_readings(track, row, 2)                  # mode 2: throttle / rudder, elevator / aileron
     assert left.text == "−44 % / 0 %" and right.text == "−78 % / −26 %"
     assert (left.x, left.y) == (0.0, pytest.approx(-454 / 1024)) and not left.stale

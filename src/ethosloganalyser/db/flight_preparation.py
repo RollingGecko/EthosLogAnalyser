@@ -64,6 +64,12 @@ def flight_path(log_id):
 
 
 # ---------------- analysis ----------------
+def params_from_text(analysis_params_text):
+    """The analysis settings of a flight as Params: the text stored with the flight (flight.analysis_params) on top
+    of the defaults. The single-flight charts and the flight recorder work out their period with these."""
+    return dataclasses.replace(Params(), **json.loads(analysis_params_text))
+
+
 def analyse_stored_flight(frame, log_id, file_name, start_time, analysis_params_text):
     """Per-flight analysis of a stored flight from its time series (flight_store.load_log_frame).
 
@@ -71,7 +77,7 @@ def analyse_stored_flight(frame, log_id, file_name, start_time, analysis_params_
     result. analysis_params_text are the settings stored with the flight (flight.analysis_params); the other
     settings do not change the per-flight result.
     """
-    params = dataclasses.replace(Params(), **json.loads(analysis_params_text))
+    params = params_from_text(analysis_params_text)
     try:
         row, _reason = analyse_frame(frame, file_name, params, start_time=start_time)
     except Exception:                 # treated like "no result": one broken log must not stop the others
