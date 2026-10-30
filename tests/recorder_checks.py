@@ -8,7 +8,9 @@ nothing waits for real time.
 import pytest
 
 from ethosloganalyser.gui.recorder_page import KEY_SEQUENCES
-from ethosloganalyser.recorder.layout import HORIZON, TIMELINE
+from ethosloganalyser.recorder.layout import (ALTITUDE, BATTERY, HORIZON, MINIMAL, READOUTS, RPM_THROTTLE,
+                                              SIDE_GAUGES, TIMELINE, VERTICAL_SPEED)
+from ethosloganalyser.recorder.readouts import NO_VALUE
 from ethosloganalyser.recorder.playback import SPEEDS
 
 
@@ -45,6 +47,7 @@ def check_recorder(root):
     assert recorder.horizon.visible and recorder.layout.rects[HORIZON].width > 100
     timeline = recorder.layout.rects[TIMELINE]
     assert recorder.timeline.frame.winfo_reqheight() <= timeline.height    # buttons and track fit at this font
+    _check_gauges(root, recorder)
     _check_playback(root, recorder, clock)
     _check_timeline_and_keys(root, recorder)
 
@@ -100,6 +103,37 @@ def _check_playback(root, recorder, clock):
     assert playback.running and playback.position == track.start_time
     recorder.stop()
     recorder.timeline.speed_scale.set(SPEEDS.index(1))
+    root.update()
+
+
+def _check_gauges(root, recorder):
+    """The four gauges of the Viper-Jet logs are shown next to the horizon in the order of the user; pointers and
+    numbers follow the row."""
+    rects = recorder.layout.rects
+    if recorder.layout.mode == MINIMAL:                              # the screen of a test machine may be small
+        assert READOUTS in rects and len(recorder.readouts.numbers) == 6
+        return
+    assert all(recorder.gauges[name].visible for name in SIDE_GAUGES)
+    assert rects[ALTITUDE].x < rects[VERTICAL_SPEED].x and rects[RPM_THROTTLE].x < rects[BATTERY].x
+    assert rects[ALTITUDE].y < rects[RPM_THROTTLE].y and rects[VERTICAL_SPEED].y < rects[BATTERY].y
+    canvas, track = recorder.canvas, recorder.track
+    altitude, drive, battery = recorder.gauges[ALTITUDE], recorder.gauges[RPM_THROTTLE], recorder.gauges[BATTERY]
+    assert canvas.itemcget(altitude.number, "text") in ("0 m", "1 m", "−1 m", NO_VALUE)   # starts at about 0 m
+    pointer_at_start = canvas.coords(altitude.pointer)
+    middle = track.start_time + (track.end_time - track.start_time) / 2
+    recorder.seek(middle)
+    root.update()
+    row = recorder.shown_row
+    assert canvas.coords(altitude.pointer) != pointer_at_start      # the pointer moved with the row
+    assert canvas.itemcget(altitude.number, "text").endswith(" m")
+    assert canvas.itemcget(altitude.number, "text") != NO_VALUE
+    assert canvas.itemcget(drive.bar_number, "text").endswith(" %")
+    assert " V" in canvas.itemcget(battery.bar_number, "text")
+    recorder.press_key("<Right>")                                    # one row on: only moved, nothing created
+    items = len(canvas.find_all())
+    recorder.press_key("<Right>")
+    assert len(canvas.find_all()) == items and recorder.shown_row == row + 2
+    recorder.press_key("<Home>")
     root.update()
 
 
@@ -162,16 +196,23 @@ def _check_language_switch(root):
 
 
 def check_recorder_without_attitude(root):
-    """A flight without attitude columns (the glider of the opened copy): the recorder opens, the horizon is
-    hidden and a note says why."""
+    """A flight without attitude, RPM and battery columns (the glider of the opened copy): the recorder opens,
+    the horizon, drive and battery are hidden, altitude and vertical speed take the space."""
     h = root._akku
     glider = next(flight for flight in h["flight_cache"].flights if flight.aircraft == "Glider")
     assert h["flight_area"].open_flight(glider.log_id)
     page, recorder, _clock = _open_recorder(root)
     assert recorder.key == glider.log_id and recorder.track is not None and not recorder.track.is_empty
     assert not recorder.horizon.visible and HORIZON not in recorder.layout.rects
-    assert recorder.canvas.itemcget(recorder.note, "state") == "normal"
-    assert "keine Lagedaten" in recorder.canvas.itemcget(recorder.note, "text")
+    rects = recorder.layout.rects
+    assert RPM_THROTTLE not in rects and BATTERY not in rects and not recorder.gauges[BATTERY].visible
+    assert recorder.canvas.itemcget(recorder.gauges[BATTERY].pointer, "state") == "hidden"
+    assert recorder.canvas.itemcget(recorder.note, "state") == "hidden"      # the gauges show, no note
+    if recorder.layout.mode == MINIMAL:                              # the screen of a test machine may be small
+        assert list(recorder.readouts.numbers) == ["altitude", "vertical_speed"]
+    else:
+        assert ALTITUDE in rects and VERTICAL_SPEED in rects and recorder.gauges[ALTITUDE].visible
+        assert recorder.canvas.itemcget(recorder.gauges[ALTITUDE].number, "text").endswith(" m")
     recorder.toggle()                                               # the timeline works without instruments
     assert recorder.playback.running
     recorder.stop()

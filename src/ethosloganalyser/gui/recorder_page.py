@@ -2,8 +2,9 @@
 """Tab "Flight recorder" of the single flight: plays the flight back from its stored time series.
 
 The page loads the track of the selected log (recorder/flight_track.py) only when the tab is shown, plays it with
-the playback clock (recorder/playback.py) and draws the instruments (gui/recorder_instruments.py) and the timeline
-(gui/recorder_timeline.py) where recorder/layout.py puts them.
+the playback clock (recorder/playback.py) and draws the horizon (gui/recorder_instruments.py), the cockpit gauges
+(gui/recorder_dials.py) and the timeline (gui/recorder_timeline.py) where recorder/layout.py puts them. The scales
+of the gauges are chosen once per flight (recorder/readouts.py).
 
 Timer: Tk ``after`` every TICK_MS. A tick only checks whether the log row at the current position changed; only
 then the instruments are moved. Without interpolation the picture therefore changes about 3.7 times per second at
@@ -16,14 +17,17 @@ Home/End first and last row.
 import time
 
 from ..i18n import N_, tr
-from ..recorder.layout import HORIZON, TIMELINE, recorder_layout
+from ..recorder.layout import HORIZON, READOUTS, SIDE_GAUGES, TIMELINE, recorder_layout
 from ..recorder.playback import JUMP_S, TICK_MS, PlaybackClock
+from ..recorder.readouts import flight_scales, present_panels, readout_lines
+from .recorder_dials import GaugePanel, ReadoutPanel
 from .recorder_instruments import HorizonGauge
 from .recorder_timeline import Timeline
 
 RESIZE_DELAY_MS = 150
 KEY_SEQUENCES = ("<space>", "<Left>", "<Right>", "<Shift-Left>", "<Shift-Right>", "<Home>", "<End>")
-NO_INSTRUMENTS = N_("Für diesen Flug sind keine Lagedaten (R.angle, P.angle) im Log.")
+NO_INSTRUMENTS = N_("Für diesen Flug sind keine Daten für die Anzeigen des Flugrekorders im Log "
+                    "(Lage, Höhe, Steigen/Sinken, Antrieb, Akku).")
 NO_ROWS = N_("Dieser Log enthält keine Zeitreihen.")
 
 
@@ -37,9 +41,12 @@ class RecorderPage:
 
         self.family = family
         self.load_track = lambda key: None
+        self.cells_for = lambda key: 0               # cell count of the battery settings of the flight's aircraft
         self.clock_function = time.perf_counter      # wall clock of the playback (tests put in their own)
         self.track = None
         self.playback = None
+        self.scales = None                           # scales of the gauges for the loaded flight
+        self.panels = {}                             # gauge -> (dial role, bar role) the loaded flight has data for
         self.key = None                              # flight shown on the page
         self.pending_key = None                      # flight selected while the tab was hidden
         self.active = False
@@ -55,6 +62,8 @@ class RecorderPage:
         self.canvas = tk.Canvas(self.frame, background=BG, highlightthickness=0, takefocus=True)
         self.canvas.place(x=0, y=0, relwidth=1, relheight=1)
         self.horizon = HorizonGauge(self.canvas)
+        self.gauges = {name: GaugePanel(self.canvas, name) for name in SIDE_GAUGES}
+        self.readouts = ReadoutPanel(self.canvas)
         self.note = self.canvas.create_text(0, 0, text="", fill="#666666", state="hidden",
                                             font=(family, -round(self.line_height * 0.9)))
         self.timeline = Timeline(self.frame, {
@@ -110,6 +119,11 @@ class RecorderPage:
         self.track = self.load_track(key) if key is not None else None
         rows = self.track.time[:self.track.end_row + 1] if self.track is not None else []
         self.playback = PlaybackClock(rows, clock=lambda: self.clock_function())
+        if self.track is not None:
+            self.scales = flight_scales(self.track, self.cells_for(key))
+            self.panels = present_panels(self.track)
+        else:
+            self.scales, self.panels = None, {}
         if self.track is not None:
             self.timeline.set_flight(self.track.start_time, self.track.end_time, self.track.telemetry)
         else:
@@ -195,7 +209,12 @@ class RecorderPage:
             return
         self.shown_row = row
         track = self.track
-        self.horizon.show(track.attitude(row) if track is not None and not track.is_empty else None)
+        has_rows = track is not None and not track.is_empty
+        self.horizon.show(track.attitude(row) if has_rows else None)
+        if has_rows:
+            for gauge in self.gauges.values():
+                gauge.show(track, row)
+            self.readouts.show(track, row)
         row_time = float(track.time[row]) if track is not None and not track.is_empty else 0.0
         self.timeline.show(row_time, self.playback.running)
 
@@ -209,7 +228,13 @@ class RecorderPage:
         self._resize_id = self.frame.after(RESIZE_DELAY_MS, self._relayout)
 
     def _present(self):
-        return {HORIZON} if self.track is not None and self.track.attitude(0) is not None else set()
+        """Instruments the loaded flight has data for."""
+        if self.track is None or self.track.is_empty:
+            return set()
+        present = set(self.panels)
+        if self.track.attitude(0) is not None:
+            present.add(HORIZON)
+        return present
 
     def _relayout(self):
         """Places the instruments and the timeline for the current size and draws the static parts."""
@@ -225,6 +250,17 @@ class RecorderPage:
             self.horizon.place(horizon, self.line_height, self.family)
         else:
             self.horizon.show(None)
+        for name, gauge in self.gauges.items():
+            rect = self.layout.rects.get(name)
+            if rect is not None:
+                gauge.place(rect, self.line_height, self.family, self.panels[name], self.scales)
+            else:
+                gauge.hide()
+        readouts = self.layout.rects.get(READOUTS)
+        if readouts is not None:
+            self.readouts.place(readouts, self.line_height, self.family, readout_lines(self.track), self.scales)
+        else:
+            self.readouts.hide()
         self._show_note(width, timeline.y)
         self._draw(force=True)
 
@@ -232,7 +268,7 @@ class RecorderPage:
         """A note in the middle when nothing can be shown."""
         if self.track is None or self.track.is_empty:
             text = tr(NO_ROWS) if self.key is not None else ""
-        elif HORIZON not in self.layout.rects:
+        elif set(self.layout.rects) == {TIMELINE}:
             text = tr(NO_INSTRUMENTS)
         else:
             text = ""

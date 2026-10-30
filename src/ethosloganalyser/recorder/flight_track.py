@@ -161,6 +161,15 @@ class FlightTrack:
         value = series.values[row]
         return float(value) if np.isfinite(value) else None
 
+    def flight_values(self, role):
+        """The valid values of a role from the start to the end of the flight (to choose the scales of the
+        gauges once per flight); empty without the column."""
+        series = self.series.get(role)
+        if series is None:
+            return np.array([])
+        values = series.values[:self.end_row + 1]
+        return values[np.isfinite(values)]
+
     def age(self, role, row):
         """How old the value of a role is in a row [s]; infinite without a value (or without the column)."""
         series = self.series.get(role)

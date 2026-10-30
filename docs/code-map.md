@@ -28,7 +28,8 @@ Ethos CSV log
                   → plots/overview + report/text → gui/statistics_page
  → Single flight: gui/flight_area → gui/flight_page   (plots/flight, report/text.flight_detail_lines)
  → Flight recorder: recorder/flight_track.load_track (stored series of one log) → recorder/playback
-                  → gui/recorder_page (recorder/layout, gui/recorder_instruments, gui/recorder_timeline)
+                  → gui/recorder_page (recorder/layout, gui/recorder_instruments, gui/recorder_dials,
+                    gui/recorder_timeline); gauge values and scales: recorder/readouts, recorder/dials
  → Anomalies:     gui/anomaly_controller → db/annotations.recalculate_anomalies → analysis/anomalies.find_anomalies
 ```
 
@@ -102,9 +103,11 @@ Flight recorder without Tkinter: plays a flight back from the stored time series
 | File | Purpose · names used by other files | Uses |
 |---|---|---|
 | `__init__.py` | Package description (no code) | – |
-| `flight_track.py` | Track of one log: "last value holds", age of a value, first column per role, end of the flight, telemetry ranges; the sign convention of roll and pitch: `load_track`, `build_track`, `FlightTrack`, `displayed_attitude` | db.sensor_roles, db.series_codec |
+| `dials.py` | Geometry of the round gauges and bars: nice scales per flight (`scale_for`, `vertical_speed_scale`, `nice_ceiling`, `Scale`), pointer angle limited to the scale (`pointer_angle`, `ARC`, `CENTRED_ARC`), ticks, labels, needle, bar fill, parts of one gauge (`panel_parts`) | i18n |
+| `flight_track.py` | Track of one log: "last value holds", age of a value, first column per role, end of the flight, telemetry ranges, values of the flight for the scales (`flight_values`); the sign convention of roll and pitch: `load_track`, `build_track`, `FlightTrack`, `displayed_attitude` | db.sensor_roles, db.series_codec |
 | `gauges.py` | Geometry of the artificial horizon (sky, ground, ladder, bank pointer, scale, symbol): `horizon_shape`, `horizon_dial`, `bank_scale_ticks`, `aircraft_symbol`, `format_attitude` | – |
 | `layout.py` | Rectangles of instruments and timeline for a page size (normal, compact, minimal): `recorder_layout`, `timeline_height`, `Rect`, instrument names | – |
+| `readouts.py` | What the gauges show: scales of one flight (`flight_scales`), gauges a log has data for (`present_panels`, `PANEL_ROLES`), value of a row as text or "—" (`reading`, `value_text`, `NO_VALUE`), throttle and cell voltage, lines of the minimal layout | dials, layout, db.sensor_roles, i18n |
 | `playback.py` | Playback clock from the wall clock: `PlaybackClock` (play, stop, seek, row steps, end), `SPEEDS`, `TICK_MS` | – |
 
 ## `src/ethosloganalyser/report/`
@@ -143,7 +146,7 @@ Tkinter user interface. Files marked "no Tkinter" can be tested without a window
 | `database_flights.py` | Flights of the database for the pages (no Tkinter): `stored_flights`, `prepare_aircraft`, `complete_flight`, `aircraft_result`, `available_views`, `flight_choice_label`, `StoredFlight` | analysis.fleet, db, plots.flight |
 | `database_panel.py` | Section "Database" (new, open, save as, empty, import): `DatabaseController` (open database, background work), `BackgroundTask`, `DatabasePanel` | db, import_report |
 | `flight_annotations.py` | Note and anomalies of the open flight: `FlightAnnotationsPanel` | db |
-| `flight_area.py` | Connects the single-flight page with the cache and the recorder with the database: `DatabaseFlightArea` | database_flights, recorder.flight_track |
+| `flight_area.py` | Connects the single-flight page with the cache and the recorder with the database and the battery settings (cell count): `DatabaseFlightArea` | database_flights, recorder.flight_track |
 | `flight_cache.py` | Flights, sensor roles and prepared aircraft of the open database: `FlightCache` | database_flights, database_panel, db |
 | `flight_filter.py` | Shared filter state and bar: `FilterState` (selection fields, `set_choices`, `reset`), `FilterBar` | analysis.periods, multi_select |
 | `flight_page.py` | Single-flight page: selection bar, tabs Charts (views, zoom and pan, details, spikes) and Flight recorder: `FlightPage` | plots, report.text, recorder_page, table_fit |
@@ -151,8 +154,9 @@ Tkinter user interface. Files marked "no Tkinter" can be tested without a window
 | `logbook_flight_list.py` | Sortable flight list of the logbook: `FlightList`, `mah_text` | common, table_fit |
 | `logbook_model.py` | What the logbook shows (no Tkinter): `LogbookModel` (`view`, `listed`, `switch_flight`), `LogbookView` | analysis.logbook, analysis.periods, db.logbook_table |
 | `logbook_page.py` | Logbook page (start page): `LogbookPage` | flight_filter, logbook_model, logbook_tables, logbook_flight_list |
-| `recorder_instruments.py` | Draws the recorder instruments on the canvas (moving parts only moved): `HorizonGauge` | recorder.gauges |
-| `recorder_page.py` | Tab Flight recorder: loading, timer, keys, layout, snapshot: `RecorderPage` | recorder, recorder_instruments, recorder_timeline |
+| `recorder_dials.py` | Draws the cockpit gauges (altitude, vertical speed, drive, battery) and the numbers of the minimal layout: `GaugePanel`, `ReadoutPanel` | recorder.dials, recorder.readouts, recorder_instruments |
+| `recorder_instruments.py` | Draws the artificial horizon (moving parts only moved) and holds the instrument colours: `HorizonGauge`, `BEZEL`, `SCALE`, `SYMBOL` | recorder.gauges |
+| `recorder_page.py` | Tab Flight recorder: loading, timer, keys, layout, snapshot: `RecorderPage` (`load_track`, `cells_for` set by flight_area) | recorder, recorder_instruments, recorder_dials, recorder_timeline |
 | `recorder_timeline.py` | Timeline: track with telemetry band, play/stop, row steps, time, speed: `Timeline`, `speed_text`, `time_text` | recorder.playback |
 | `logbook_tables.py` | Tables per aircraft, year and month: `LogbookTables`, `PeriodTable`, `aircraft_rows` | table_fit |
 | `multi_select.py` | Button with a check-button list for several values: `MultiSelect`, `selection_summary`, `shortened` | i18n |
@@ -179,7 +183,7 @@ test session: `test_gui.py` owns it and calls the `*_checks.py` modules.
 | `helpers.py` | Shared test data: example logs (`ROOT`, `EXAMPLE_FILES`), synthetic Ethos logs |
 | `annotation_checks.py` | GUI checks of notes and anomalies (called from `test_gui.py`) |
 | `logbook_checks.py` | GUI checks of the logbook, filter, multi-select, font fit (called from `test_gui.py`) |
-| `recorder_checks.py` | GUI checks of the flight recorder: tabs, playback with a fake clock, timeline, keys, fonts (called from `test_gui.py`) |
+| `recorder_checks.py` | GUI checks of the flight recorder: tabs, playback with a fake clock, timeline, keys, gauges, fonts (called from `test_gui.py`) |
 | `statistics_checks.py` | GUI checks of the statistics area and the shared filter (called from `test_gui.py`) |
 | `test_annotations.py` | Notes and anomalies in the database: migration, acknowledging, own entries |
 | `test_anomalies.py` | Anomaly rules as pure functions |
@@ -204,9 +208,11 @@ test session: `test_gui.py` owns it and calls the `*_checks.py` modules.
 | `test_multi_select.py` | Short text of the multi-value selection field |
 | `test_periods.py` | Filter by aircraft, year, month, date range; the shared filter state |
 | `test_quality_ageing.py` | Measurement-error detection and the ageing model |
+| `test_recorder_dials.py` | Gauge geometry: nice scales, pointer limits, the vertical speed centred on 0, ticks, bars, parts of a gauge |
 | `test_recorder_gauges.py` | Horizon geometry at bank 0/90/180/−180 and pitch ±90, ladder, helpers |
 | `test_recorder_layout.py` | Recorder layout at several sizes and fonts: inside, no overlap, modes |
 | `test_recorder_playback.py` | Playback clock: speed, late ticks, seek, row steps, end and restart |
+| `test_recorder_readouts.py` | Gauge values: texts, throttle, cell voltage, scales per flight, missing sensors, gaps, one row of a real log |
 | `test_recorder_track.py` | Recorder track: last value holds, gaps, column choice, end of the flight, a real log |
 | `test_release_check.py` | `scripts/release_check.py` (tag, version, changelog) |
 | `test_report_plots.py` | Reports and charts work without the GUI |
@@ -231,7 +237,7 @@ test session: `test_gui.py` owns it and calls the `*_checks.py` modules.
 | Add a per-flight key figure | `analysis/flight.py` (`analyse_frame`), bump `ANALYSIS_VERSION` in `db/log_analysis.py`, show it in `report/text.py`; `docs/methodology.md` |
 | Add a statistics page or chart | `plots/overview.py`, `gui/statistics_page.py` (`PAGE_KEYS`, `CHART_PAGES`, `page_title`), `tests/statistics_checks.py` |
 | Add a single-flight view | `plots/flight.py` (`FLIGHT_VIEWS`, `draw_flight`), `gui/database_flights.py` (`available_views`), `gui/flight_page.py` |
-| Add a flight recorder instrument | `recorder/layout.py` (name in `present`), `recorder/gauges.py` (geometry), `recorder/flight_track.py` (role), `gui/recorder_instruments.py`, `gui/recorder_page.py` |
+| Add a flight recorder instrument | `recorder/layout.py` (name in `present`), `recorder/gauges.py` or `recorder/dials.py` (geometry), `recorder/readouts.py` (values, texts), `recorder/flight_track.py` (role), `gui/recorder_instruments.py` or `gui/recorder_dials.py`, `gui/recorder_page.py` |
 | Add or change a UI text | `tr()`, `N_()` or `Msg()` in the code (German), then `locales/en.py` and `locales/es.py`; `tests/test_i18n.py` fails if one is missing |
 | Add an anomaly rule | `analysis/anomalies.py` (`RULES`, `THRESHOLD_HINTS`, `METRIC_KEYS`), `db/annotations.py` if it needs a new stored value, `gui/anomaly_settings_panel.py` |
 | Change the database schema | `db/schema.py` (`SCHEMA_VERSION`, `create_schema`, `migrate`), the reading and writing code in `db/flight_store.py`, `docs/database.md`, `tests/test_db_storage.py` |

@@ -31,6 +31,7 @@ class DatabaseFlightArea:
         page.before_select = self._before_select
         page.message_for = self._message_for
         page.recorder.load_track = self._load_track
+        page.recorder.cells_for = self._cells_for
         cache.add_listener(self._on_cache_change)
         page.frame.bind("<Destroy>", lambda event: cache.remove_listener(self._on_cache_change)
                         if event.widget is page.frame else None, add="+")
@@ -63,6 +64,12 @@ class DatabaseFlightArea:
         """The track of a log for the flight recorder (None without an open database)."""
         database = self.cache.database.database
         return load_track(database.connection, log_id) if database is not None else None
+
+    def _cells_for(self, log_id):
+        """Cell count in the battery settings of the aircraft of a log (0 = not set): the recorder then shows the
+        voltage per cell too."""
+        flight = self.cache.flight(log_id)
+        return self.cache.params_for(flight.aircraft).cells if flight is not None else 0
 
     def _resolve(self, log_id):
         flight = self.cache.flight(log_id)
