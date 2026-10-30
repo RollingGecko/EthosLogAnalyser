@@ -3,8 +3,9 @@
 
 The page loads the track of the selected log (recorder/flight_track.py) only when the tab is shown, plays it with
 the playback clock (recorder/playback.py) and draws the horizon (gui/recorder_instruments.py), the cockpit gauges
-(gui/recorder_dials.py) and the timeline (gui/recorder_timeline.py) where recorder/layout.py puts them. The scales
-of the gauges are chosen once per flight (recorder/readouts.py).
+(gui/recorder_dials.py), the radio (gui/recorder_radio.py) and the timeline (gui/recorder_timeline.py) where
+recorder/layout.py puts them. The scales of the gauges are chosen once per flight (recorder/readouts.py); the stick
+mode of the radio is a setting of the pilot (``set_stick_mode``, changes show at once, the playback goes on).
 
 Timer: Tk ``after`` every TICK_MS. A tick only checks whether the log row at the current position changed; only
 then the instruments are moved. Without interpolation the picture therefore changes about 3.7 times per second at
@@ -17,17 +18,19 @@ Home/End first and last row.
 import time
 
 from ..i18n import N_, tr
-from ..recorder.layout import HORIZON, READOUTS, SIDE_GAUGES, TIMELINE, recorder_layout
+from ..recorder.layout import HORIZON, RADIO, READOUTS, SIDE_GAUGES, TIMELINE, recorder_layout
 from ..recorder.playback import JUMP_S, TICK_MS, PlaybackClock
 from ..recorder.readouts import flight_scales, present_panels, readout_lines
+from ..recorder.stick_modes import DEFAULT_STICK_MODE, has_sticks, valid_stick_mode
 from .recorder_dials import GaugePanel, ReadoutPanel
 from .recorder_instruments import HorizonGauge
+from .recorder_radio import RadioPanel
 from .recorder_timeline import Timeline
 
 RESIZE_DELAY_MS = 150
 KEY_SEQUENCES = ("<space>", "<Left>", "<Right>", "<Shift-Left>", "<Shift-Right>", "<Home>", "<End>")
 NO_INSTRUMENTS = N_("Für diesen Flug sind keine Daten für die Anzeigen des Flugrekorders im Log "
-                    "(Lage, Höhe, Steigen/Sinken, Antrieb, Akku).")
+                    "(Lage, Höhe, Steigen/Sinken, Antrieb, Akku, Knüppel).")
 NO_ROWS = N_("Dieser Log enthält keine Zeitreihen.")
 
 
@@ -42,6 +45,7 @@ class RecorderPage:
         self.family = family
         self.load_track = lambda key: None
         self.cells_for = lambda key: 0               # cell count of the battery settings of the flight's aircraft
+        self.stick_mode = DEFAULT_STICK_MODE         # stick mode 1-4 of the radio (a setting of the pilot)
         self.clock_function = time.perf_counter      # wall clock of the playback (tests put in their own)
         self.track = None
         self.playback = None
@@ -64,6 +68,7 @@ class RecorderPage:
         self.horizon = HorizonGauge(self.canvas)
         self.gauges = {name: GaugePanel(self.canvas, name) for name in SIDE_GAUGES}
         self.readouts = ReadoutPanel(self.canvas)
+        self.radio = RadioPanel(self.canvas)
         self.note = self.canvas.create_text(0, 0, text="", fill="#666666", state="hidden",
                                             font=(family, -round(self.line_height * 0.9)))
         self.timeline = Timeline(self.frame, {
@@ -215,6 +220,7 @@ class RecorderPage:
             for gauge in self.gauges.values():
                 gauge.show(track, row)
             self.readouts.show(track, row)
+            self.radio.show(track, row, self.stick_mode)
         row_time = float(track.time[row]) if track is not None and not track.is_empty else 0.0
         self.timeline.show(row_time, self.playback.running)
 
@@ -234,6 +240,8 @@ class RecorderPage:
         present = set(self.panels)
         if self.track.attitude(0) is not None:
             present.add(HORIZON)
+        if has_sticks(self.track):
+            present.add(RADIO)
         return present
 
     def _relayout(self):
@@ -256,6 +264,11 @@ class RecorderPage:
                 gauge.place(rect, self.line_height, self.family, self.panels[name], self.scales)
             else:
                 gauge.hide()
+        radio = self.layout.rects.get(RADIO)
+        if radio is not None:
+            self.radio.place(radio, self.line_height, self.family, self.stick_mode)
+        else:
+            self.radio.hide()
         readouts = self.layout.rects.get(READOUTS)
         if readouts is not None:
             self.readouts.place(readouts, self.line_height, self.family, readout_lines(self.track), self.scales)
@@ -275,6 +288,18 @@ class RecorderPage:
         self.canvas.coords(self.note, width / 2, height / 2)
         self.canvas.itemconfigure(self.note, text=text, width=max(width - 40, 100),
                                   state="normal" if text else "hidden")
+
+    def set_stick_mode(self, mode):
+        """The pilot chose another stick mode: the radio is labelled and drawn again at once; the position and the
+        playback stay as they are."""
+        mode = valid_stick_mode(mode)
+        if mode == self.stick_mode:
+            return
+        self.stick_mode = mode
+        radio = self.layout.rects.get(RADIO) if self.layout is not None else None
+        if radio is not None:
+            self.radio.place(radio, self.line_height, self.family, mode)
+            self._draw(force=True)
 
     # ---------------- language switch, closing ----------------
     def snapshot(self):

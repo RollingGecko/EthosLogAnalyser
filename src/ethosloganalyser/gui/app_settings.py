@@ -8,6 +8,7 @@ The settings live as long as the window (they survive a language switch, which r
 from ..analysis.anomalies import RuleSettings
 from ..config import Params, save_settings
 from ..i18n import N_, get_language, tr
+from ..recorder.stick_modes import DEFAULT_STICK_MODE, valid_stick_mode
 
 # battery settings that are kept per model, with their defaults for a model without stored settings
 BATTERY_KEYS = ("chem", "cells", "nominal_mah")
@@ -58,6 +59,10 @@ class AppSettings:
         self.fields["nominal_mah"].trace_add("write", self._on_capacity)
         # anomaly rules: on/off, thresholds, receiver minimum voltage per model (analysis/anomalies.py)
         self.anomaly_rules = RuleSettings.from_dict(saved.get("anomaly_rules"))
+        # stick mode 1-4 of the radio in the flight recorder: one setting of the pilot for all aircraft; an invalid
+        # value in the file counts as the default mode
+        self.stick_mode = valid_stick_mode(saved.get("stick_mode", DEFAULT_STICK_MODE))
+        self.on_stick_mode_changed = None                  # called with the new mode (the open flight recorder)
 
     def model_battery(self):
         """Battery settings of the current model as they are stored."""
@@ -75,6 +80,7 @@ class AppSettings:
             stored["model"] = self.model
         stored["models"] = self.model_settings
         stored["anomaly_rules"] = self.anomaly_rules.to_dict()
+        stored["stick_mode"] = self.stick_mode
         if database_path:
             stored["database"] = database_path
         save_settings(stored)
@@ -98,6 +104,15 @@ class AppSettings:
         # else: the first model takes over the settings from before models existed, if any
         self.model = model
         self.battery_unset = unset
+
+    def set_stick_mode(self, mode):
+        """The pilot chose a stick mode: kept, and passed on to the open flight recorder."""
+        mode = valid_stick_mode(mode)
+        if mode == self.stick_mode:
+            return
+        self.stick_mode = mode
+        if self.on_stick_mode_changed is not None:
+            self.on_stick_mode_changed(mode)
 
     def confirm_battery(self):
         """The user chose the cell chemistry or entered a capacity: the battery hint is no longer needed."""

@@ -5,12 +5,19 @@ The playback runs with a wall clock the checks move themselves, and the timer ti
 nothing waits for real time.
 """
 
+import json
+
 import pytest
 
+from ethosloganalyser import config
+from ethosloganalyser.gui.app_settings import AppSettings
 from ethosloganalyser.gui.recorder_page import KEY_SEQUENCES
-from ethosloganalyser.recorder.layout import (ALTITUDE, BATTERY, HORIZON, MINIMAL, READOUTS, RPM_THROTTLE,
+from ethosloganalyser.gui.recorder_dials import STALE
+from ethosloganalyser.recorder.layout import (ALTITUDE, BATTERY, HORIZON, MINIMAL, RADIO, READOUTS, RPM_THROTTLE,
                                               SIDE_GAUGES, TIMELINE, VERTICAL_SPEED)
+from ethosloganalyser.recorder.radio import dot_position, dot_radius
 from ethosloganalyser.recorder.readouts import NO_VALUE
+from ethosloganalyser.recorder.stick_modes import assignment_text, axes_label, radio_readings, stick_axes
 from ethosloganalyser.recorder.playback import SPEEDS
 
 
@@ -48,6 +55,7 @@ def check_recorder(root):
     timeline = recorder.layout.rects[TIMELINE]
     assert recorder.timeline.frame.winfo_reqheight() <= timeline.height    # buttons and track fit at this font
     _check_gauges(root, recorder)
+    check_recorder_radio(root, recorder)
     _check_playback(root, recorder, clock)
     _check_timeline_and_keys(root, recorder)
 
@@ -137,6 +145,94 @@ def _check_gauges(root, recorder):
     root.update()
 
 
+def _dot_centers(recorder):
+    canvas = recorder.canvas
+    return [((x0 + x1) / 2, (y0 + y1) / 2) for x0, y0, x1, y1 in (canvas.coords(dot) for dot in recorder.radio.dots)]
+
+
+def _radio_matches_row(recorder, mode):
+    """The dots and numbers of the radio are where the values of the shown row put them."""
+    canvas, radio = recorder.canvas, recorder.radio
+    for index, reading in enumerate(radio_readings(recorder.track, recorder.shown_row, mode)):
+        field = radio.parts.fields[index]
+        x, y = dot_position(field, reading.x, reading.y)
+        cx, cy = _dot_centers(recorder)[index]
+        assert (cx, cy) == pytest.approx((x, y), abs=0.01)
+        assert canvas.itemcget(radio.values[index], "text") == reading.text
+        assert (canvas.itemcget(radio.dots[index], "fill") == STALE) == reading.stale
+        assert dot_radius(radio.parts.fields[index]) > 0
+
+
+def check_recorder_radio(root, recorder):
+    """The radio: two stick fields with the values of the row, the stick mode of the settings relabels and moves the
+    dots at once and is remembered, a gap greys the dot out, a log without stick channels has no radio."""
+    h = root._akku
+    canvas, track, radio = recorder.canvas, recorder.track, recorder.radio
+    assert recorder.layout.mode == MINIMAL or RADIO in recorder.layout.rects
+    if recorder.layout.mode == MINIMAL:                              # a small test screen: no radio, no error
+        assert not radio.visible
+        return
+    assert radio.visible and recorder.stick_mode == 2 and h["settings"].stick_mode == 2
+    assert [axes_label(stick) for stick in stick_axes(2)] == ["Gas / Seite", "Höhe / Quer"]
+    labels = [canvas.itemcget(item, "text") for item in canvas.find_withtag("radio-back")
+              if canvas.type(item) == "text"]
+    assert labels == ["Gas / Seite", "Höhe / Quer"]
+    rect = recorder.layout.rects[RADIO]
+    assert all(rect.x <= coordinate and coordinate <= rect.right for dot in radio.dots
+               for coordinate in canvas.coords(dot)[::2])
+
+    recorder.seek(track.start_time)                                  # the sticks differ between two rows
+    root.update()
+    first = _dot_centers(recorder)
+    _radio_matches_row(recorder, 2)
+    for fraction in (0.3, 0.6):
+        recorder.seek(track.start_time + (track.end_time - track.start_time) * fraction)
+        root.update()
+        _radio_matches_row(recorder, 2)
+    assert _dot_centers(recorder) != first                           # the dots follow the sticks
+    position, running = recorder.playback.position, recorder.playback.running
+
+    box = h["stick_mode_box"]                                        # Data & settings: mode 4
+    box.current(3)
+    box.event_generate("<<ComboboxSelected>>")
+    root.update()
+    assert h["settings"].stick_mode == 4 and recorder.stick_mode == 4
+    labels = [canvas.itemcget(item, "text") for item in canvas.find_withtag("radio-back")
+              if canvas.type(item) == "text"]
+    assert labels == ["Gas / Quer", "Höhe / Seite"]
+    _radio_matches_row(recorder, 4)
+    assert recorder.playback.position == position and recorder.playback.running == running
+    h["window"].store_settings()
+    assert json.loads(open(config.SETTINGS_FILE, encoding="utf-8").read())["stick_mode"] == 4
+
+    box = h["stick_mode_box"]                                        # back to the default mode
+    box.current(1)
+    box.event_generate("<<ComboboxSelected>>")
+    root.update()
+    assert recorder.stick_mode == 2
+    _radio_matches_row(recorder, 2)
+
+    saved = {role: values.measured_at.copy() for role, values in track.series.items()}
+    for values in track.series.values():                             # a gap: no value for a long time
+        values.measured_at[:] = -1000.0
+    recorder.seek(track.start_time + (track.end_time - track.start_time) / 2)
+    root.update()
+    for index in range(2):
+        assert NO_VALUE in canvas.itemcget(radio.values[index], "text")
+        assert canvas.itemcget(radio.dots[index], "fill") == STALE
+    for role, values in track.series.items():
+        values.measured_at[:] = saved[role]
+    recorder.seek(track.start_time + (track.end_time - track.start_time) / 3)
+    root.update()
+    assert canvas.itemcget(radio.dots[0], "fill") != STALE
+
+    assert AppSettings(root, {"stick_mode": 7}).stick_mode == 2      # an invalid value of the file: mode 2
+    assert AppSettings(root, {"stick_mode": 3}).stick_mode == 3
+    assert AppSettings(root, {}).stick_mode == 2
+    recorder.seek(track.start_time)                                  # leave the recorder at the start
+    root.update()
+
+
 def _check_timeline_and_keys(root, recorder):
     """A click on the middle of the track jumps there; keys step rows and play/stop."""
     track, canvas = recorder.track, recorder.timeline.track
@@ -182,16 +278,23 @@ def _check_language_switch(root):
     recorder = h["recorder"]
     recorder.seek(42.0)
     recorder.timeline.speed_scale.set(SPEEDS.index(2))
+    h["settings"].set_stick_mode(3)
     root.update()
     h["set_language"]("en")
     root.update()
     h = root._akku
     recorder = h["recorder"]
+    assert recorder.stick_mode == 3 and h["stick_mode_box"].get() == "Mode 3"      # the mode survives
+    if recorder.radio.visible:
+        texts = [recorder.canvas.itemcget(item, "text") for item in recorder.canvas.find_withtag("radio-back")
+                 if recorder.canvas.type(item) == "text"]
+        assert texts == ["Elevator / Aileron", "Throttle / Rudder"]
     assert h["flight_page"].current_tab() == "recorder" and recorder.active
     assert recorder.playback.position == pytest.approx(recorder.track.time[recorder.track.row_at(42.0)], abs=0.3)
     assert recorder.playback.speed == 2 and recorder.timeline.speed_label.cget("text") == "2×"
     assert h["flight_page"].tabs.tab(1, "text") == "Flight recorder"
     h["set_language"]("de")
+    root._akku["settings"].set_stick_mode(2)
     root.update()
 
 
@@ -208,6 +311,7 @@ def check_recorder_without_attitude(root):
     assert RPM_THROTTLE not in rects and BATTERY not in rects and not recorder.gauges[BATTERY].visible
     assert recorder.canvas.itemcget(recorder.gauges[BATTERY].pointer, "state") == "hidden"
     assert recorder.canvas.itemcget(recorder.note, "state") == "hidden"      # the gauges show, no note
+    assert RADIO not in rects and not recorder.radio.visible          # the glider log has no stick columns
     if recorder.layout.mode == MINIMAL:                              # the screen of a test machine may be small
         assert list(recorder.readouts.numbers) == ["altitude", "vertical_speed"]
     else:

@@ -29,7 +29,8 @@ Ethos CSV log
  → Single flight: gui/flight_area → gui/flight_page   (plots/flight, report/text.flight_detail_lines)
  → Flight recorder: recorder/flight_track.load_track (stored series of one log) → recorder/playback
                   → gui/recorder_page (recorder/layout, gui/recorder_instruments, gui/recorder_dials,
-                    gui/recorder_timeline); gauge values and scales: recorder/readouts, recorder/dials
+                    gui/recorder_radio, gui/recorder_timeline); gauge values and scales: recorder/readouts,
+                    recorder/dials; radio: recorder/stick_modes (mode 1-4, setting `stick_mode`), recorder/radio
  → Anomalies:     gui/anomaly_controller → db/annotations.recalculate_anomalies → analysis/anomalies.find_anomalies
 ```
 
@@ -106,8 +107,10 @@ Flight recorder without Tkinter: plays a flight back from the stored time series
 | `dials.py` | Geometry of the round gauges and bars: nice scales per flight (`scale_for`, `vertical_speed_scale`, `nice_ceiling`, `Scale`), pointer angle limited to the scale (`pointer_angle`, `ARC`, `CENTRED_ARC`), ticks, labels, needle, bar fill, parts of one gauge (`panel_parts`) | i18n |
 | `flight_track.py` | Track of one log: "last value holds", age of a value, first column per role, end of the flight, telemetry ranges, values of the flight for the scales (`flight_values`); the sign convention of roll and pitch: `load_track`, `build_track`, `FlightTrack`, `displayed_attitude` | db.sensor_roles, db.series_codec |
 | `gauges.py` | Geometry of the artificial horizon (sky, ground, ladder, bank pointer, scale, symbol): `horizon_shape`, `horizon_dial`, `bank_scale_ticks`, `aircraft_symbol`, `format_attitude` | – |
-| `layout.py` | Rectangles of instruments and timeline for a page size (normal, compact, minimal): `recorder_layout`, `timeline_height`, `Rect`, instrument names | – |
+| `layout.py` | Rectangles of instruments and timeline for a page size (normal, compact, minimal; the bottom row holds the radio and, later, the aircraft): `recorder_layout`, `timeline_height`, `Rect`, instrument names | radio |
 | `readouts.py` | What the gauges show: scales of one flight (`flight_scales`), gauges a log has data for (`present_panels`, `PANEL_ROLES`), value of a row as text or "—" (`reading`, `value_text`, `NO_VALUE`), throttle and cell voltage, lines of the minimal layout | dials, layout, db.sensor_roles, i18n |
+| `radio.py` | Geometry of the radio: two square stick fields with the axis names below and the values under them, dot position and size: `radio_parts`, `RadioParts`, `radio_width`, `dot_position`, `dot_radius` | – |
+| `stick_modes.py` | Stick modes 1-4 (which axis sits on which stick), valid setting value, stick value to dot position and percent, what each field shows in a row: `MODE_AXES`, `stick_axes`, `valid_stick_mode`, `radio_readings`, `has_sticks`, `POSITIVE_ELEVATOR_IS_UP` | db.sensor_roles, readouts, i18n |
 | `playback.py` | Playback clock from the wall clock: `PlaybackClock` (play, stop, seek, row steps, end), `SPEEDS`, `TICK_MS` | – |
 
 ## `src/ethosloganalyser/report/`
@@ -140,7 +143,7 @@ Tkinter user interface. Files marked "no Tkinter" can be tested without a window
 | `anomaly_controller.py` | Recalculates the automatic anomalies in the background when flights or settings change: `AnomalyController` | analysis.anomalies, db.annotations |
 | `anomaly_settings_panel.py` | Section "Anomalies" of Data & settings (rules on/off, thresholds): `AnomalySettingsPanel` | analysis.anomalies, config |
 | `app.py` | Main window: `MainWindow` (tabs Logbook, Statistics, Data & settings; rebuild on language change), `run_gui`, `main` | nearly every gui file |
-| `app_settings.py` | Settings fields, battery settings per aircraft, anomaly rules, saving: `AppSettings`, `battery_unset_for`, `BATTERY_HINT` | analysis.anomalies, config |
+| `app_settings.py` | Settings fields, battery settings per aircraft, anomaly rules, stick mode of the radio (`stick_mode`), saving: `AppSettings`, `battery_unset_for`, `BATTERY_HINT` | analysis.anomalies, config |
 | `charts.py` | Chart canvases, toolbar, tooltip, enlarge a chart or a page: `ChartManager` | style, plots.flight, plots.hover, plots.single |
 | `common.py` | Shared widgets and table helpers: `sortable_tree`, `make_text`, `fill_text`, `fmt_cell`, `export_table`, `scrollable_frame`, `TABLE_COLS` | analysis.evaluate, analysis.quality, config, utils |
 | `database_flights.py` | Flights of the database for the pages (no Tkinter): `stored_flights`, `prepare_aircraft`, `complete_flight`, `aircraft_result`, `available_views`, `flight_choice_label`, `StoredFlight` | analysis.fleet, db, plots.flight |
@@ -155,12 +158,13 @@ Tkinter user interface. Files marked "no Tkinter" can be tested without a window
 | `logbook_model.py` | What the logbook shows (no Tkinter): `LogbookModel` (`view`, `listed`, `switch_flight`), `LogbookView` | analysis.logbook, analysis.periods, db.logbook_table |
 | `logbook_page.py` | Logbook page (start page): `LogbookPage` | flight_filter, logbook_model, logbook_tables, logbook_flight_list |
 | `recorder_dials.py` | Draws the cockpit gauges (altitude, vertical speed, drive, battery) and the numbers of the minimal layout: `GaugePanel`, `ReadoutPanel` | recorder.dials, recorder.readouts, recorder_instruments |
+| `recorder_radio.py` | Draws the radio: two stick fields with a dot each, axis names and values in percent; labels and dots follow the stick mode: `RadioPanel` | recorder.radio, recorder.stick_modes, recorder_dials, recorder_instruments |
 | `recorder_instruments.py` | Draws the artificial horizon (moving parts only moved) and holds the instrument colours: `HorizonGauge`, `BEZEL`, `SCALE`, `SYMBOL` | recorder.gauges |
-| `recorder_page.py` | Tab Flight recorder: loading, timer, keys, layout, snapshot: `RecorderPage` (`load_track`, `cells_for` set by flight_area) | recorder, recorder_instruments, recorder_dials, recorder_timeline |
+| `recorder_page.py` | Tab Flight recorder: loading, timer, keys, layout, stick mode (`set_stick_mode`), snapshot: `RecorderPage` (`load_track`, `cells_for` set by flight_area) | recorder, recorder_instruments, recorder_dials, recorder_radio, recorder_timeline |
 | `recorder_timeline.py` | Timeline: track with telemetry band, play/stop, row steps, time, speed: `Timeline`, `speed_text`, `time_text` | recorder.playback |
 | `logbook_tables.py` | Tables per aircraft, year and month: `LogbookTables`, `PeriodTable`, `aircraft_rows` | table_fit |
 | `multi_select.py` | Button with a check-button list for several values: `MultiSelect`, `selection_summary`, `shortened` | i18n |
-| `settings_page.py` | Page Data & settings: `SettingsPage` | anomaly_settings_panel, database_panel, style |
+| `settings_page.py` | Page Data & settings (incl. the box Flight recorder with the stick mode): `SettingsPage` | anomaly_settings_panel, database_panel, style |
 | `statistics_model.py` | What the statistics show (no Tkinter): `StatisticsModel` (`view`), `StatisticsView`, `filter_description`, `flight_table`, state constants (`READY`, `NO_MATCH`, …) | analysis.periods, database_flights |
 | `statistics_page.py` | Statistics area: `StatisticsPages`, `PAGE_KEYS`, `CHART_PAGES`, `page_title`, `report_lines` | flight_filter, statistics_model, plots.overview, report.text |
 | `style.py` | Colours and ttk styles (`BG`, `_setup_style`) | table_fit |
@@ -183,7 +187,7 @@ test session: `test_gui.py` owns it and calls the `*_checks.py` modules.
 | `helpers.py` | Shared test data: example logs (`ROOT`, `EXAMPLE_FILES`), synthetic Ethos logs |
 | `annotation_checks.py` | GUI checks of notes and anomalies (called from `test_gui.py`) |
 | `logbook_checks.py` | GUI checks of the logbook, filter, multi-select, font fit (called from `test_gui.py`) |
-| `recorder_checks.py` | GUI checks of the flight recorder: tabs, playback with a fake clock, timeline, keys, gauges, fonts (called from `test_gui.py`) |
+| `recorder_checks.py` | GUI checks of the flight recorder: tabs, playback with a fake clock, timeline, keys, gauges, radio and stick mode, fonts (called from `test_gui.py`) |
 | `statistics_checks.py` | GUI checks of the statistics area and the shared filter (called from `test_gui.py`) |
 | `test_annotations.py` | Notes and anomalies in the database: migration, acknowledging, own entries |
 | `test_anomalies.py` | Anomaly rules as pure functions |
@@ -212,7 +216,9 @@ test session: `test_gui.py` owns it and calls the `*_checks.py` modules.
 | `test_recorder_gauges.py` | Horizon geometry at bank 0/90/180/−180 and pitch ±90, ladder, helpers |
 | `test_recorder_layout.py` | Recorder layout at several sizes and fonts: inside, no overlap, modes |
 | `test_recorder_playback.py` | Playback clock: speed, late ticks, seek, row steps, end and restart |
+| `test_recorder_radio.py` | Radio geometry: fields and text lines inside and apart at several sizes and fonts, dot inside its field |
 | `test_recorder_readouts.py` | Gauge values: texts, throttle, cell voltage, scales per flight, missing sensors, gaps, one row of a real log |
+| `test_recorder_stick_modes.py` | Stick modes: table of the four modes, invalid setting value, percent and dot position, direction constant, gaps, missing channels, one row of a real log |
 | `test_recorder_track.py` | Recorder track: last value holds, gaps, column choice, end of the flight, a real log |
 | `test_release_check.py` | `scripts/release_check.py` (tag, version, changelog) |
 | `test_report_plots.py` | Reports and charts work without the GUI |
@@ -244,6 +250,7 @@ test session: `test_gui.py` owns it and calls the `*_checks.py` modules.
 | Change how a log is imported or judged a flight | `db/importer.py`, `db/log_analysis.py`, `db/flight_detection.py`, `db/sensor_roles.py` |
 | Support a new sensor or log column | `io/ethos_log.py` (column keys), `db/sensor_roles.py` (role and `assign_roles`), `db/signal_metrics.py` |
 | Change the logbook (columns, tables, totals) | `db/logbook_table.py`, `analysis/logbook.py`, `gui/logbook_flight_list.py`, `gui/logbook_tables.py`, `gui/logbook_model.py` |
+| Change the radio of the flight recorder (stick modes, drawing direction) | `recorder/stick_modes.py` (`MODE_AXES`, `POSITIVE_ELEVATOR_IS_UP`), `recorder/radio.py` (geometry), `gui/recorder_radio.py`, `gui/settings_page.py` (`_build_recorder`), `tests/test_recorder_stick_modes.py` |
 | Add a setting on Data & settings | `config.py` (`Params`, `load_settings`, `save_settings`), `gui/app_settings.py`, `gui/settings_page.py` |
 | Add a cell chemistry | `config.py` (`CHEM`), `docs/methodology.md` |
 | Prepared statistics values change | `db/flight_preparation.py` (`PREPARATION_VERSION`, `STATISTICS_SERIES_KEYS`) |

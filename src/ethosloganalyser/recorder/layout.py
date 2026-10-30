@@ -13,12 +13,14 @@ Three modes, chosen by the size of the instrument area (the page without the tim
 * compact (smaller): horizon on the left, the gauges in a 2 x 2 grid next to it, radio and aircraft below;
 * minimal (below COMPACT_MIN_SIZE): only the horizon and a column of numbers for the gauges.
 
-So far only the horizon is drawn; the other instruments follow in later packages and only need to be passed in
-``present``.
+The bottom row (radio, aircraft) takes only so much height that the gauges above it stay readable: ROW_SHARE of
+the area. The radio is as wide as its two stick fields need, the aircraft box is 1.6 times as wide as high.
 """
 
 import math
 from dataclasses import dataclass
+
+from .radio import radio_width
 
 HORIZON = "horizon"
 ALTITUDE = "altitude"
@@ -36,6 +38,8 @@ BOTTOM_INSTRUMENTS = (RADIO, AIRCRAFT)
 NORMAL, COMPACT, MINIMAL = "normal", "compact", "minimal"
 NORMAL_MIN_SIZE = (1100, 560)          # instrument area in pixels
 COMPACT_MIN_SIZE = (640, 420)
+ROW_SHARE = {NORMAL: 0.28, COMPACT: 0.28}   # height of the bottom row (radio, aircraft) in the area
+AIRCRAFT_ASPECT = 1.6                  # width / height of the box of the aircraft
 
 
 @dataclass(frozen=True)
@@ -117,26 +121,28 @@ def _side_gauges(present):
     return [name for name in SIDE_GAUGES if name in present]
 
 
-def _bottom_row(area, present, margin, share, align_right):
+def _bottom_row(area, present, margin, share, align_right, line_height):
     """Radio and aircraft side by side at the bottom of the area. Returns (rects, height taken)."""
     shown = [name for name in BOTTOM_INSTRUMENTS if name in present]
     if not shown:
         return {}, 0
     row_height = round(area.height * share)
     box_height = row_height - margin
-    box_width = min(box_height * 1.6, (area.width - (len(shown) + 1) * margin) / len(shown))
-    total = len(shown) * box_width + (len(shown) - 1) * margin
+    room = (area.width - (len(shown) + 1) * margin) / len(shown)
+    natural = {RADIO: radio_width(box_height, line_height), AIRCRAFT: box_height * AIRCRAFT_ASPECT}
+    widths = [min(natural[name], room) for name in shown]
+    total = sum(widths) + (len(shown) - 1) * margin
     x = area.right - margin - total if align_right else area.x + (area.width - total) / 2
     rects = {}
-    for name in shown:
-        rects[name] = _rect(x, area.bottom - row_height, box_width, box_height)
-        x += box_width + margin
+    for name, width in zip(shown, widths):
+        rects[name] = _rect(x, area.bottom - row_height, width, box_height)
+        x += width + margin
     return rects, row_height
 
 
-def _normal(area, present, margin, _line_height):
+def _normal(area, present, margin, line_height):
     """Horizon in the middle, gauges left and right of it, radio and aircraft at the bottom right."""
-    rects, bottom = _bottom_row(area, present, margin, 0.34, align_right=True)
+    rects, bottom = _bottom_row(area, present, margin, ROW_SHARE[NORMAL], True, line_height)
     top = _rect(area.x, area.y, area.width, area.height - bottom)
     gauges = _side_gauges(present)
     rows, columns = math.ceil(len(gauges) / 2), min(len(gauges), 2)
@@ -162,9 +168,9 @@ def _normal(area, present, margin, _line_height):
     return rects
 
 
-def _compact(area, present, margin, _line_height):
+def _compact(area, present, margin, line_height):
     """Horizon on the left, the gauges in a 2 x 2 grid next to it, radio and aircraft below."""
-    rects, bottom = _bottom_row(area, present, margin, 0.30, align_right=False)
+    rects, bottom = _bottom_row(area, present, margin, ROW_SHARE[COMPACT], False, line_height)
     top = _rect(area.x, area.y, area.width, area.height - bottom)
     gauges = _side_gauges(present)
     side = 0

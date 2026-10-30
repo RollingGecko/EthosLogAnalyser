@@ -9,7 +9,9 @@ Everything in this package is plain Python and numpy (no Tkinter), so it is test
   gauges        geometry of the artificial horizon
   dials         geometry of the round gauges and bars, nice scales
   readouts      what the gauges show: scales per flight, values as text, gauges a log has data for
+  stick_modes   stick modes 1-4, what the two stick fields of the radio show for a row
+  radio         geometry of the radio: stick fields, text lines, dots
 
 The drawing on the Tk canvas lives in gui/recorder_page.py, gui/recorder_timeline.py,
-gui/recorder_instruments.py and gui/recorder_dials.py.
+gui/recorder_instruments.py, gui/recorder_dials.py and gui/recorder_radio.py.
 """

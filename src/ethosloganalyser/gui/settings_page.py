@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Page Data & settings: database, battery per aircraft, analysis, anomaly rules, language, export, about."""
+"""Page Data & settings: database, battery per aircraft, analysis, anomaly rules, flight recorder, language, export,
+about."""
 
 from ..buildinfo import about_lines
 from ..config import CHEM, model_label
 from ..i18n import LANGUAGES, get_language, tr
+from ..recorder.stick_modes import STICK_MODES, assignment_text, mode_text
 from .anomaly_settings_panel import AnomalySettingsPanel
 from .common import scrollable_frame
 from .database_panel import DatabasePanel
@@ -30,6 +32,7 @@ class SettingsPage:
         self._build_analysis(page)
         self.anomaly_panel = AnomalySettingsPanel(page, window.settings, window.anomalies, window.database)
         self.anomaly_panel.frame.grid(row=2, column=0, columnspan=2, sticky="we", pady=(10, 0))
+        self._build_recorder(page)
         self._build_language(page)
         self._build_export(page)
         self._build_about(page, window.family)
@@ -80,11 +83,34 @@ class SettingsPage:
         self._field(box, 3, tr("Spalte Spannung (optional)"), "col_voltage", tr("Teil des Spaltennamens"))
         self._field(box, 4, tr("Spalte Strom (optional)"), "col_current", "")
 
+    def _build_recorder(self, page):
+        import tkinter as tk
+        from tkinter import ttk
+        box = ttk.LabelFrame(page, text=tr("Flugrekorder"), padding=10)
+        box.grid(row=3, column=0, columnspan=2, sticky="we", pady=(10, 0))
+        ttk.Label(box, text=tr("Knüppelmodus")).grid(row=0, column=0, sticky="w", pady=3)
+        self.stick_mode_var = tk.StringVar(value=mode_text(self.window.settings.stick_mode))
+        self.stick_mode_box = ttk.Combobox(box, textvariable=self.stick_mode_var, width=12, state="readonly",
+                                           values=[mode_text(mode) for mode in STICK_MODES])
+        self.stick_mode_box.grid(row=0, column=1, sticky="w", padx=8, pady=3)
+        self.stick_mode_text = tk.StringVar(value=assignment_text(self.window.settings.stick_mode))
+        ttk.Label(box, textvariable=self.stick_mode_text, foreground="#666").grid(row=0, column=2, sticky="w")
+        ttk.Label(box, text=tr("Gilt für alle Flugzeuge und wirkt sofort im Flugrekorder."),
+                  foreground="#666").grid(row=1, column=0, columnspan=3, sticky="w", pady=(2, 0))
+
+        def on_mode(*_):
+            index = self.stick_mode_box.current()
+            if 0 <= index < len(STICK_MODES):
+                self.window.settings.set_stick_mode(STICK_MODES[index])
+                self.stick_mode_text.set(assignment_text(STICK_MODES[index]))
+
+        self.stick_mode_box.bind("<<ComboboxSelected>>", on_mode)
+
     def _build_language(self, page):
         import tkinter as tk
         from tkinter import ttk
         box = ttk.LabelFrame(page, text=tr("Sprache (Language)"), padding=10)
-        box.grid(row=3, column=0, sticky="nwe", padx=(0, 6), pady=10)
+        box.grid(row=4, column=0, sticky="nwe", padx=(0, 6), pady=10)
         self.lang_var = tk.StringVar(value=LANGUAGES[get_language()])
         lang_box = ttk.Combobox(box, textvariable=self.lang_var, values=list(LANGUAGES.values()), width=14,
                                 state="readonly")
@@ -102,7 +128,7 @@ class SettingsPage:
     def _build_export(self, page):
         from tkinter import ttk
         box = ttk.LabelFrame(page, text=tr("Export"), padding=10)
-        box.grid(row=3, column=1, sticky="nwe", padx=(6, 0), pady=10)
+        box.grid(row=4, column=1, sticky="nwe", padx=(6, 0), pady=10)
         ttk.Button(box, text=tr("Tabelle als CSV speichern …"), command=self.actions["export_csv"]).pack(
             side="left", padx=(0, 8))
         ttk.Button(box, text=tr("Bericht + alle Diagramme speichern …"), command=self.actions["export_all"]).pack(
@@ -113,7 +139,7 @@ class SettingsPage:
         from tkinter import ttk
         # about: version, and a clear marker on test builds from a pull request (see buildinfo.py)
         box = ttk.LabelFrame(page, text=tr("Über"), padding=10)
-        box.grid(row=4, column=0, columnspan=2, sticky="we", pady=(10, 0))
+        box.grid(row=5, column=0, columnspan=2, sticky="we", pady=(10, 0))
         for kind, text in about_lines():
             ttk.Label(box, text=text, wraplength=900, foreground={"test": "#b00020", "info": "#666"}.get(kind),
                       font=(family, 10, "bold") if kind != "info" else None).pack(anchor="w")
