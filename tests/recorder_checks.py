@@ -126,7 +126,9 @@ def _check_gauges(root, recorder):
     assert rects[ALTITUDE].y < rects[RPM_THROTTLE].y and rects[VERTICAL_SPEED].y < rects[BATTERY].y
     canvas, track = recorder.canvas, recorder.track
     altitude, drive, battery = recorder.gauges[ALTITUDE], recorder.gauges[RPM_THROTTLE], recorder.gauges[BATTERY]
-    assert canvas.itemcget(altitude.number, "text") in ("0 m", "1 m", "−1 m", NO_VALUE)   # starts at about 0 m
+    start_text = canvas.itemcget(altitude.number, "text")
+    assert start_text.endswith(" m") and start_text != NO_VALUE, start_text   # the flight starts at the motor start (TW-058), not at 0 m
+    assert abs(float(start_text[:-2].replace("−", "-"))) < 25, start_text
     pointer_at_start = canvas.coords(altitude.pointer)
     middle = track.start_time + (track.end_time - track.start_time) / 2
     recorder.seek(middle)

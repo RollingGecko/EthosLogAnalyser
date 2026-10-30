@@ -27,7 +27,8 @@ Ethos CSV log
  → Statistics:    gui/statistics_model (shared filter, one aircraft) → analysis/fleet.analyse_flights
                   → plots/overview + report/text → gui/statistics_page
  → Single flight: gui/flight_area → gui/flight_page   (plots/flight, report/text.flight_detail_lines)
- → Flight recorder: recorder/flight_track.load_track (stored series of one log) → recorder/playback
+ → Flight recorder: recorder/flight_track.load_track (stored series of one log, cut to the period of the charts:
+                  analysis/flight.flight_window_times) → recorder/playback
                   → gui/recorder_page (recorder/layout, gui/recorder_instruments, gui/recorder_dials,
                     gui/recorder_radio, gui/recorder_timeline); gauge values and scales: recorder/readouts,
                     recorder/dials; radio: recorder/stick_modes (mode 1-4, setting `stick_mode`), recorder/radio
@@ -69,7 +70,7 @@ Pure functions on DataFrames and arrays; no Tkinter, no database.
 | `anomalies.py` | Automatic anomaly rules on stored values: `RULES`, `RuleSettings`, `Finding`, `find_anomalies`, `THRESHOLD_HINTS`, `METRIC_KEYS` | config, i18n, utils, quality |
 | `evaluate.py` | Assessment across flights: `evaluate` (warnings, outliers, flags), `usage_correlations`, `FLAG_LABELS` | config, i18n, utils |
 | `fleet.py` | Cross-flight analysis of ONE aircraft: `analyse_flights` returns a `Result` (`df` flight table, `series`, `meta`) | ageing, evaluate, motor_curve, quality, config, io |
-| `flight.py` | Analysis of one log: `analyse_frame` returns (metrics dict, skip reason) | rx_spikes, config, i18n, io, utils |
+| `flight.py` | Analysis of one log: `analyse_frame` returns (metrics dict, skip reason); the period of the flight the charts show: `motor_window`, `MotorWindow`, `flight_window_times` (the flight recorder plays the same period) | rx_spikes, config, i18n, io, utils |
 | `logbook.py` | Logbook totals of a flight table: `logbook` returns a `Logbook` (flights, days, duration, mAh, per aircraft/year/month) | – |
 | `motor_curve.py` | Overall motor curve (power against RPM): `steady_points`, `overall_curve`, `flight_deviation` | config, utils |
 | `periods.py` | The flight filter on a flight table: `FlightFilter` (None or frozenset per field), `apply_filter`, `filter_mask`, `years_in`, `aircraft_in`, `parse_date`, `MONTHS` | – |
@@ -86,7 +87,7 @@ SQLite flight database. Schema and decisions: `docs/database.md`.
 | `annotations.py` | Notes and anomalies of flights: `note_of`, `set_note`, `anomalies_of`, `add_manual_anomaly`, `delete_manual_anomaly`, `set_acknowledged`, `annotation_summary`, `rule_input_rows`, `recalculate_anomalies` | analysis.anomalies, flight_store, log_analysis, series_codec, signal_metrics |
 | `database.py` | Open, create, copy and empty a database file: `FlightDatabase`, `DatabaseError`, `DatabaseStats` | schema |
 | `flight_detection.py` | Is a log a flight? `detect_flight` returns a `FlightDetection` (best available sensor decides) | sensor_roles, io |
-| `flight_preparation.py` | Prepared per-flight values for the statistics, stored once per flight: `store_for_new_analysis`, `prepare_outdated`, `flights_of_aircraft`, `analyse_stored_flight`, `PREPARATION_VERSION`, `STATISTICS_SERIES_KEYS` | analysis.flight, motor_curve, log_analysis, series_codec |
+| `flight_preparation.py` | Prepared per-flight values for the statistics, stored once per flight: `store_for_new_analysis`, `prepare_outdated`, `flights_of_aircraft`, `analyse_stored_flight`, `params_from_text`, `PREPARATION_VERSION`, `STATISTICS_SERIES_KEYS` | analysis.flight, motor_curve, log_analysis, series_codec |
 | `flight_store.py` | Writes and reads logs, flights, sensors, series: `insert_log`, `replace_analysis`, `find_log_by_hash`, `find_flight_at`, `aircraft_id`, `load_log_frame`, `sensor_roles_of`, `logbook_rows`, `set_flight_manual` | log_analysis, series_codec, signal_metrics |
 | `importer.py` | Import of files and folders: `import_paths`, `ImportReport`, `ImportEntry` (outcomes `NEW`, `DUPLICATE`, `SUSPICIOUS`, `UNREADABLE`) | log_analysis, flight_store, io |
 | `log_analysis.py` | Everything stored about one log: `analyse_log_content` returns an `AnalysedLog`; JSON helpers; `ANALYSIS_VERSION` | analysis.flight, flight_detection, sensor_roles, series_codec, signal_metrics, io |
@@ -105,7 +106,7 @@ Flight recorder without Tkinter: plays a flight back from the stored time series
 |---|---|---|
 | `__init__.py` | Package description (no code) | – |
 | `dials.py` | Geometry of the round gauges and bars: nice scales per flight (`scale_for`, `vertical_speed_scale`, `nice_ceiling`, `Scale`), pointer angle limited to the scale (`pointer_angle`, `ARC`, `CENTRED_ARC`), ticks, labels, needle, bar fill, parts of one gauge (`panel_parts`) | i18n |
-| `flight_track.py` | Track of one log: "last value holds", age of a value, first column per role, end of the flight, telemetry ranges, values of the flight for the scales (`flight_values`); the sign convention of roll and pitch: `load_track`, `build_track`, `FlightTrack`, `displayed_attitude` | db.sensor_roles, db.series_codec |
+| `flight_track.py` | Track of one log: "last value holds", age of a value, first column per role, the period of the flight (window of the charts, else the part with telemetry; time 0 = its start, `FlightTrack.origin` = log time of it), telemetry ranges, values of the flight for the scales (`flight_values`); the sign convention of roll and pitch: `load_track`, `build_track`, `chart_window`, `FlightTrack`, `displayed_attitude` | analysis.flight, db.sensor_roles, db.series_codec, db.flight_preparation, db.flight_store |
 | `gauges.py` | Geometry of the artificial horizon (sky, ground, ladder, bank pointer, scale, symbol): `horizon_shape`, `horizon_dial`, `bank_scale_ticks`, `aircraft_symbol`, `format_attitude` | – |
 | `layout.py` | Rectangles of instruments and timeline for a page size (normal, compact, minimal; the bottom row holds the radio and, later, the aircraft): `recorder_layout`, `timeline_height`, `Rect`, instrument names | radio |
 | `readouts.py` | What the gauges show: scales of one flight (`flight_scales`), gauges a log has data for (`present_panels`, `PANEL_ROLES`), value of a row as text or "—" (`reading`, `value_text`, `NO_VALUE`), throttle and cell voltage, lines of the minimal layout | dials, layout, db.sensor_roles, i18n |
@@ -218,8 +219,9 @@ test session: `test_gui.py` owns it and calls the `*_checks.py` modules.
 | `test_recorder_playback.py` | Playback clock: speed, late ticks, seek, row steps, end and restart |
 | `test_recorder_radio.py` | Radio geometry: fields and text lines inside and apart at several sizes and fonts, dot inside its field |
 | `test_recorder_readouts.py` | Gauge values: texts, throttle, cell voltage, scales per flight, missing sensors, gaps, one row of a real log |
+| `test_recorder_span.py` | The period the recorder plays equals that of the charts and the logbook (synthetic logs with a long lead-in or a log that runs on, the log of 2025, all example flights); data from the first row |
 | `test_recorder_stick_modes.py` | Stick modes: table of the four modes, invalid setting value, percent and dot position, direction constant, gaps, missing channels, one row of a real log |
-| `test_recorder_track.py` | Recorder track: last value holds, gaps, column choice, end of the flight, a real log |
+| `test_recorder_track.py` | Recorder track: last value holds, gaps, column choice, window and telemetry period of the flight, altitude reference, a real log |
 | `test_release_check.py` | `scripts/release_check.py` (tag, version, changelog) |
 | `test_report_plots.py` | Reports and charts work without the GUI |
 | `test_rx_spikes.py` | Receiver current spikes |

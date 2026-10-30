@@ -4,6 +4,7 @@
 import os
 import numpy as np
 import pandas as pd
+from typing import NamedTuple
 
 from ..analysis.rx_spikes import rx_spike_analysis
 from ..config import Params, SPIKE_CAUSES, STEP
@@ -12,12 +13,20 @@ from ..io.ethos_log import CURR_KEYS, VOLT_KEYS, _active_series, _exact_series, 
 from ..utils import _mmss, _nanmax, _nanmin, _rolling
 
 
-def analyse_frame(df, path, p: Params, start_time=None):
-    """Analyses one log that has already been read (``read_log_bytes``, or the time series stored in the flight
-    database). Returns (dict, "ok") or (None, Msg with the reason why the log is no flight with battery data).
+class MotorWindow(NamedTuple):
+    """The table the analysis works on and the period of the flight in it (rows ``first`` to ``last``)."""
+    work: pd.DataFrame
+    first: int
+    last: int
 
-    path is only used for the file name and the date in the result; start_time (datetime) replaces the date
-    taken from the file name, e.g. for a log stored in the flight database whose file no longer exists.
+
+def motor_window(df, p: Params):
+    """The table the analysis works on and the period with the motor running, which every chart of the single
+    flight shows. Returns (MotorWindow, "ok") or (None, Msg with the reason why the log has no such period).
+
+    The period is the block of motor current with the largest charge; a short motor test before take-off or
+    after a battery swap is not counted. The flight recorder asks for the same period (``flight_window_times``),
+    so that it plays what the charts show.
     """
     cv = _find_col(df.columns, VOLT_KEYS, p.col_voltage)
     ci = _find_col(df.columns, CURR_KEYS, p.col_current)
@@ -76,6 +85,38 @@ def analyse_frame(df, path, p: Params, start_time=None):
     blocks = np.split(np.arange(len(act)), cut)
     blk = max(blocks, key=lambda b: float(np.sum(ia[b])))
     a0, a1 = act[blk[0]], act[blk[-1]]
+    window_times = work["t"].to_numpy()[a0:a1 + 1]
+    window_length = float(window_times[-1] - window_times[0])
+    if window_length < p.min_flight_s:
+        return None, Msg("zu kurz ({dur} < {min})", dur=_mmss(window_length), min=_mmss(p.min_flight_s))
+    if len(np.arange(window_times[0], window_times[-1], STEP)) < 40:
+        return None, Msg("zu wenige Datenpunkte")
+    return MotorWindow(work, int(a0), int(a1)), "ok"
+
+
+def flight_window_times(df, p: Params):
+    """(start, end) of the flight in log time [s]: the period the charts show; time 0 of the charts is its start.
+    None if the log has no such period (no motor, too short, no battery data)."""
+    window, _reason = motor_window(df, p)
+    if window is None:
+        return None
+    times = window.work["t"].to_numpy()
+    return float(times[window.first]), float(times[window.last])
+
+
+
+def analyse_frame(df, path, p: Params, start_time=None):
+    """Analyses one log that has already been read (``read_log_bytes``, or the time series stored in the flight
+    database). Returns (dict, "ok") or (None, Msg with the reason why the log is no flight with battery data).
+
+    path is only used for the file name and the date in the result; start_time (datetime) replaces the date
+    taken from the file name, e.g. for a log stored in the flight database whose file no longer exists.
+    """
+    window, reason = motor_window(df, p)
+    if window is None:
+        return None, reason
+    work, a0, a1 = window.work, window.first, window.last
+    switch_cols = _switch_columns(df)
     pre = work.iloc[max(0, a0 - 15):a0]
     u_rest_start = float(np.median(pre["u"])) if len(pre) >= 3 else np.nan   # resting voltage before take-off
 
@@ -95,8 +136,6 @@ def analyse_frame(df, path, p: Params, start_time=None):
     u = win["u"].to_numpy()
     i = win["i"].to_numpy()
     dur = float(t[-1] - t[0])
-    if dur < p.min_flight_s:
-        return None, Msg("zu kurz ({dur} < {min})", dur=_mmss(dur), min=_mmss(p.min_flight_s))
 
     dt = np.clip(np.diff(t, prepend=t[0]), 0, 5.0)         # do not integrate over gaps in the log
     q_mah = np.cumsum(i * dt) / 3.6                        # A*s -> mAh
@@ -104,8 +143,6 @@ def analyse_frame(df, path, p: Params, start_time=None):
 
     # --- time grid ------------------------------------------------------------
     tg = np.arange(t[0], t[-1], STEP)
-    if len(tg) < 40:
-        return None, Msg("zu wenige Datenpunkte")
 
     def grid(col):
         if col in win.columns and win[col].notna().sum() > 5:
