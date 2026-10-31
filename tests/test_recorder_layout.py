@@ -69,19 +69,30 @@ def test_a_maximized_window_shows_every_instrument_up_to_150_percent(line_height
     _check(layout, *size)
     assert fits(layout.rects, ALL, line_height)
     for name in SIDE_GAUGES:
-        assert panel_parts(layout.rects[name], line_height, True, True).dial.radius >= 1.9 * line_height, name
+        assert panel_parts(layout.rects[name], line_height, True, True).dial.radius >= DIAL_MIN_LINES * line_height, name
     assert radio_parts(layout.rects[RADIO], line_height).side >= STICK_MIN_LINES * line_height
 
 
-def test_at_150_percent_the_gauges_form_one_row_and_the_horizon_takes_the_rest():
-    rects = recorder_layout(*MAXIMIZED[28], ALL, 28).rects
+@pytest.mark.parametrize("line_height", FONTS)
+def test_a_maximized_window_keeps_the_normal_layout_up_to_150_percent(line_height):
+    """Horizon in the middle, two gauges left and right, radio and aircraft side by side at the bottom right."""
+    layout = recorder_layout(*MAXIMIZED[line_height], ALL, line_height)
+    assert layout.mode == NORMAL
+    rects = layout.rects
     horizon = rects[HORIZON]
-    assert len({rects[name].y for name in SIDE_GAUGES}) == 1                  # one row of four
-    assert [rects[name].x for name in SIDE_GAUGES] == sorted(rects[name].x for name in SIDE_GAUGES)
-    assert all(rects[name].x >= horizon.right for name in SIDE_GAUGES)
-    assert rects[RADIO].y >= horizon.bottom and rects[RADIO].right <= rects[AIRCRAFT].x
-    alone = recorder_layout(*MAXIMIZED[28], {HORIZON}, 28).rects[HORIZON]
-    assert horizon.width < alone.width                                        # smaller, but there
+    assert rects[ALTITUDE].right <= horizon.x and rects[RPM_THROTTLE].right <= horizon.x
+    assert rects[VERTICAL_SPEED].x >= horizon.right and rects[BATTERY].x >= horizon.right
+    assert rects[RADIO].right <= rects[AIRCRAFT].x and rects[RADIO].y == rects[AIRCRAFT].y
+
+
+def test_at_150_percent_a_maximized_window_looks_as_on_main():
+    """The rectangles of PR #28 (main of 31 October 2026), which the owner accepted, plus the aircraft."""
+    rects = {name: (rect.x, rect.y, rect.width, rect.height)
+             for name, rect in recorder_layout(*MAXIMIZED[28], ALL, 28).rects.items()}
+    assert rects == {RADIO: (1404, 468, 199, 168), AIRCRAFT: (1617, 468, 269, 168), HORIZON: (730, 14, 440, 440),
+                     ALTITUDE: (503, 14, 213, 213), VERTICAL_SPEED: (1184, 14, 213, 213),
+                     RPM_THROTTLE: (503, 241, 213, 213), BATTERY: (1184, 241, 213, 213),
+                     TIMELINE: (0, 650, 1900, 126)}
 
 
 def test_at_100_percent_a_maximized_window_looks_as_before():
@@ -97,7 +108,7 @@ def test_at_100_percent_a_maximized_window_looks_as_before():
 
 @pytest.mark.parametrize("size, modes", [
     ((1920, 1080), (NORMAL, NORMAL, NORMAL)), ((1280, 720), (NORMAL, NORMAL, COMPACT)),
-    ((1100, 700), (NORMAL, COMPACT, MINIMAL)), ((900, 600), (COMPACT, MINIMAL, MINIMAL)),
+    ((1100, 700), (NORMAL, NORMAL, MINIMAL)), ((900, 600), (COMPACT, MINIMAL, MINIMAL)),
     ((600, 400), (MINIMAL, MINIMAL, MINIMAL))])
 def test_a_larger_font_switches_to_compact_and_minimal_earlier(size, modes):
     assert tuple(recorder_layout(*size, ALL, line_height).mode for line_height in FONTS) == modes
@@ -119,8 +130,8 @@ def test_minimal_only_where_not_even_the_compact_layout_fits(line_height):
 @pytest.mark.parametrize("line_height", (15,) + FONTS)
 @pytest.mark.parametrize("present", [ALL, ALL - {RADIO, AIRCRAFT}, ALL - {RADIO}])
 def test_the_dials_keep_their_size_in_lines_at_every_font(line_height, present):
-    """Normal and compact are used only while every dial has a radius of about two lines of text (as at the
-    thresholds at 100 %), so the numbers stay readable at 125 and 150 %."""
+    """Normal and compact are used only while every dial has a radius of DIAL_MIN_LINES lines of text, so the
+    numbers stay readable at 125 and 150 %."""
     for width in range(500, 2000, 50):
         for height in range(400, 1200, 25):
             layout = recorder_layout(width, height, present, line_height)
@@ -128,7 +139,7 @@ def test_the_dials_keep_their_size_in_lines_at_every_font(line_height, present):
                 continue
             for name in SIDE_GAUGES:
                 parts = panel_parts(layout.rects[name], line_height, True, name == RPM_THROTTLE)
-                assert parts.dial.radius >= 1.9 * line_height, (width, height, name, parts.dial.radius)
+                assert parts.dial.radius >= DIAL_MIN_LINES * line_height, (width, height, name, parts.dial.radius)
 
 
 def test_normal_mode_puts_the_horizon_in_the_middle_with_the_gauges_left_and_right():
@@ -193,7 +204,7 @@ def test_the_radio_sits_in_the_bottom_row_with_and_without_the_aircraft(size, li
 
 @pytest.mark.parametrize("size, line_height, smallest", [
     ((1920, 1080), 17, 130), ((1920, 1080), 23, 100), ((1920, 1080), 28, 70), ((1280, 720), 17, 65),
-    ((1280, 720), 23, 45), ((1280, 720), 28, 53)])
+    ((1280, 720), 23, 45), ((1280, 720), 28, 37)])
 def test_the_gauges_stay_readable_with_the_radio(size, line_height, smallest):
     """The radio takes room from the gauges; their dials must keep a radius that holds the numbers."""
     rects = recorder_layout(*size, ALL, line_height).rects

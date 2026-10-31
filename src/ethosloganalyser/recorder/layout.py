@@ -48,7 +48,9 @@ BOTTOM_INSTRUMENTS = (RADIO, AIRCRAFT)
 NORMAL, COMPACT, MINIMAL = "normal", "compact", "minimal"
 NORMAL_MIN_SIZE = (1100, 560)          # instrument area in pixels from which the normal layout is tried
 ROW_SHARE = 0.28                       # height of the bottom row (radio, aircraft) in the area
-DIAL_MIN_LINES = 1.9                   # least radius of a dial, in lines of text
+# least radius of a dial, in lines of text; 1.35 keeps the normal layout of a maximized 1920 x 1080 window at
+# 150 % (radius 39 px at a line of 28 px), which the owner accepted, and still keeps the dials readable
+DIAL_MIN_LINES = 1.35
 STICK_MIN_LINES = 3.0                  # least side of a stick field of the radio, in lines of text
 HORIZON_MIN_LINES = 8.0                # least side of the horizon, in lines of text
 AIRCRAFT_ASPECT = 1.6                  # width / height of the box of the aircraft
