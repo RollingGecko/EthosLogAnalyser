@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **User guide for the Windows EXE** (documentation only, no change to the program): a step-by-step guide for pilots who use the app for the first time, covering import, logbook, single flight, flight recorder, statistics, settings and notes, with screenshots of the app. In English (`docs/user-guide_en.md`, PDF) and German (`docs/user-guide_de.md`, PDF); linked from the README.
+
 ## 1.0.0-beta.1
 
 - **First beta of version 1.0.0**: a pre-release for broader testing; it contains everything listed below. The release is marked as *Pre-release* on GitHub. The release pipeline accepts pre-release tags `vX.Y.Z-beta.N` (also `-alpha.N`, `-rc.N`) for this.

@@ -38,6 +38,7 @@ Three real flight logs to try are in `examples/logs/` (*Data & settings → Data
 
 ## Documentation
 
+- **User guide** for the Windows EXE, with screenshots: [English](docs/user-guide_en.pdf) ([Markdown](docs/user-guide_en.md)) · [Deutsch](docs/user-guide_de.pdf) ([Markdown](docs/user-guide_de.md))
 - [Usage](docs/usage.md) – installation, import, logbook, single flight, statistics with the filter, settings, export
 - [Methodology](docs/methodology.md) – how internal resistance, state of charge, capacity, timer and spikes are computed
 - [Ethos log format](docs/ethos-log-format.md) – which columns the app expects
