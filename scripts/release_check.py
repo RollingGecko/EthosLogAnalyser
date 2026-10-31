@@ -6,7 +6,7 @@ setting a tag:
     python scripts/release_check.py --tag v0.3.0 --notes-out notes.md
 
 Checks:
-- the tag (if given) has the form vX.Y.Z and matches ``__version__`` in
+- the tag (if given) has the form vX.Y.Z or vX.Y.Z-beta.N (also alpha, rc) and matches ``__version__`` in
   src/ethosloganalyser/__init__.py,
 - CHANGELOG.md has a non-empty section ``## X.Y.Z`` for that version.
 
@@ -27,8 +27,10 @@ ROOT = Path(__file__).resolve().parent.parent
 INIT_FILE = ROOT / "src" / "ethosloganalyser" / "__init__.py"
 CHANGELOG_FILE = ROOT / "CHANGELOG.md"
 
-VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
-TAG_RE = re.compile(r"^v(\d+\.\d+\.\d+)$")
+# X.Y.Z, optionally with a pre-release label such as -beta.1 (alpha, beta or rc followed by a number)
+VERSION_PATTERN = r"\d+\.\d+\.\d+(?:-(?:alpha|beta|rc)\.\d+)?"
+VERSION_RE = re.compile(r"^%s$" % VERSION_PATTERN)
+TAG_RE = re.compile(r"^v(%s)$" % VERSION_PATTERN)
 
 
 class ReleaseError(Exception):
@@ -42,15 +44,15 @@ def read_version(init_text):
         raise ReleaseError("__version__ not found in src/ethosloganalyser/__init__.py")
     version = match.group(1)
     if not VERSION_RE.match(version):
-        raise ReleaseError("__version__ = %r is not of the form X.Y.Z" % version)
+        raise ReleaseError("__version__ = %r is not of the form X.Y.Z or X.Y.Z-beta.N" % version)
     return version
 
 
 def version_from_tag(tag):
-    """Return X.Y.Z for a tag vX.Y.Z."""
+    """Return the version for a tag vX.Y.Z (or vX.Y.Z-beta.N)."""
     match = TAG_RE.match(tag)
     if not match:
-        raise ReleaseError("tag %r is not of the form vX.Y.Z" % tag)
+        raise ReleaseError("tag %r is not of the form vX.Y.Z or vX.Y.Z-beta.N" % tag)
     return match.group(1)
 
 
@@ -74,6 +76,11 @@ def changelog_section(changelog_text, version):
     if not body:
         raise ReleaseError("CHANGELOG.md section '## %s' is empty" % version)
     return body
+
+
+def is_prerelease(version):
+    """True for a version with a pre-release label, e.g. 1.0.0-beta.1."""
+    return "-" in version
 
 
 def check(tag=None, init_text=None, changelog_text=None):
@@ -110,6 +117,7 @@ def main(argv=None):
     if github_output:
         with open(github_output, "a", encoding="utf-8") as fh:
             fh.write("version=%s\n" % version)
+            fh.write("prerelease=%s\n" % str(is_prerelease(version)).lower())
     print("Release check passed: version %s%s" % (
         version, " (tag %s)" % args.tag if args.tag else ""))
     return 0

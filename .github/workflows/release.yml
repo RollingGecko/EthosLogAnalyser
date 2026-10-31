@@ -1,7 +1,7 @@
 name: Release
 
 # Publishes a GitHub release with the Windows EXE when a version tag
-# vX.Y.Z is pushed (see docs/releasing.md). This is the only workflow that
+# vX.Y.Z (or a pre-release such as vX.Y.Z-beta.1) is pushed (see docs/releasing.md). This is the only workflow that
 # can create a release.
 #
 # Dry run (everything except publishing): manually via "Run workflow"
@@ -28,6 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.check.outputs.version }}
+      prerelease: ${{ steps.check.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v4
 
@@ -66,6 +67,7 @@ jobs:
       contents: write
     env:
       VERSION: ${{ needs.check.outputs.version }}
+      PRERELEASE: ${{ needs.check.outputs.prerelease }}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -90,7 +92,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
-          gh release create "$TAG" "dist/EthosLogAnalyser-v${VERSION}.exe" \
+          flag=""
+          if [ "$PRERELEASE" = "true" ]; then flag="--prerelease"; fi
+          gh release create "$TAG" "dist/EthosLogAnalyser-v${VERSION}.exe" $flag \
             --repo "${{ github.repository }}" \
             --title "EthosLogAnalyser v${VERSION}" \
             --notes-file release-notes.md \

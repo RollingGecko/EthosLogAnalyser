@@ -42,7 +42,7 @@ def test_last_section_runs_to_end_of_file():
     assert notes == "- Older entry."
 
 
-@pytest.mark.parametrize("tag", ["v1.2.4", "1.2.3", "v1.2", "v1.2.3-rc1"])
+@pytest.mark.parametrize("tag", ["v1.2.4", "1.2.3", "v1.2", "v1.2.3-rc", "v1.2.3-beta", "v1.2.3-foo.1"])
 def test_wrong_or_malformed_tag_fails(tag):
     with pytest.raises(release_check.ReleaseError):
         release_check.check(tag, INIT, CHANGELOG)
@@ -79,9 +79,31 @@ def test_main_writes_notes_and_github_output(tmp_path, monkeypatch):
     assert release_check.main(["--tag", "v" + version,
                                "--notes-out", str(notes_file)]) == 0
     assert notes_file.read_text(encoding="utf-8").strip()
-    assert out.read_text(encoding="utf-8") == "version=%s\n" % version
+    prerelease = str(release_check.is_prerelease(version)).lower()
+    assert out.read_text(encoding="utf-8") == "version=%s\nprerelease=%s\n" % (version, prerelease)
 
 
 def test_main_fails_on_wrong_tag(monkeypatch):
     monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
     assert release_check.main(["--tag", "v99.99.99"]) == 1
+
+
+def test_prerelease_version_and_tag():
+    init = INIT.replace("1.2.3", "1.0.0-beta.1")
+    changelog = """# Changelog
+
+## 1.0.0-beta.1
+
+- First beta.
+
+## 0.3.0
+
+- Old.
+"""
+    version, notes = release_check.check("v1.0.0-beta.1", init, changelog)
+    assert version == "1.0.0-beta.1"
+    assert notes == "- First beta."
+    assert release_check.is_prerelease(version)
+    assert not release_check.is_prerelease("1.0.0")
+    with pytest.raises(release_check.ReleaseError):
+        release_check.check("v1.0.0", init, changelog)
