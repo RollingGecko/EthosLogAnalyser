@@ -8,7 +8,9 @@ setting a tag:
 Checks:
 - the tag (if given) has the form vX.Y.Z or vX.Y.Z-beta.N (also alpha, rc) and matches ``__version__`` in
   src/ethosloganalyser/__init__.py,
-- CHANGELOG.md has a non-empty section ``## X.Y.Z`` for that version.
+- CHANGELOG.md has a non-empty section ``## X.Y.Z`` for that version,
+- the entries of that section and of ``## Unreleased`` are short and free of ticket numbers: the section is the
+  release note that users read (see ``notes_problems``).
 
 The section body is written to ``--notes-out``. When running in GitHub
 Actions, ``version`` is also written to ``$GITHUB_OUTPUT``.
@@ -31,6 +33,11 @@ CHANGELOG_FILE = ROOT / "CHANGELOG.md"
 VERSION_PATTERN = r"\d+\.\d+\.\d+(?:-(?:alpha|beta|rc)\.\d+)?"
 VERSION_RE = re.compile(r"^%s$" % VERSION_PATTERN)
 TAG_RE = re.compile(r"^v(%s)$" % VERSION_PATTERN)
+
+
+# Release notes are for users: one short line per change, no internal ticket or package numbers (TW-059, WP-31)
+MAX_ENTRY_LENGTH = 300
+TICKET_RE = re.compile(r"\b(?:TW|WP)-\d+\b")
 
 
 class ReleaseError(Exception):
@@ -78,6 +85,21 @@ def changelog_section(changelog_text, version):
     return body
 
 
+def notes_problems(notes):
+    """Return what is wrong with the entries of a changelog section (empty list if it is fine).
+
+    An entry is a line starting with "- ". It must not name a ticket and must stay short; details belong into the
+    pull request and the documentation.
+    """
+    problems = []
+    for line in notes.splitlines():
+        if TICKET_RE.search(line):
+            problems.append("ticket number in an entry (users cannot look it up): %s" % line[:70])
+        if line.startswith("- ") and len(line) > MAX_ENTRY_LENGTH:
+            problems.append("entry longer than %d characters (%d): %s..." % (MAX_ENTRY_LENGTH, len(line), line[:50]))
+    return problems
+
+
 def is_prerelease(version):
     """True for a version with a pre-release label, e.g. 1.0.0-beta.1."""
     return "-" in version
@@ -96,6 +118,13 @@ def check(tag=None, init_text=None, changelog_text=None):
             raise ReleaseError(
                 "tag %s does not match __version__ = %s" % (tag, version))
     notes = changelog_section(changelog_text, version)
+    problems = notes_problems(notes)
+    try:                                       # the entries of the next release are checked in their pull request
+        problems += notes_problems(changelog_section(changelog_text, "Unreleased"))
+    except ReleaseError:
+        pass
+    if problems:
+        raise ReleaseError("CHANGELOG.md is not compact enough:\n  - " + "\n  - ".join(problems))
     return version, notes
 
 

@@ -96,8 +96,24 @@ jobs:
             "EthosLogAnalyser-v${VERSION}-user-guide-en.pdf" \
             "EthosLogAnalyser-v${VERSION}-user-guide-de.pdf")
           ls -l dist
-          echo "--- Release notes ---"
-          cat release-notes.md
+
+      - name: Compose the release text (download list, what's new, link to the full changelog)
+        run: |
+          {
+            echo "## Download"
+            echo
+            echo "- **EthosLogAnalyser-v${VERSION}.zip**: the app and the user guides (English, German) – unpack and start the EXE."
+            echo "- EthosLogAnalyser-v${VERSION}.exe: the app alone."
+            echo "- EthosLogAnalyser-v${VERSION}-user-guide-en.pdf / -de.pdf: the user guides alone."
+            echo
+            echo "## What's new"
+            echo
+            cat release-notes.md
+            echo
+            echo "Full history: [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ github.sha }}/CHANGELOG.md)"
+          } > release-body.md
+          echo "--- Release text ---"
+          cat release-body.md
 
       - name: Publish GitHub release
         if: github.event_name == 'push' && github.ref_type == 'tag'
@@ -114,7 +130,7 @@ jobs:
             "dist/EthosLogAnalyser-v${VERSION}-user-guide-de.pdf" $flag \
             --repo "${{ github.repository }}" \
             --title "EthosLogAnalyser v${VERSION}" \
-            --notes-file release-notes.md \
+            --notes-file release-body.md \
             --verify-tag
 
       - name: Upload release preview (dry run)
@@ -126,5 +142,5 @@ jobs:
             dist/EthosLogAnalyser-v${{ env.VERSION }}.zip
             dist/EthosLogAnalyser-v${{ env.VERSION }}.exe
             dist/EthosLogAnalyser-v${{ env.VERSION }}-user-guide-*.pdf
-            release-notes.md
+            release-body.md
           retention-days: 7

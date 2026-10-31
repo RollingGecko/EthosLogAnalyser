@@ -5,7 +5,7 @@ A release is a GitHub release with the matching CHANGELOG section as release not
 ## Steps
 
 1. **Raise the version** in `src/ethosloganalyser/__init__.py` (`__version__ = "X.Y.Z"`, [semantic versioning](https://semver.org/); a pre-release looks like `1.0.0-beta.1`, also `-alpha.N` and `-rc.N`). Skip this if the version has not been released yet.
-2. **Update `CHANGELOG.md`**: a section `## X.Y.Z` at the top that lists the user-visible changes in English. This section becomes the release notes.
+2. **Update `CHANGELOG.md`**: a section `## X.Y.Z` at the top that lists the user-visible changes in English. This section becomes the release notes, so write it for pilots: one short line per change (at most 300 characters), in plain words, grouped under *New*, *Changed*, *Fixed*, *Removed*; no ticket numbers, file or function names, measurements or test details (those belong into the pull request and `docs/`). The workflow puts a download list above it and a link to the full `CHANGELOG.md` below it.
 3. **Open a pull request** with these changes. The *Tests* workflow checks version and changelog (job *Check version and changelog*), runs the tests and builds a test EXE for acceptance testing (see [Acceptance testing a pull request](acceptance-testing.md)). Merge the pull request when everything is green.
 4. **Set the tag** on the merged commit on `main` – only the maintainer does this. Pushing the tag is what starts the release; every way below pushes an ordinary tag `vX.Y.Z` from your own account.
 
@@ -35,7 +35,8 @@ The release is not created if any of these fail:
 - `CHANGELOG.md` has a non-empty section `## X.Y.Z`,
 - all tests pass (same matrix as on every push: Linux with Python 3.9 and 3.12, Windows with Python 3.12),
 - the EXE is built,
-- both user guide PDFs exist in `docs/`.
+- both user guide PDFs exist in `docs/`,
+- the changelog entries (section of the version and *Unreleased*) have no ticket numbers (`TW-nnn`, `WP-nn`) and are at most 300 characters long.
 
 The same version check runs locally without installing anything:
 
