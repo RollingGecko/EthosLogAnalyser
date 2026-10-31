@@ -9,7 +9,7 @@ Layout:
   gui/       Tkinter user interface
 """
 
-__version__ = "1.0.0-beta.3"
+__version__ = "1.0.0-beta.4"
 
 from .config import Params, CHEM          # noqa: F401
 from .analysis.flight import analyse_frame  # noqa: F401
