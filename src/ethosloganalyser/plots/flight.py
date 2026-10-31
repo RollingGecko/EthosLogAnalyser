@@ -138,10 +138,12 @@ def draw_flight(fig, res, p, path, view=FLIGHT_VIEWS[0]):
                     date=fmt_datetime(r["datum"]), dur=_mmss(r["dauer_s"]), drawn=r["entnommen_mAh"], ri=ri),
                  fontsize=11, fontweight="bold")
     fig._readout = []
+    fig._time_axes = []                                 # the charts with the flight time as x axis (not their twins)
     if not panels:
         fig.text(0.5, 0.5, tr("Für diese Ansicht sind keine Daten im Log."), ha="center", va="center", color="grey", fontsize=12)
         return []
     axes = fig.subplots(len(panels), 1, sharex=True, squeeze=False)[:, 0]
+    fig._time_axes = list(axes)
     rx = s.get("rx")
     for a, pn in zip(axes, panels):
         for name, y, color, kw in pn["lines"]:

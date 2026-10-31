@@ -107,6 +107,7 @@ Flight recorder without Tkinter: plays a flight back from the stored time series
 |---|---|---|
 | `__init__.py` | Package description (no code) | – |
 | `aircraft_shape.py` | The aircraft as a 3D figure (point lists `AIRCRAFT`, one general shape): attitude and control surfaces of a row (`aircraft_pose`, `AircraftPose`, `has_aircraft`), stick to deflection ±25° (`deflection`, `surface_deflections`; the directions of the surfaces as constants), turning, chase-view projection and drawing order (`project_aircraft`, `attitude_point`, `rotate_about_axis`) | readouts, stick_modes, db.sensor_roles |
+| `chart_position.py` | Position of the recorder in the time charts: line position limited to the chart axis (`marker_time`), click to recorder position (`position_from_click`), click or drag (`is_click`), the axes with the flight time (`time_axes`) | – |
 | `dials.py` | Geometry of the round gauges and bars: nice scales per flight (`scale_for`, `vertical_speed_scale`, `nice_ceiling`, `Scale`), pointer angle limited to the scale (`pointer_angle`, `ARC`, `CENTRED_ARC`), ticks, labels, needle, bar fill, parts of one gauge (`panel_parts`) | i18n |
 | `flight_track.py` | Track of one log: "last value holds", age of a value, first column per role, the period of the flight (window of the charts, else the part with telemetry; time 0 = its start, `FlightTrack.origin` = log time of it), telemetry ranges, values of the flight for the scales (`flight_values`); the sign convention of roll and pitch: `load_track`, `build_track`, `chart_window`, `FlightTrack`, `displayed_attitude` | analysis.flight, db.sensor_roles, db.series_codec, db.flight_preparation, db.flight_store |
 | `gauges.py` | Geometry of the artificial horizon (sky, ground, ladder, bank pointer, scale, symbol): `horizon_shape`, `horizon_dial`, `bank_scale_ticks`, `aircraft_symbol`, `format_attitude` | – |
@@ -132,7 +133,8 @@ Matplotlib charts, usable without a window.
 | `__init__.py` | Package marker (empty) | – |
 | `common.py` | Shared chart styling: `time_axis`, `hover_info`, `flight_hover`, `flag_note`, `trend_note`, `_note`, `_new_fig`, `_empty_fig` | i18n, utils |
 | `flight.py` | Single-flight charts: `FLIGHT_VIEWS`, `figure_flight`, `draw_flight`, `cell_count`, `battery_voltage`, `fit_y` | plots.common, config, i18n, utils |
-| `hover.py` | Mouse-over tooltip of every chart: `Hover` | – |
+| `hover.py` | Mouse-over tooltip of every chart: `Hover` (also draws the `overlay`, the position line) | – |
+| `position.py` | Vertical line of the recorder position in the time charts, moved by blitting: `PositionMarker` | recorder.chart_position |
 | `overview.py` | Charts across flights, one function per statistics page: `figure_akku`, `figure_belastung`, `figure_antrieb`, `figure_funk` | plots.common, config, i18n |
 | `single.py` | One chart of a page on its own (enlarged view): `single_chart`, `chart_index`, `chart_title`, `chart_group` | – |
 
@@ -147,7 +149,7 @@ Tkinter user interface. Files marked "no Tkinter" can be tested without a window
 | `anomaly_settings_panel.py` | Section "Anomalies" of Data & settings (rules on/off, thresholds): `AnomalySettingsPanel` | analysis.anomalies, config |
 | `app.py` | Main window: `MainWindow` (tabs Logbook, Statistics, Data & settings; rebuild on language change), `run_gui`, `main` | nearly every gui file |
 | `app_settings.py` | Settings fields, battery settings per aircraft, anomaly rules, stick mode of the radio (`stick_mode`), saving: `AppSettings`, `battery_unset_for`, `BATTERY_HINT` | analysis.anomalies, config |
-| `charts.py` | Chart canvases, toolbar, tooltip, enlarge a chart or a page: `ChartManager` | style, plots.flight, plots.hover, plots.single |
+| `charts.py` | Chart canvases, toolbar, tooltip, enlarge a chart or a page (with the recorder position line): `ChartManager` | style, plots.flight, plots.hover, plots.position, plots.single |
 | `common.py` | Shared widgets and table helpers: `sortable_tree`, `make_text`, `fill_text`, `fmt_cell`, `export_table`, `scrollable_frame`, `TABLE_COLS` | analysis.evaluate, analysis.quality, config, utils |
 | `database_flights.py` | Flights of the database for the pages (no Tkinter): `stored_flights`, `prepare_aircraft`, `complete_flight`, `aircraft_result`, `available_views`, `flight_choice_label`, `StoredFlight` | analysis.fleet, db, plots.flight |
 | `database_panel.py` | Section "Database" (new, open, save as, empty, import): `DatabaseController` (open database, background work), `BackgroundTask`, `DatabasePanel` | db, import_report |
@@ -155,7 +157,7 @@ Tkinter user interface. Files marked "no Tkinter" can be tested without a window
 | `flight_area.py` | Connects the single-flight page with the cache and the recorder with the database and the battery settings (cell count): `DatabaseFlightArea` | database_flights, recorder.flight_track |
 | `flight_cache.py` | Flights, sensor roles and prepared aircraft of the open database: `FlightCache` | database_flights, database_panel, db |
 | `flight_filter.py` | Shared filter state and bar: `FilterState` (selection fields, `set_choices`, `reset`), `FilterBar` | analysis.periods, multi_select |
-| `flight_page.py` | Single-flight page: selection bar, tabs Charts (views, zoom and pan, details, spikes) and Flight recorder: `FlightPage` | plots, report.text, recorder_page, table_fit |
+| `flight_page.py` | Single-flight page: selection bar, tabs Charts (views, zoom and pan, details, spikes; the recorder position as a line, a click sets it) and Flight recorder: `FlightPage` | plots, recorder.chart_position, report.text, recorder_page, table_fit |
 | `import_report.py` | Import report window and summary line: `show_import_report`, `report_summary` | db, table_fit |
 | `logbook_flight_list.py` | Sortable flight list of the logbook: `FlightList`, `mah_text` | common, table_fit |
 | `logbook_model.py` | What the logbook shows (no Tkinter): `LogbookModel` (`view`, `listed`, `switch_flight`), `LogbookView` | analysis.logbook, analysis.periods, db.logbook_table |
@@ -164,7 +166,7 @@ Tkinter user interface. Files marked "no Tkinter" can be tested without a window
 | `recorder_dials.py` | Draws the cockpit gauges (altitude, vertical speed, drive, battery) and the numbers of the minimal layout: `GaugePanel`, `ReadoutPanel` | recorder.dials, recorder.readouts, recorder_instruments |
 | `recorder_radio.py` | Draws the radio: two stick fields with a dot each, axis names and values in percent; labels and dots follow the stick mode: `RadioPanel` | recorder.radio, recorder.stick_modes, recorder_dials, recorder_instruments |
 | `recorder_instruments.py` | Draws the artificial horizon (moving parts only moved) and holds the instrument colours: `HorizonGauge`, `BEZEL`, `SCALE`, `SYMBOL` | recorder.gauges |
-| `recorder_page.py` | Tab Flight recorder: loading, timer, keys, layout, stick mode (`set_stick_mode`), snapshot: `RecorderPage` (`load_track`, `cells_for` set by flight_area) | recorder, recorder_instruments, recorder_dials, recorder_radio, recorder_aircraft, recorder_timeline |
+| `recorder_page.py` | Tab Flight recorder: loading, timer, keys, layout, stick mode (`set_stick_mode`), snapshot: `RecorderPage` (`load_track`, `cells_for` set by flight_area; `position`, `place_at` for the charts) | recorder, recorder_instruments, recorder_dials, recorder_radio, recorder_aircraft, recorder_timeline |
 | `recorder_timeline.py` | Timeline: track with telemetry band, play/stop, row steps, time, speed: `Timeline`, `speed_text`, `time_text` | recorder.playback |
 | `logbook_tables.py` | Tables per aircraft, year and month: `LogbookTables`, `PeriodTable`, `aircraft_rows` | table_fit |
 | `multi_select.py` | Button with a check-button list for several values: `MultiSelect`, `selection_summary`, `shortened` | i18n |
@@ -217,6 +219,7 @@ test session: `test_gui.py` owns it and calls the `*_checks.py` modules.
 | `test_periods.py` | Filter by aircraft, year, month, date range; the shared filter state |
 | `test_quality_ageing.py` | Measurement-error detection and the ageing model |
 | `test_recorder_aircraft_shape.py` | Aircraft: turning and projection at bank 0/90/180/−180 and pitch ±90, inside its box, drawing order (inverted flight), deflections ±25°, ailerons against each other, directions, missing sticks/attitude/throttle, gaps, one row of a real log |
+| `test_recorder_chart_position.py` | Position line in the charts: time 0 and axis of recorder and charts, limits, which axes get a line, click or drag, line moved without changing the axes, tooltip and `fit_y` ignore it |
 | `test_recorder_dials.py` | Gauge geometry: nice scales, pointer limits, the vertical speed centred on 0, ticks, bars, parts of a gauge |
 | `test_recorder_gauges.py` | Horizon geometry at bank 0/90/180/−180 and pitch ±90, ladder, helpers |
 | `test_recorder_layout.py` | Recorder layout at several sizes and fonts: inside, no overlap, modes, switching sizes that grow with the font, dial size in lines, aircraft next to the radio |

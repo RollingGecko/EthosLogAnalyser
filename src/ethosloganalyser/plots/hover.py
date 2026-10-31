@@ -119,6 +119,7 @@ class Hover:
         self.crosshair, self.on_move, self.max_dist = crosshair, on_move, max_dist
         self._bg = None
         self._series = []            # [(ax, name, x, value, screen points)]
+        self.overlay = []            # animated artists drawn on top of the chart (the position line)
         self._last = None
         self._artists = {}
         self._cids = [canvas.mpl_connect(ev, fn) for ev, fn in (
@@ -157,6 +158,7 @@ class Hover:
     # -- events
     def _on_draw(self, _ev=None):
         self._bg = self.canvas.copy_from_bbox(self.fig.bbox) if hasattr(self.canvas, "copy_from_bbox") else None
+        self._draw_overlay()
         self._series = []
         for ax in self.fig.axes:
             if not ax.get_visible():
@@ -172,6 +174,20 @@ class Hover:
                          (pts[:, 1] <= bb.y1 + 1)
                 pts[~inside] = np.nan
                 self._series.append((ax, name, x, v, pts, y))
+        self._last = None
+
+    def _draw_overlay(self):
+        for artist in self.overlay:
+            if artist.get_visible() and artist.axes is not None:
+                artist.axes.draw_artist(artist)
+
+    def redraw_overlay(self):
+        """Draws the overlay again over the saved picture of the chart (a tooltip is gone until the mouse moves)."""
+        if self._bg is None:
+            return
+        self.canvas.restore_region(self._bg)
+        self._draw_overlay()
+        self.canvas.blit(self.fig.bbox)
         self._last = None
 
     def find(self, x_px, y_px):
@@ -206,6 +222,7 @@ class Hover:
             return
         txt = self._text()
         self.canvas.restore_region(self._bg)
+        self._draw_overlay()
         if self.crosshair and xdata is not None:
             for ax in self.fig.axes:
                 if ax.get_visible():
