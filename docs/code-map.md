@@ -233,6 +233,7 @@ test session: `test_gui.py` owns it and calls the `*_checks.py` modules.
 | `test_report_plots.py` | Reports and charts work without the GUI |
 | `test_rx_spikes.py` | Receiver current spikes |
 | `test_single_chart.py` | Enlarging one chart on its own |
+| `test_user_guide.py` | User guides (en, de): Markdown and PDF exist, every linked screenshot exists and is not blank (locked screen) |
 | `test_statistics_model.py` | Statistics model: filter, one aircraft per analysis, states |
 
 ## `scripts/`

@@ -5,6 +5,14 @@ requests and in `docs/`.
 
 ## Unreleased
 
+## 1.0.0-beta.4
+
+Fourth beta of 1.0.0. The program itself is unchanged.
+
+### Fixed
+
+- **User guide**: the screenshots in the PDFs of 1.0.0-beta.3 were black; they show the app again.
+
 ## 1.0.0-beta.3
 
 Third beta of 1.0.0. The program itself is unchanged; the release package and the notes are new.
