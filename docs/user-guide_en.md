@@ -1,6 +1,6 @@
 # EthosLogAnalyser – User guide
 
-For pilots who use the Windows EXE. Version: 1.0.0 beta 1 (pre-release). No programming knowledge needed.
+For pilots who use the Windows EXE. Version: 1.0.0 beta 2 (pre-release). No programming knowledge needed.
 German version: [user-guide_de.md](user-guide_de.md).
 
 EthosLogAnalyser reads the flight logs (CSV files) that your **FrSky Ethos** transmitter writes and turns them into
