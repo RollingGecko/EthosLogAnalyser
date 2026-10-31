@@ -125,8 +125,11 @@ def _check_gauges(root, recorder):
         assert READOUTS in rects and len(recorder.readouts.numbers) == 6
         return
     assert all(recorder.gauges[name].visible for name in SIDE_GAUGES)
-    assert rects[ALTITUDE].x < rects[VERTICAL_SPEED].x and rects[RPM_THROTTLE].x < rects[BATTERY].x
-    assert rects[ALTITUDE].y < rects[RPM_THROTTLE].y and rects[VERTICAL_SPEED].y < rects[BATTERY].y
+    if len({rects[name].y for name in SIDE_GAUGES}) == 1:          # one row (compact layout at a large font)
+        assert [rects[name].x for name in SIDE_GAUGES] == sorted(rects[name].x for name in SIDE_GAUGES)
+    else:
+        assert rects[ALTITUDE].x < rects[VERTICAL_SPEED].x and rects[RPM_THROTTLE].x < rects[BATTERY].x
+        assert rects[ALTITUDE].y < rects[RPM_THROTTLE].y and rects[VERTICAL_SPEED].y < rects[BATTERY].y
     canvas, track = recorder.canvas, recorder.track
     altitude, drive, battery = recorder.gauges[ALTITUDE], recorder.gauges[RPM_THROTTLE], recorder.gauges[BATTERY]
     start_text = canvas.itemcget(altitude.number, "text")
@@ -264,12 +267,9 @@ def check_recorder_aircraft(root, recorder):
 
     if recorder.layout.mode == MINIMAL:
         assert not recorder.aircraft.visible and AIRCRAFT not in recorder.layout.rects
-    from ethosloganalyser.recorder.layout import COMPACT, min_size, timeline_height
-
-    line_height = tkfont.nametofont("TkDefaultFont").metrics("linespace")
-    least_width, least_height = min_size(COMPACT, line_height)      # the compact layout at the font of this screen
-    width = min(max(1200, least_width + 60), root.winfo_screenwidth() - 40)
-    height = min(max(800, least_height + timeline_height(line_height) + 60), root.winfo_screenheight() - 80)
+    # about a maximized window, where the layout shows every instrument up to a display scaling of 150 %
+    width = min(1600, root.winfo_screenwidth() - 40)
+    height = min(900, root.winfo_screenheight() - 80)
     window = tk.Toplevel(root)
     window.geometry(f"{width}x{height}")
     try:
