@@ -1,6 +1,6 @@
 # Releasing
 
-A release is a GitHub release with the Windows EXE `EthosLogAnalyser-vX.Y.Z.exe` attached and the matching CHANGELOG section as release notes. It is built and published by GitHub Actions ([`.github/workflows/release.yml`](../.github/workflows/release.yml)) when a version tag `vX.Y.Z` is pushed. Nobody builds or uploads the EXE by hand.
+A release is a GitHub release with the matching CHANGELOG section as release notes and four files attached: the Windows EXE `EthosLogAnalyser-vX.Y.Z.exe`, the user guides `EthosLogAnalyser-vX.Y.Z-user-guide-en.pdf` and `-de.pdf`, and `EthosLogAnalyser-vX.Y.Z.zip`, which holds the EXE and both guides together (the download for new users). The guides are the committed `docs/user-guide_en.pdf` and `docs/user-guide_de.pdf`; if you change a guide's Markdown, create its PDF again in the same pull request. It is built and published by GitHub Actions ([`.github/workflows/release.yml`](../.github/workflows/release.yml)) when a version tag `vX.Y.Z` is pushed. Nobody builds or uploads the EXE by hand.
 
 ## Steps
 
@@ -34,7 +34,8 @@ The release is not created if any of these fail:
 - the tag has the form `vX.Y.Z` (or `vX.Y.Z-beta.N`) and matches `__version__`,
 - `CHANGELOG.md` has a non-empty section `## X.Y.Z`,
 - all tests pass (same matrix as on every push: Linux with Python 3.9 and 3.12, Windows with Python 3.12),
-- the EXE is built.
+- the EXE is built,
+- both user guide PDFs exist in `docs/`.
 
 The same version check runs locally without installing anything:
 
@@ -44,7 +45,7 @@ python scripts\release_check.py --tag vX.Y.Z
 
 ## Dry run
 
-*Actions → Release → Run workflow* runs everything except publishing on any branch and uploads the artifact `release-preview` (EXE named `EthosLogAnalyser-vX.Y.Z.exe` and the release notes). The dry run uses `__version__` and does not need a tag. Use it after changing the release pipeline itself (`release.yml`, `build.yml`, `scripts/release_check.py`, `scripts/build_exe.bat`); pull requests no longer run it automatically, so the EXE is not built twice.
+*Actions → Release → Run workflow* runs everything except publishing on any branch and uploads the artifact `release-preview` (EXE, both user guide PDFs, the ZIP, all named with the version, and the release notes). The dry run uses `__version__` and does not need a tag. Use it after changing the release pipeline itself (`release.yml`, `build.yml`, `scripts/release_check.py`, `scripts/build_exe.bat`); pull requests no longer run it automatically, so the EXE is not built twice.
 
 ## Test builds are never releases
 

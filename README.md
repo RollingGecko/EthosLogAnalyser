@@ -21,7 +21,7 @@ several values to tick – and a date range) shared by logbook and statistics.
 
 ## Download
 
-The Windows EXE is attached to each release under [Releases](https://github.com/RollingGecko/EthosLogAnalyser/releases): download `EthosLogAnalyser-vX.Y.Z.exe` and start it – no Python needed. Windows SmartScreen may warn because the EXE is not signed (*More info → Run anyway*).
+The Windows EXE is attached to each release under [Releases](https://github.com/RollingGecko/EthosLogAnalyser/releases): download `EthosLogAnalyser-vX.Y.Z.zip` (the EXE and the user guides in English and German) or just `EthosLogAnalyser-vX.Y.Z.exe`, and start the EXE – no Python needed. The guides are also attached as separate PDFs. Windows SmartScreen may warn because the EXE is not signed (*More info → Run anyway*).
 
 ## Quick start (from source)
 

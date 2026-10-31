@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **User guide for the Windows EXE** (documentation only, no change to the program): a step-by-step guide for pilots who use the app for the first time, covering import, logbook, single flight, flight recorder, statistics, settings and notes, with screenshots of the app. In English (`docs/user-guide_en.md`, PDF) and German (`docs/user-guide_de.md`, PDF); linked from the README.
+- **User guide for the Windows EXE** (documentation only, no change to the program): a step-by-step guide for pilots who use the app for the first time, covering import, logbook, single flight, flight recorder, statistics, settings and notes, with screenshots of the app. In English (`docs/user-guide_en.md`, PDF) and German (`docs/user-guide_de.md`, PDF); linked from the README. **Releases and pre-releases** now also attach both guides as PDFs and a ZIP with the EXE and the guides (`EthosLogAnalyser-vX.Y.Z.zip`); the EXE stays available on its own.
 
 ## 1.0.0-beta.1
 
