@@ -5,8 +5,18 @@ requests and in `docs/`.
 
 ## Unreleased
 
-- **User guide** for the Windows EXE in English and German (PDF and Markdown). Every release now attaches both guides and a ZIP with the EXE and the guides.
-- **Shorter release notes**: the notes of a release list only what changed for users, and the release check rejects ticket numbers and very long entries.
+## 1.0.0-beta.3
+
+Third beta of 1.0.0. The program itself is unchanged; the release package and the notes are new.
+
+### New
+
+- **User guide** for the Windows EXE in English and German (PDF), with screenshots.
+- **One download**: the release contains a ZIP with the EXE and both user guides; the EXE and the guides are also available on their own.
+
+### Changed
+
+- **Shorter release notes** that list only what changed for users.
 
 ## 1.0.0-beta.1
 
