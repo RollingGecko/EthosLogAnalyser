@@ -78,6 +78,16 @@ def test_tr_translates_and_falls_back_to_german():
     assert tr("Zusammenfassung") == "Resumen"
 
 
+def test_notes_of_the_recorder_aircraft_in_every_language():
+    from ethosloganalyser.gui.recorder_aircraft import NO_STICKS
+    from ethosloganalyser.gui.recorder_instruments import NO_ATTITUDE
+    expected = {"de": ("keine Lagedaten", "keine Knüppeldaten"), "en": ("no attitude data", "no stick data"),
+                "es": ("sin datos de actitud", "sin datos de los mandos")}
+    for lang, texts in expected.items():
+        i18n.set_language(lang)
+        assert (tr(NO_ATTITUDE), tr(NO_STICKS)) == texts
+
+
 def test_unknown_language_falls_back_to_english():
     i18n.set_language("xx")
     assert i18n.get_language() == "en"

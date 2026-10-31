@@ -12,9 +12,11 @@ import pytest
 from ethosloganalyser import config
 from ethosloganalyser.gui.app_settings import AppSettings
 from ethosloganalyser.gui.recorder_page import KEY_SEQUENCES
+from ethosloganalyser.gui.recorder_aircraft import face_colour, shaded
 from ethosloganalyser.gui.recorder_dials import STALE
-from ethosloganalyser.recorder.layout import (ALTITUDE, BATTERY, HORIZON, MINIMAL, RADIO, READOUTS, RPM_THROTTLE,
-                                              SIDE_GAUGES, TIMELINE, VERTICAL_SPEED)
+from ethosloganalyser.recorder.aircraft_shape import aircraft_pose, project_aircraft
+from ethosloganalyser.recorder.layout import (AIRCRAFT, ALTITUDE, BATTERY, HORIZON, MINIMAL, RADIO, READOUTS,
+                                              RPM_THROTTLE, SIDE_GAUGES, TIMELINE, VERTICAL_SPEED)
 from ethosloganalyser.recorder.radio import dot_position, dot_radius
 from ethosloganalyser.recorder.readouts import NO_VALUE
 from ethosloganalyser.recorder.stick_modes import assignment_text, axes_label, radio_readings, stick_axes
@@ -56,6 +58,7 @@ def check_recorder(root):
     assert recorder.timeline.frame.winfo_reqheight() <= timeline.height    # buttons and track fit at this font
     _check_gauges(root, recorder)
     check_recorder_radio(root, recorder)
+    check_recorder_aircraft(root, recorder)
     _check_playback(root, recorder, clock)
     _check_timeline_and_keys(root, recorder)
 
@@ -122,8 +125,11 @@ def _check_gauges(root, recorder):
         assert READOUTS in rects and len(recorder.readouts.numbers) == 6
         return
     assert all(recorder.gauges[name].visible for name in SIDE_GAUGES)
-    assert rects[ALTITUDE].x < rects[VERTICAL_SPEED].x and rects[RPM_THROTTLE].x < rects[BATTERY].x
-    assert rects[ALTITUDE].y < rects[RPM_THROTTLE].y and rects[VERTICAL_SPEED].y < rects[BATTERY].y
+    if len({rects[name].y for name in SIDE_GAUGES}) == 1:          # one row (compact layout at a large font)
+        assert [rects[name].x for name in SIDE_GAUGES] == sorted(rects[name].x for name in SIDE_GAUGES)
+    else:
+        assert rects[ALTITUDE].x < rects[VERTICAL_SPEED].x and rects[RPM_THROTTLE].x < rects[BATTERY].x
+        assert rects[ALTITUDE].y < rects[RPM_THROTTLE].y and rects[VERTICAL_SPEED].y < rects[BATTERY].y
     canvas, track = recorder.canvas, recorder.track
     altitude, drive, battery = recorder.gauges[ALTITUDE], recorder.gauges[RPM_THROTTLE], recorder.gauges[BATTERY]
     start_text = canvas.itemcget(altitude.number, "text")
@@ -235,6 +241,90 @@ def check_recorder_radio(root, recorder):
     root.update()
 
 
+def _aircraft_matches_row(recorder):
+    """The faces of the aircraft are where the attitude and the sticks of the shown row put them."""
+    canvas, aircraft = recorder.canvas, recorder.aircraft
+    faces, exhaust = project_aircraft(aircraft_pose(recorder.track, recorder.shown_row), aircraft.box)
+    for face in faces:
+        item = aircraft.faces[face.name]
+        assert (canvas.itemcget(item, "state") == "hidden") == (not face.visible), face.name
+        if face.visible:
+            assert canvas.coords(item) == pytest.approx(list(face.points), abs=0.01), face.name
+    assert (canvas.itemcget(aircraft.exhaust, "state") == "hidden") == (exhaust is None)
+    shown = [aircraft.faces[face.name] for face in faces if face.visible]
+    stacking = [item for item in canvas.find_all() if item in shown]
+    assert stacking == shown                                         # drawn in the order of the faces
+    return faces
+
+
+def check_recorder_aircraft(root, recorder):
+    """The aircraft: next to the radio, it follows the attitude and the sticks of the row, a gap greys it out but
+    keeps it in its place. Checked on a recorder page of its own in a window large enough for the bottom row (the
+    window of the test session may be small enough for the minimal layout, which has no aircraft)."""
+    import tkinter as tk
+    from tkinter import font as tkfont
+    from ethosloganalyser.gui.recorder_page import RecorderPage
+
+    if recorder.layout.mode == MINIMAL:
+        assert not recorder.aircraft.visible and AIRCRAFT not in recorder.layout.rects
+    # about a maximized window, where the layout shows every instrument up to a display scaling of 150 %
+    width = min(1600, root.winfo_screenwidth() - 40)
+    height = min(900, root.winfo_screenheight() - 80)
+    window = tk.Toplevel(root)
+    window.geometry(f"{width}x{height}")
+    try:
+        page = RecorderPage(window, tkfont.nametofont("TkDefaultFont").actual("family"))
+        page.clock_function = FakeClock()
+        page.load_track = lambda key: recorder.track
+        page.set_flight(recorder.key)
+        page.activate()
+        root.update()
+        if page.layout.mode == MINIMAL:                              # a very small test screen: nothing to check
+            assert not page.aircraft.visible
+            return
+        _check_aircraft_of_page(root, page)
+    finally:
+        window.destroy()
+
+
+def _check_aircraft_of_page(root, page):
+    canvas, track, aircraft = page.canvas, page.track, page.aircraft
+    rect = page.layout.rects[AIRCRAFT]
+    assert aircraft.visible and rect.x >= page.layout.rects[RADIO].right
+    page.seek(track.start_time)
+    root.update()
+    first = [canvas.coords(item) for item in aircraft.faces.values()]
+    _aircraft_matches_row(page)
+    for fraction in (0.3, 0.6):
+        page.seek(track.start_time + (track.end_time - track.start_time) * fraction)
+        root.update()
+        faces = _aircraft_matches_row(page)
+        for face in faces:                                           # the figure stays in its box
+            if face.visible:
+                assert all(rect.x <= x <= rect.right for x in face.points[0::2])
+                assert all(rect.y <= y <= rect.bottom for y in face.points[1::2])
+    assert [canvas.coords(item) for item in aircraft.faces.values()] != first     # it moves with the rows
+
+    saved = {role: values.measured_at.copy() for role, values in track.series.items()}
+    try:
+        for values in track.series.values():                         # a gap: no value for a long time
+            values.measured_at[:] = -1000.0
+        page.seek(track.start_time + (track.end_time - track.start_time) / 2)
+        root.update()
+        faces = _aircraft_matches_row(page)
+        wing = next(face for face in faces if face.name == "wing_right")
+        assert canvas.itemcget(aircraft.faces["wing_right"], "fill") == shaded(face_colour(wing, True), wing.shade)
+        assert aircraft.visible and AIRCRAFT in page.layout.rects    # grey, but it does not disappear
+    finally:
+        for role, values in track.series.items():
+            values.measured_at[:] = saved[role]
+    page.seek(track.start_time + (track.end_time - track.start_time) / 3)
+    root.update()
+    wing = next(face for face in _aircraft_matches_row(page) if face.name == "wing_right")
+    assert canvas.itemcget(aircraft.faces["wing_right"], "fill") == shaded(face_colour(wing, False), wing.shade)
+    assert face_colour(wing, False) != face_colour(wing, True)
+
+
 def _check_timeline_and_keys(root, recorder):
     """A click on the middle of the track jumps there; keys step rows and play/stop."""
     track, canvas = recorder.track, recorder.timeline.track
@@ -314,6 +404,8 @@ def check_recorder_without_attitude(root):
     assert recorder.canvas.itemcget(recorder.gauges[BATTERY].pointer, "state") == "hidden"
     assert recorder.canvas.itemcget(recorder.note, "state") == "hidden"      # the gauges show, no note
     assert RADIO not in rects and not recorder.radio.visible          # the glider log has no stick columns
+    assert AIRCRAFT not in rects and not recorder.aircraft.visible    # nor an attitude: no aircraft
+    assert all(recorder.canvas.itemcget(item, "state") == "hidden" for item in recorder.aircraft.faces.values())
     if recorder.layout.mode == MINIMAL:                              # the screen of a test machine may be small
         assert list(recorder.readouts.numbers) == ["altitude", "vertical_speed"]
     else:

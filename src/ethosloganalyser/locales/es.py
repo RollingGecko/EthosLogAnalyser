@@ -988,4 +988,5 @@ CATALOG = {
     'Knüppelmodus': 'Modo de mandos',
     'Gilt für alle Flugzeuge und wirkt sofort im Flugrekorder.': 'Se aplica a todos los aviones y actúa de inmediato en el registrador de vuelo.',
     'Dieser Log enthält keine Zeitreihen.': 'Este registro no contiene series temporales.',
+    'keine Knüppeldaten': 'sin datos de los mandos',
 }
