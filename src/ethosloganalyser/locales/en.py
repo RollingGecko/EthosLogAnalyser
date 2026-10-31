@@ -975,4 +975,5 @@ CATALOG = {
     'Knüppelmodus': 'Stick mode',
     'Gilt für alle Flugzeuge und wirkt sofort im Flugrekorder.': 'Applies to all aircraft and takes effect at once in the flight recorder.',
     'Dieser Log enthält keine Zeitreihen.': 'This log contains no time series.',
+    'keine Knüppeldaten': 'no stick data',
 }

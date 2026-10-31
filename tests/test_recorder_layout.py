@@ -1,18 +1,20 @@
 # -*- coding: utf-8 -*-
-"""Layout of the flight recorder (recorder/layout.py): modes, all rectangles inside, no overlap."""
+"""Layout of the flight recorder (recorder/layout.py): modes, thresholds that follow the font, all rectangles
+inside, no overlap."""
 
 import itertools
 
 import pytest
 
 from ethosloganalyser.recorder.dials import panel_parts
-from ethosloganalyser.recorder.layout import (AIRCRAFT, ALTITUDE, BATTERY, COMPACT, HORIZON, MINIMAL, NORMAL, RADIO,
-                                              READOUTS, RPM_THROTTLE, SIDE_GAUGES, TIMELINE, VERTICAL_SPEED, Rect,
-                                              recorder_layout, timeline_height)
+from ethosloganalyser.recorder.layout import (AIRCRAFT, ALTITUDE, BATTERY, COMPACT, COMPACT_MIN_SIZE, HORIZON,
+                                              MINIMAL, NORMAL, NORMAL_MIN_SIZE, RADIO, READOUTS, RPM_THROTTLE,
+                                              SIDE_GAUGES, TIMELINE, VERTICAL_SPEED, Rect, font_scale, min_size,
+                                              recorder_layout, recorder_mode, timeline_height)
 
 ALL = {HORIZON, ALTITUDE, VERTICAL_SPEED, RPM_THROTTLE, BATTERY, RADIO, AIRCRAFT}
-SIZES = [(size, line_height) for size in [(1920, 1080), (1280, 720), (900, 600)] for line_height in (16, 20, 24)] \
-    + [((600, 400), 16), ((600, 400), 24)]
+FONTS = (16, 20, 24)                     # line heights at a Windows display scaling of 100, 125 and 150 %
+SIZES = [(size, line_height) for size in [(1920, 1080), (1280, 720), (900, 600), (600, 400)] for line_height in FONTS]
 
 
 def _check(layout, width, height):
@@ -28,7 +30,7 @@ def _check(layout, width, height):
 @pytest.mark.parametrize("size, line_height", SIZES)
 @pytest.mark.parametrize("present", [{HORIZON}, ALL, {HORIZON, ALTITUDE}, {ALTITUDE, BATTERY}, set(),
                                      {HORIZON, RADIO, AIRCRAFT}, ALL - {HORIZON}, ALL - {AIRCRAFT}, {RADIO},
-                                     {HORIZON, RADIO}])
+                                     {HORIZON, RADIO}, ALL - {RADIO}, {AIRCRAFT}, ALL - {RADIO, AIRCRAFT}])
 def test_no_rectangle_overlaps_another_or_leaves_the_page(size, line_height, present):
     layout = recorder_layout(*size, present, line_height)
     _check(layout, *size)
@@ -47,9 +49,41 @@ def test_the_timeline_takes_the_full_width_at_the_bottom_and_grows_with_the_font
 
 def test_modes_follow_the_size():
     assert recorder_layout(1920, 1080, ALL, 16).mode == NORMAL
-    assert recorder_layout(1280, 720, ALL, 24).mode == NORMAL
+    assert recorder_layout(1280, 720, ALL, 16).mode == NORMAL
     assert recorder_layout(900, 600, ALL, 16).mode == COMPACT
     assert recorder_layout(600, 400, ALL, 16).mode == MINIMAL
+
+
+@pytest.mark.parametrize("size, modes", [
+    ((1920, 1080), (NORMAL, NORMAL, NORMAL)), ((1600, 900), (NORMAL, NORMAL, COMPACT)),
+    ((1280, 720), (NORMAL, COMPACT, MINIMAL)), ((900, 600), (COMPACT, MINIMAL, MINIMAL)),
+    ((600, 400), (MINIMAL, MINIMAL, MINIMAL))])
+def test_a_larger_font_switches_to_compact_and_minimal_earlier(size, modes):
+    assert tuple(recorder_layout(*size, ALL, line_height).mode for line_height in FONTS) == modes
+
+
+def test_the_thresholds_at_100_percent_stay_as_they_were():
+    for line_height in (12, 15, 16):                         # Segoe UI 9 pt at 100 %: 15 pixels
+        assert font_scale(line_height) == 1.0
+        assert min_size(NORMAL, line_height) == NORMAL_MIN_SIZE and min_size(COMPACT, line_height) == COMPACT_MIN_SIZE
+    assert min_size(NORMAL, 24) == (1650, 840) and min_size(COMPACT, 20) == (800, 525)
+    assert recorder_mode(1100, 560) == NORMAL and recorder_mode(1099, 560) == COMPACT
+    assert recorder_mode(640, 420) == COMPACT and recorder_mode(640, 419) == MINIMAL
+
+
+@pytest.mark.parametrize("line_height", (15,) + FONTS)
+@pytest.mark.parametrize("present", [ALL, ALL - {RADIO, AIRCRAFT}, ALL - {RADIO}])
+def test_the_dials_keep_their_size_in_lines_at_every_font(line_height, present):
+    """Normal and compact are used only while every dial has a radius of about two lines of text (as at the
+    thresholds at 100 %), so the numbers stay readable at 125 and 150 %."""
+    for width in range(500, 2000, 50):
+        for height in range(400, 1200, 25):
+            layout = recorder_layout(width, height, present, line_height)
+            if layout.mode == MINIMAL:
+                continue
+            for name in SIDE_GAUGES:
+                parts = panel_parts(layout.rects[name], line_height, True, name == RPM_THROTTLE)
+                assert parts.dial.radius >= 1.9 * line_height, (width, height, name, parts.dial.radius)
 
 
 def test_normal_mode_puts_the_horizon_in_the_middle_with_the_gauges_left_and_right():
@@ -114,7 +148,7 @@ def test_the_radio_sits_in_the_bottom_row_with_and_without_the_aircraft(size, li
 
 @pytest.mark.parametrize("size, line_height, smallest", [
     ((1920, 1080), 16, 100), ((1920, 1080), 20, 90), ((1920, 1080), 24, 80), ((1280, 720), 16, 55),
-    ((1280, 720), 24, 38)])
+    ((1280, 720), 20, 50)])
 def test_the_gauges_stay_readable_with_the_radio(size, line_height, smallest):
     """The radio takes room from the gauges; their dials must keep a radius that holds the numbers."""
     rects = recorder_layout(*size, ALL, line_height).rects
@@ -130,3 +164,18 @@ def test_without_the_radio_the_gauges_move_up_and_the_layout_stays_valid():
     assert RADIO not in without.rects
     assert without.rects[HORIZON].width >= with_radio.rects[HORIZON].width
     assert without.rects[ALTITUDE].height >= with_radio.rects[ALTITUDE].height
+
+
+@pytest.mark.parametrize("size, line_height", SIZES)
+def test_the_aircraft_sits_next_to_the_radio_and_alone_in_its_place(size, line_height):
+    layout = recorder_layout(*size, ALL, line_height)
+    if layout.mode == MINIMAL:
+        assert AIRCRAFT not in layout.rects                       # the minimal layout has no aircraft
+        return
+    rects = layout.rects
+    aircraft, radio = rects[AIRCRAFT], rects[RADIO]
+    assert aircraft.y == radio.y and aircraft.height == radio.height and aircraft.y >= rects[HORIZON].bottom - 1
+    assert aircraft.x >= radio.right                               # the aircraft to the right of the radio
+    alone = recorder_layout(*size, ALL - {RADIO}, line_height).rects[AIRCRAFT]
+    assert alone.width >= aircraft.width > 0
+    assert aircraft.width <= aircraft.height * 1.6 + 1

@@ -13,6 +13,11 @@ Three modes, chosen by the size of the instrument area (the page without the tim
 * compact (smaller): horizon on the left, the gauges in a 2 x 2 grid next to it, radio and aircraft below;
 * minimal (below COMPACT_MIN_SIZE): only the horizon and a column of numbers for the gauges.
 
+The two thresholds hold for a font of REFERENCE_LINE_HEIGHT (Windows display scaling 100 %) and grow with the line
+height of a larger font (125 %, 150 %): the texts of a gauge take more room there, so a window of the same size
+switches to compact and minimal earlier and the dials keep the same size in lines of text as at 100 %. Fonts up to
+REFERENCE_LINE_HEIGHT keep the thresholds as they are.
+
 The bottom row (radio, aircraft) takes only so much height that the gauges above it stay readable: ROW_SHARE of
 the area. The radio is as wide as its two stick fields need, the aircraft box is 1.6 times as wide as high.
 """
@@ -36,8 +41,9 @@ SIDE_GAUGES = (ALTITUDE, VERTICAL_SPEED, RPM_THROTTLE, BATTERY)   # in the order
 BOTTOM_INSTRUMENTS = (RADIO, AIRCRAFT)
 
 NORMAL, COMPACT, MINIMAL = "normal", "compact", "minimal"
-NORMAL_MIN_SIZE = (1100, 560)          # instrument area in pixels
+NORMAL_MIN_SIZE = (1100, 560)          # instrument area in pixels at REFERENCE_LINE_HEIGHT
 COMPACT_MIN_SIZE = (640, 420)
+REFERENCE_LINE_HEIGHT = 16             # line height of the default font at 100 % (Segoe UI 9 pt: 15 pixels)
 ROW_SHARE = {NORMAL: 0.28, COMPACT: 0.28}   # height of the bottom row (radio, aircraft) in the area
 AIRCRAFT_ASPECT = 1.6                  # width / height of the box of the aircraft
 
@@ -91,12 +97,24 @@ def timeline_height(line_height):
     return round(line_height * 3.2) + 36
 
 
-def recorder_mode(width, height):
-    """Mode for an instrument area of width x height pixels."""
-    if width >= NORMAL_MIN_SIZE[0] and height >= NORMAL_MIN_SIZE[1]:
-        return NORMAL
-    if width >= COMPACT_MIN_SIZE[0] and height >= COMPACT_MIN_SIZE[1]:
-        return COMPACT
+def font_scale(line_height):
+    """How much larger the font is than at 100 % (1.0 for fonts up to REFERENCE_LINE_HEIGHT)."""
+    return max(1.0, line_height / REFERENCE_LINE_HEIGHT)
+
+
+def min_size(mode, line_height):
+    """Smallest instrument area (width, height) of the normal or compact mode at a font of line_height pixels."""
+    width, height = {NORMAL: NORMAL_MIN_SIZE, COMPACT: COMPACT_MIN_SIZE}[mode]
+    scale = font_scale(line_height)
+    return round(width * scale), round(height * scale)
+
+
+def recorder_mode(width, height, line_height=REFERENCE_LINE_HEIGHT):
+    """Mode for an instrument area of width x height pixels at a font of line_height pixels."""
+    for mode in (NORMAL, COMPACT):
+        least_width, least_height = min_size(mode, line_height)
+        if width >= least_width and height >= least_height:
+            return mode
     return MINIMAL
 
 
@@ -110,7 +128,7 @@ def recorder_layout(width, height, present, line_height):
     timeline = _rect(0, max(height - timeline_height(line_height), 0), width,
                      min(timeline_height(line_height), height))
     area = _rect(0, 0, width, timeline.y)
-    mode = recorder_mode(area.width, area.height)
+    mode = recorder_mode(area.width, area.height, line_height)
     place = {NORMAL: _normal, COMPACT: _compact, MINIMAL: _minimal}[mode]
     rects = place(area, set(present), margin_for(line_height), line_height)
     rects[TIMELINE] = timeline
