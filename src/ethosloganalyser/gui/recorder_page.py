@@ -19,6 +19,7 @@ import time
 
 from ..i18n import N_, tr
 from ..recorder.aircraft_shape import has_aircraft
+from ..recorder.chart_position import position_from_click
 from ..recorder.layout import AIRCRAFT, HORIZON, RADIO, READOUTS, SIDE_GAUGES, TIMELINE, recorder_layout
 from ..recorder.playback import JUMP_S, TICK_MS, PlaybackClock
 from ..recorder.readouts import flight_scales, present_panels, readout_lines
@@ -143,6 +144,7 @@ class RecorderPage:
         self.active = True
         if self.pending_key is not None or self.playback is None:
             self._load_pending()
+        self._draw()                                 # a position set from the charts while the tab was hidden
         self.canvas.focus_set()
 
     def deactivate(self):
@@ -167,6 +169,27 @@ class RecorderPage:
         if self.playback is not None and self.playback.running:
             self.playback.stop()
             self._draw(force=True)
+
+    def position(self):
+        """The position [s since the start of the flight] for the position line of the charts: 0 for a flight not
+        loaded yet; None if the flight has no track (no line)."""
+        if self.pending_key is not None or self.playback is None:
+            return 0.0
+        return None if self.track is None or self.track.is_empty else self.playback.position
+
+    def place_at(self, seconds):
+        """A click in a chart: the position is set (limited to the flight), the playback stays stopped. The
+        instruments are drawn at once if the tab is shown, else when it is shown again."""
+        if self.pending_key is not None or self.playback is None:
+            self._load_pending()
+        if self.track is None or self.track.is_empty:
+            return
+        self.playback.stop()
+        self.playback.seek(position_from_click(seconds, self.playback.start, self.playback.end))
+        if self.active:
+            self._draw(force=True)
+        else:
+            self.shown_row = None
 
     def seek(self, position):
         if self.playback is not None:

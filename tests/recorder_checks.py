@@ -86,6 +86,101 @@ def check_recorder(root):
     root.update()
 
 
+def _click(root, canvas, x, y, release_x=None, double=False):
+    """Press and release the left mouse button at pixel (x, y) of a chart canvas (as matplotlib reports it)."""
+    from matplotlib.backend_bases import MouseEvent
+    press = MouseEvent("button_press_event", canvas, x, y, button=1, dblclick=double)
+    canvas.callbacks.process("button_press_event", press)
+    release = MouseEvent("button_release_event", canvas, x if release_x is None else release_x, y, button=1)
+    canvas.callbacks.process("button_release_event", release)
+    root.update()
+    return press
+
+
+def _line_times(page):
+    return [float(line.get_xdata()[0]) for line in page.marker.lines if line.get_visible()]
+
+
+def check_chart_position(root):
+    """TW-059: the position of the recorder as a line in the charts. It stands where the recorder stopped, a click
+    sets the position (the recorder shows it when its tab is shown again), a drag, a double-click and a click
+    outside of the charts do not, the enlarged charts show the line, and a flight without charts has none."""
+    from ethosloganalyser.recorder.chart_position import time_axes
+
+    h = root._akku
+    page, recorder, _clock = _open_recorder(root)
+    recorder.seek(60.0)
+    recorder.stop()
+    page.select_tab("charts")
+    root.update()
+    axes = time_axes(page.figure)
+    assert axes and len(page.marker.lines) == len(axes)
+    assert _line_times(page) == [pytest.approx(60.0)] * len(axes)          # the same time in every chart
+    assert recorder.playback.position == 60.0 and not recorder.playback.running
+    lines, limits = list(page.marker.lines), [(a.get_xlim(), a.get_ylim()) for a in page.figure.axes]
+
+    page.canvas.draw()
+    box = axes[0].bbox
+    x_click, y_click = box.x0 + box.width * 0.4, box.y0 + box.height / 2
+    expected = float(axes[0].transData.inverted().transform((x_click, y_click))[0])
+    _click(root, page.canvas, x_click, y_click)                            # a click sets the position
+    assert recorder.playback.position == pytest.approx(expected) and not recorder.playback.running
+    assert _line_times(page) == [pytest.approx(expected)] * len(axes)
+    assert page.marker.lines == lines                                      # moved, not created again
+    assert [(a.get_xlim(), a.get_ylim()) for a in page.figure.axes] == limits
+
+    _click(root, page.canvas, x_click, y_click, release_x=x_click + 60)    # a drag (panning) does not
+    assert recorder.playback.position == pytest.approx(expected)
+    _click(root, page.canvas, 1, 1)                                        # outside of every chart
+    assert recorder.playback.position == pytest.approx(expected)
+    n = len(h["fullscreen"])
+    _click(root, page.canvas, x_click + 80, y_click, double=True)          # double-click: enlarges, sets nothing
+    assert len(h["fullscreen"]) == n + 1 and recorder.playback.position == pytest.approx(expected)
+    window = h["fullscreen"][-1]
+    enlarged = time_axes(window._fig)
+    assert enlarged and all(line.get_visible() and float(line.get_xdata()[0]) == pytest.approx(expected)
+                            for line in [a for a in window._fig.axes[0].lines if a.get_gid() == "position"])
+    h["fullscreen"][-1].event_generate("<Escape>", when="tail")
+    root.update()
+
+    snapshot = page.snapshot()                                             # a language switch keeps the position
+    page.restore(snapshot)
+    assert _line_times(page) == [pytest.approx(expected)] * len(axes)
+
+    page.select_tab("recorder")                                            # the recorder stands there
+    root.update()
+    assert recorder.playback.position == pytest.approx(expected) and not recorder.playback.running
+    assert recorder.shown_row == recorder.playback.row
+    page.select_tab("charts")
+    root.update()
+
+    page.step_flight(-1)                                                   # another flight: position 0
+    root.update()
+    assert recorder.position() == 0.0 and _line_times(page) == [0.0] * len(time_axes(page.figure))
+    page.step_flight(1)
+    root.update()
+    page.select_tab("recorder")
+    root.update()
+
+
+def check_chart_position_without_charts(root):
+    """A flight without battery data (the glider) has no charts: no line, no error, and a click does nothing."""
+    h = root._akku
+    page = h["flight_page"]
+    glider = next(flight for flight in h["flight_cache"].flights if flight.aircraft == "Glider")
+    assert h["flight_area"].open_flight(glider.log_id)
+    page.select_tab("charts")
+    root.update()
+    assert page.marker.lines == [] and not page.axes
+    page.sync_position()
+    _click(root, page.canvas, 50, 50)
+    page.select_tab("recorder")
+    root.update()
+    page.select_tab("charts")
+    h["select_page"]("logbook")
+    root.update()
+
+
 def _check_playback(root, recorder, clock):
     """Play at 1x and 4x with the moved wall clock; only a row change draws; the end of the flight stops it."""
     playback, track = recorder.playback, recorder.track

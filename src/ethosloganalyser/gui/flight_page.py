@@ -18,6 +18,8 @@ from ..config import SPIKE_LABELS, label
 from ..i18n import tr
 from ..plots.flight import FLIGHT_VIEWS, VIEW_LABELS, draw_flight, fit_y
 from ..plots.hover import Hover
+from ..plots.position import PositionMarker
+from ..recorder.chart_position import is_click, time_axes
 from ..report.text import flight_detail_lines
 from ..utils import fmt_duration
 from .common import fill_text, make_text
@@ -43,6 +45,7 @@ class FlightPage:
         self.shown_path = None
         self.axes = []
         self.drag = None
+        self.press = None                 # (x, y) in pixels of the left button press that may become a click
         self.details_visible = True
         self.spike_times = []
         self._build(parent, family)
@@ -88,6 +91,7 @@ class FlightPage:
         self.figure = Figure(figsize=(12, 7), dpi=100)
         self.canvas = FigureCanvasTkAgg(self.figure, master=plot_frame)
         self.canvas._hover = Hover(self.canvas, crosshair=True, on_move=self.show_readout)
+        self.marker = PositionMarker(self.canvas, self.canvas._hover)     # position of the flight recorder
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
         for event_name, handler in (("scroll_event", self._on_scroll), ("button_press_event", self._on_press),
                                     ("button_release_event", self._on_release),
@@ -103,6 +107,7 @@ class FlightPage:
         self.tabs.add(self.tab_frames[CHARTS], text=tr("Diagramme"))
         self.tabs.add(self.tab_frames[RECORDER], text=tr("Flugrekorder"))
         self.recorder = RecorderPage(self.tab_frames[RECORDER], family)
+        self.charts.position_source = self.recorder.position          # for the enlarged charts
         self.tabs.bind("<<NotebookTabChanged>>", self._tab_changed)
         return self.tab_frames[CHARTS]
 
@@ -114,11 +119,16 @@ class FlightPage:
         self.tabs.select(self.tab_frames[tab])
 
     def _tab_changed(self, _event=None):
-        """The recorder plays only while its tab is shown."""
+        """The recorder plays only while its tab is shown; the charts show where it stands."""
         if self.current_tab() == RECORDER:
             self.recorder.activate()
         else:
             self.recorder.deactivate()
+            self.sync_position()
+
+    def sync_position(self):
+        """Moves the position line of the charts to the position of the recorder."""
+        self.marker.move(self.recorder.position())
 
     def stop_playback(self):
         """Stops the recorder, e.g. when the single flight is left."""
@@ -243,6 +253,7 @@ class FlightPage:
             self.axes[0].set_xlim(old)
             fit_y(self.axes)
         self.shown_path = path
+        self.marker.attach(self.figure, self.recorder.position())
         self.canvas.draw_idle()
 
     def show_views(self, views):
@@ -266,6 +277,7 @@ class FlightPage:
         self.axes = []
         self.shown_path = None
         self.figure.clear()
+        self.marker.attach(self.figure, None)
         self.figure.text(0.5, 0.5, text, ha="center", va="center", color="grey", fontsize=12, wrap=True)
         self.canvas.draw_idle()
         fill_text(self.details, [])
@@ -377,7 +389,7 @@ class FlightPage:
         if ev.inaxes is None or ev.xdata is None:
             return
         if ev.dblclick:
-            self.drag = None
+            self.drag = self.press = None
             self.charts.open_chart(self.canvas, self.builder, tr("Einzelflug"), ev.inaxes, flight=True)
             return
         if ev.button == 3:
@@ -385,9 +397,16 @@ class FlightPage:
             return
         if ev.button == 1:
             self.drag = (ev.x, self.axes[0].get_xlim())
+            self.press = (ev.x, ev.y)
 
-    def _on_release(self, _ev):
-        self.drag = None
+    def _on_release(self, ev):
+        """A click (left button, no dragging) sets the position of the flight recorder; a drag has panned."""
+        press, self.press, self.drag = self.press, None, None
+        if press is None or ev.button != 1 or ev.x is None or ev.xdata is None or not is_click(press, (ev.x, ev.y)):
+            return
+        if any(axes.bbox.contains(ev.x, ev.y) for axes in time_axes(self.figure)):
+            self.recorder.place_at(ev.xdata)
+            self.sync_position()
 
     def _on_motion(self, ev):
         if self.drag is not None and ev.x is not None and self.axes:
@@ -432,4 +451,5 @@ class FlightPage:
         if not snap["details"]:
             self.toggle_details()
         self.recorder.restore(snap.get("recorder"))
+        self.sync_position()
         self.select_tab(snap.get("tab", CHARTS))

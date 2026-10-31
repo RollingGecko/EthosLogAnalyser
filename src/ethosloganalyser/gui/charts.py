@@ -5,6 +5,7 @@ from ..gui.style import BG
 from ..i18n import tr
 from ..plots.flight import fit_y
 from ..plots.hover import Hover
+from ..plots.position import PositionMarker
 from ..plots.single import chart_index, chart_title, single_chart
 
 
@@ -12,13 +13,15 @@ class ChartManager:
     """Creates chart canvases and the full-screen windows for one build of the window content.
 
     fullscreen: the open full-screen windows; page_canvases: {str(frame): canvas} of the chart pages shown
-    with show_fig (both also used by tests).
+    with show_fig (both also used by tests). position_source: function that returns the position of the flight
+    recorder [s] (or None); the enlarged single-flight charts show it as a line (set by the single-flight page).
     """
 
     def __init__(self, root):
         self.root = root
         self.fullscreen = []
         self.page_canvases = {}
+        self.position_source = None
 
     def chart_canvas(self, parent, fig, builder, title, crosshair=False, on_move=None, flight=False,
                      whole_page=True):
@@ -132,6 +135,9 @@ class ChartManager:
                 return f
         canvas = self.chart_canvas(win, fig, page_builder, title, crosshair=getattr(fig, "_t", None) is not None,
                                    flight=flight, whole_page=False)
+        if flight and self.position_source is not None:       # only shown here, a click sets nothing
+            canvas._marker = PositionMarker(canvas, canvas._hover)
+            canvas._marker.attach(fig, self.position_source())
         canvas.draw()
         win.bind("<Escape>", close)
         win.protocol("WM_DELETE_WINDOW", close)
