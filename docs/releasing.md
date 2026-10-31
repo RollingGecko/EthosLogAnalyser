@@ -1,11 +1,11 @@
 # Releasing
 
-A release is a GitHub release with the Windows EXE `EthosLogAnalyser-vX.Y.Z.exe` attached and the matching CHANGELOG section as release notes. It is built and published by GitHub Actions ([`.github/workflows/release.yml`](../.github/workflows/release.yml)) when a version tag `vX.Y.Z` is pushed. Nobody builds or uploads the EXE by hand.
+A release is a GitHub release with the matching CHANGELOG section as release notes and four files attached: the Windows EXE `EthosLogAnalyser-vX.Y.Z.exe`, the user guides `EthosLogAnalyser-vX.Y.Z-user-guide-en.pdf` and `-de.pdf`, and `EthosLogAnalyser-vX.Y.Z.zip`, which holds the EXE and both guides together (the download for new users). The guides are the committed `docs/user-guide_en.pdf` and `docs/user-guide_de.pdf`; if you change a guide's Markdown, create its PDF again in the same pull request. It is built and published by GitHub Actions ([`.github/workflows/release.yml`](../.github/workflows/release.yml)) when a version tag `vX.Y.Z` is pushed. Nobody builds or uploads the EXE by hand.
 
 ## Steps
 
 1. **Raise the version** in `src/ethosloganalyser/__init__.py` (`__version__ = "X.Y.Z"`, [semantic versioning](https://semver.org/); a pre-release looks like `1.0.0-beta.1`, also `-alpha.N` and `-rc.N`). Skip this if the version has not been released yet.
-2. **Update `CHANGELOG.md`**: a section `## X.Y.Z` at the top that lists the user-visible changes in English. This section becomes the release notes.
+2. **Update `CHANGELOG.md`**: a section `## X.Y.Z` at the top that lists the user-visible changes in English. This section becomes the release notes, so write it for pilots: one short line per change (at most 300 characters), in plain words, grouped under *New*, *Changed*, *Fixed*, *Removed*; no ticket numbers, file or function names, measurements or test details (those belong into the pull request and `docs/`). The workflow puts a download list above it and a link to the full `CHANGELOG.md` below it.
 3. **Open a pull request** with these changes. The *Tests* workflow checks version and changelog (job *Check version and changelog*), runs the tests and builds a test EXE for acceptance testing (see [Acceptance testing a pull request](acceptance-testing.md)). Merge the pull request when everything is green.
 4. **Set the tag** on the merged commit on `main` – only the maintainer does this. Pushing the tag is what starts the release; every way below pushes an ordinary tag `vX.Y.Z` from your own account.
 
@@ -34,7 +34,9 @@ The release is not created if any of these fail:
 - the tag has the form `vX.Y.Z` (or `vX.Y.Z-beta.N`) and matches `__version__`,
 - `CHANGELOG.md` has a non-empty section `## X.Y.Z`,
 - all tests pass (same matrix as on every push: Linux with Python 3.9 and 3.12, Windows with Python 3.12),
-- the EXE is built.
+- the EXE is built,
+- both user guide PDFs exist in `docs/`,
+- the changelog entries (section of the version and *Unreleased*) have no ticket numbers (`TW-nnn`, `WP-nn`) and are at most 300 characters long.
 
 The same version check runs locally without installing anything:
 
@@ -44,7 +46,7 @@ python scripts\release_check.py --tag vX.Y.Z
 
 ## Dry run
 
-*Actions → Release → Run workflow* runs everything except publishing on any branch and uploads the artifact `release-preview` (EXE named `EthosLogAnalyser-vX.Y.Z.exe` and the release notes). The dry run uses `__version__` and does not need a tag. Use it after changing the release pipeline itself (`release.yml`, `build.yml`, `scripts/release_check.py`, `scripts/build_exe.bat`); pull requests no longer run it automatically, so the EXE is not built twice.
+*Actions → Release → Run workflow* runs everything except publishing on any branch and uploads the artifact `release-preview` (EXE, both user guide PDFs, the ZIP, all named with the version, and the release notes). The dry run uses `__version__` and does not need a tag. Use it after changing the release pipeline itself (`release.yml`, `build.yml`, `scripts/release_check.py`, `scripts/build_exe.bat`); pull requests no longer run it automatically, so the EXE is not built twice.
 
 ## Test builds are never releases
 

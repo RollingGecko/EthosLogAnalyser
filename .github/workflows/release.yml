@@ -1,13 +1,14 @@
 name: Release
 
-# Publishes a GitHub release with the Windows EXE when a version tag
+# Publishes a GitHub release with the Windows EXE, the user guides (PDF, English and German) and a ZIP with all of
+# them when a version tag
 # vX.Y.Z (or a pre-release such as vX.Y.Z-beta.1) is pushed (see docs/releasing.md). This is the only workflow that
 # can create a release.
 #
 # Dry run (everything except publishing): manually via "Run workflow"
-# (workflow_dispatch) on any branch. It uploads the renamed EXE and the
-# release notes as the artifact "release-preview" instead of creating a
-# release. Pull requests do not run this workflow: tests.yml checks version
+# (workflow_dispatch) on any branch. It uploads the renamed EXE, the user
+# guides, the ZIP and the release notes as the artifact "release-preview"
+# instead of creating a release. Pull requests do not run this workflow: tests.yml checks version
 # and changelog and builds the test EXE there, so nothing is built twice.
 
 on:
@@ -69,6 +70,8 @@ jobs:
       VERSION: ${{ needs.check.outputs.version }}
       PRERELEASE: ${{ needs.check.outputs.prerelease }}
     steps:
+      - uses: actions/checkout@v4          # the user guides (PDF) are kept in docs/
+
       - uses: actions/download-artifact@v4
         with:
           name: EthosLogAnalyser-exe
@@ -79,12 +82,38 @@ jobs:
           name: release-notes
           path: .
 
-      - name: Name the EXE after the version
+      - name: Name the EXE and the user guides after the version, pack the ZIP
         run: |
           mv dist/EthosLogAnalyser.exe "dist/EthosLogAnalyser-v${VERSION}.exe"
+          for language in en de; do
+            guide="docs/user-guide_${language}.pdf"
+            test -s "$guide" || { echo "::error::$guide is missing"; exit 1; }
+            cp "$guide" "dist/EthosLogAnalyser-v${VERSION}-user-guide-${language}.pdf"
+          done
+          # one download for new users: the EXE and both guides side by side
+          (cd dist && zip "EthosLogAnalyser-v${VERSION}.zip" \
+            "EthosLogAnalyser-v${VERSION}.exe" \
+            "EthosLogAnalyser-v${VERSION}-user-guide-en.pdf" \
+            "EthosLogAnalyser-v${VERSION}-user-guide-de.pdf")
           ls -l dist
-          echo "--- Release notes ---"
-          cat release-notes.md
+
+      - name: Compose the release text (download list, what's new, link to the full changelog)
+        run: |
+          {
+            echo "## Download"
+            echo
+            echo "- **EthosLogAnalyser-v${VERSION}.zip**: the app and the user guides (English, German) – unpack and start the EXE."
+            echo "- EthosLogAnalyser-v${VERSION}.exe: the app alone."
+            echo "- EthosLogAnalyser-v${VERSION}-user-guide-en.pdf / -de.pdf: the user guides alone."
+            echo
+            echo "## What's new"
+            echo
+            cat release-notes.md
+            echo
+            echo "Full history: [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ github.sha }}/CHANGELOG.md)"
+          } > release-body.md
+          echo "--- Release text ---"
+          cat release-body.md
 
       - name: Publish GitHub release
         if: github.event_name == 'push' && github.ref_type == 'tag'
@@ -94,10 +123,14 @@ jobs:
         run: |
           flag=""
           if [ "$PRERELEASE" = "true" ]; then flag="--prerelease"; fi
-          gh release create "$TAG" "dist/EthosLogAnalyser-v${VERSION}.exe" $flag \
+          gh release create "$TAG" \
+            "dist/EthosLogAnalyser-v${VERSION}.zip" \
+            "dist/EthosLogAnalyser-v${VERSION}.exe" \
+            "dist/EthosLogAnalyser-v${VERSION}-user-guide-en.pdf" \
+            "dist/EthosLogAnalyser-v${VERSION}-user-guide-de.pdf" $flag \
             --repo "${{ github.repository }}" \
             --title "EthosLogAnalyser v${VERSION}" \
-            --notes-file release-notes.md \
+            --notes-file release-body.md \
             --verify-tag
 
       - name: Upload release preview (dry run)
@@ -106,6 +139,8 @@ jobs:
         with:
           name: release-preview
           path: |
+            dist/EthosLogAnalyser-v${{ env.VERSION }}.zip
             dist/EthosLogAnalyser-v${{ env.VERSION }}.exe
-            release-notes.md
+            dist/EthosLogAnalyser-v${{ env.VERSION }}-user-guide-*.pdf
+            release-body.md
           retention-days: 7

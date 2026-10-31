@@ -21,7 +21,7 @@ several values to tick – and a date range) shared by logbook and statistics.
 
 ## Download
 
-The Windows EXE is attached to each release under [Releases](https://github.com/RollingGecko/EthosLogAnalyser/releases): download `EthosLogAnalyser-vX.Y.Z.exe` and start it – no Python needed. Windows SmartScreen may warn because the EXE is not signed (*More info → Run anyway*).
+The Windows EXE is attached to each release under [Releases](https://github.com/RollingGecko/EthosLogAnalyser/releases): download `EthosLogAnalyser-vX.Y.Z.zip` (the EXE and the user guides in English and German) or just `EthosLogAnalyser-vX.Y.Z.exe`, and start the EXE – no Python needed. The guides are also attached as separate PDFs. Windows SmartScreen may warn because the EXE is not signed (*More info → Run anyway*).
 
 ## Quick start (from source)
 
@@ -38,6 +38,7 @@ Three real flight logs to try are in `examples/logs/` (*Data & settings → Data
 
 ## Documentation
 
+- **User guide** for the Windows EXE, with screenshots: [English](docs/user-guide_en.pdf) ([Markdown](docs/user-guide_en.md)) · [Deutsch](docs/user-guide_de.pdf) ([Markdown](docs/user-guide_de.md))
 - [Usage](docs/usage.md) – installation, import, logbook, single flight, statistics with the filter, settings, export
 - [Methodology](docs/methodology.md) – how internal resistance, state of charge, capacity, timer and spikes are computed
 - [Ethos log format](docs/ethos-log-format.md) – which columns the app expects

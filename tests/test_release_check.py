@@ -107,3 +107,25 @@ def test_prerelease_version_and_tag():
     assert not release_check.is_prerelease("1.0.0")
     with pytest.raises(release_check.ReleaseError):
         release_check.check("v1.0.0", init, changelog)
+
+
+def test_ticket_number_in_notes_fails():
+    changelog = CHANGELOG.replace("New feature.", "New feature (TW-059).")
+    with pytest.raises(release_check.ReleaseError, match="ticket number"):
+        release_check.check("v1.2.3", INIT, changelog)
+
+
+def test_very_long_entry_fails():
+    changelog = CHANGELOG.replace("New feature.", "New feature. " + "Detail. " * 60)
+    with pytest.raises(release_check.ReleaseError, match="longer than"):
+        release_check.check("v1.2.3", INIT, changelog)
+
+
+def test_unreleased_entries_are_checked_too():
+    changelog = CHANGELOG.replace("## 1.2.3", "## Unreleased"+"\n\n- Work in progress (WP-12)."+"\n\n## 1.2.3")
+    with pytest.raises(release_check.ReleaseError, match="ticket number"):
+        release_check.check("v1.2.3", INIT, changelog)
+
+
+def test_notes_problems_ignores_headings_and_short_entries():
+    assert release_check.notes_problems("### New"+"\n\n- Short entry."+"\nPlain intro line.") == []
