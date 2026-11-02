@@ -5,6 +5,41 @@ requests and in `docs/`.
 
 ## Unreleased
 
+## 1.0.0
+
+First stable release. The program is the same as in 1.0.0-beta.4; this list covers all changes since 0.3.0.
+
+### New
+
+- **User guide** for the Windows EXE in English and German (PDF), with screenshots.
+- **One download**: the release contains a ZIP with the EXE and both user guides; the EXE and the guides are also available on their own.
+- **Flight recorder**: replays a flight in real time with an artificial horizon, cockpit gauges (altitude, vertical speed, drive, battery), the transmitter sticks and a small aircraft that follows attitude and sticks. Timeline, play/stop and speeds from 0.25× to 16×.
+- **Stick mode 1–4** for the recorder (*Data & settings → Flight recorder*).
+- **Position line in the charts**: the recorder position shows as a vertical line in every time chart; a click in a chart sets it.
+- **Flight database**: logs are imported once into one database file (files or whole folders, duplicates are recognised). Your log files are never changed.
+- **Logbook** as start page: totals, tables per aircraft, year and month, and a sortable flight list. Logs that are not flights can be switched on or off by a click.
+- **Filter with several values** for aircraft, year and month, plus a date range, shared by logbook and statistics.
+- **Notes and anomalies per flight**: a free-text note and automatic hints (e.g. unusually short flight, high internal resistance, receiver voltage dip) that you can acknowledge or extend with your own entries.
+- **Several aircraft**: the model comes from the file name; battery settings are kept per aircraft, with a red hint until they are entered.
+- **Better charts**: tooltip on every chart, enlarge a single chart by double-click, voltage per cell, an attitude view with the sticks, motor curve against RPM, times as min:s.
+
+### Changed
+
+- **Statistics** now come from the database, are ready right after the start and are marked *experimental*. They cover one aircraft at a time.
+- A single flight opens by double-click in the logbook (no separate tab any more).
+- **More reliable battery ageing**: one robust trend per value, no trend or forecast unless it is clear, measurement errors are recognised and left out, capacity is corrected for the depth of discharge.
+- Tables and charts no longer cut off text at Windows display scaling of 125 % or 150 %.
+- The window title and *About* show the version; test builds are clearly marked.
+
+### Removed
+
+- The folder analysis and the period filter (the database import and the filter replace them), the bar charts and *Group by* tree of the logbook.
+
+### Known limitations
+
+- The direction of roll and pitch in the flight recorder has not yet been checked against all manoeuvres. If a model rolls the wrong way, please report it.
+- The statistics are still marked *experimental*: the numbers are estimates.
+
 ## 1.0.0-beta.4
 
 Fourth beta of 1.0.0. The program itself is unchanged.

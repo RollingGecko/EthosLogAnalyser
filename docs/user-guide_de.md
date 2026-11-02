@@ -1,6 +1,6 @@
 # EthosLogAnalyser – Anleitung
 
-Für Piloten, die die Windows-EXE nutzen. Version: 1.0.0 Beta 4 (Vorabversion). Programmierkenntnisse sind nicht nötig.
+Für Piloten, die die Windows-EXE nutzen. Version: 1.0.0. Programmierkenntnisse sind nicht nötig.
 Englische Fassung: [user-guide_en.md](user-guide_en.md).
 
 EthosLogAnalyser liest die Flugprotokolle (CSV-Dateien), die dein **FrSky-Ethos**-Sender schreibt, und macht daraus ein
@@ -27,15 +27,14 @@ Die Screenshots zeigen die deutsche Oberfläche. Das Programm spricht auch Engli
 ## 1. Installieren und starten
 
 Es gibt keinen Installer. Lade die `.exe` der neuesten Version von der
-[Releases-Seite](https://github.com/RollingGecko/EthosLogAnalyser/releases) herunter (eine Beta ist als *Pre-release*
-markiert), lege sie in einen beliebigen Ordner und starte sie mit Doppelklick.
+[Releases-Seite](https://github.com/RollingGecko/EthosLogAnalyser/releases) herunter, lege sie in einen beliebigen Ordner und starte sie mit Doppelklick.
 
 Windows zeigt eventuell eine blaue **SmartScreen**-Warnung, weil die Datei nicht signiert ist: **Weitere Informationen →
 Trotzdem ausführen**.
 
 Beim ersten Start legt das Programm seine Flug-Datenbank unter `Dokumente\EthosLogAnalyser\flugbuch.db` an und merkt
-sich deine Einstellungen. Sonst wird nichts installiert. Das Programm ist eine **Beta**: Bitte melde alles, was
-falsch aussieht.
+sich deine Einstellungen. Sonst wird nichts installiert. Bitte melde alles, was falsch aussieht (siehe
+[Fragen und Probleme](#9-fragen-und-probleme)).
 
 ## 2. Erste Schritte: Logs importieren
 
@@ -164,8 +163,8 @@ So kannst du im Rekorder an einem interessanten Moment anhalten und die anderen 
 **Knüppelmodus:** Die Knüppel werden für den Modus gezeichnet, der unter *Daten & Einstellungen → Flugrekorder* eingestellt
 ist (Standard: Mode 2). Ändere ihn, wenn dein Gas auf dem anderen Knüppel liegt.
 
-*Beta-Hinweis:* Die Richtung von Roll und Nick in Horizont und Flugzeug wird noch an bekannten Flugfiguren geprüft. Wenn
-ein Modell falsch herum rollt, melde es bitte.
+*Bekannte Einschränkung:* Die Richtung von Roll und Nick in Horizont und Flugzeug ist noch nicht an allen Flugfiguren
+geprüft. Wenn ein Modell falsch herum rollt, melde es bitte.
 
 ## 6. Statistik
 
