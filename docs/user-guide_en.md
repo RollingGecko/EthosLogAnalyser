@@ -1,6 +1,6 @@
 # EthosLogAnalyser – User guide
 
-For pilots who use the Windows EXE. Version: 1.0.0 beta 4 (pre-release). No programming knowledge needed.
+For pilots who use the Windows EXE. Version: 1.0.0. No programming knowledge needed.
 German version: [user-guide_de.md](user-guide_de.md).
 
 EthosLogAnalyser reads the flight logs (CSV files) that your **FrSky Ethos** transmitter writes and turns them into
@@ -26,13 +26,13 @@ The screenshots show the English interface. The program also speaks German and S
 ## 1. Install and start
 
 There is no installer. Download the `.exe` of the newest release from the
-[Releases page](https://github.com/RollingGecko/EthosLogAnalyser/releases) (a beta is marked *Pre-release*), put it
-in any folder and double-click it.
+[Releases page](https://github.com/RollingGecko/EthosLogAnalyser/releases), put it in any folder and double-click it.
 
 Windows may show a blue **SmartScreen** warning because the file is not signed: click **More info → Run anyway**.
 
 On the first start the program creates its flight database in `Documents\EthosLogAnalyser\flugbuch.db` and remembers
-your settings. Nothing else is installed. The program is a **beta**: please report anything that looks wrong.
+your settings. Nothing else is installed. Please report anything that looks wrong (see
+[Questions and problems](#9-questions-and-problems)).
 
 ## 2. First steps: import your logs
 
@@ -161,8 +161,8 @@ That lets you stop at an interesting moment in the recorder and read the other c
 **Stick mode:** the sticks are drawn for the stick mode set under *Data & settings → Flight recorder* (Mode 2 is the
 default). Change it if your throttle sits on the other stick.
 
-*Beta note:* the direction of roll and pitch in the horizon and the aircraft is still being checked against known
-manoeuvres. If you see a model rolling the wrong way, please report it.
+*Known limitation:* the direction of roll and pitch in the horizon and the aircraft has not yet been checked against
+all manoeuvres. If you see a model rolling the wrong way, please report it.
 
 ## 6. Statistics
 
