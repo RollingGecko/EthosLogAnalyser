@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """Shared test data: the example logs and synthetic Ethos logs."""
 
+import atexit
 import os
+import shutil
 import sys
 import tempfile
 from functools import lru_cache
@@ -16,7 +18,20 @@ os.environ.setdefault("MPLBACKEND", "Agg")      # charts without a display
 
 import ethosloganalyser as ela                  # noqa: E402
 
-EXAMPLES = ROOT / "examples" / "logs"
+
+def _reference_examples():
+    """The tests' reference set, the three Viper-Jet logs, copied into a folder of their own.
+
+    examples/logs also holds logs of other aircraft (e.g. a Predator with other sensor names); the tests
+    expect exactly the Viper-Jet flights and import whole folders, so they get a folder with only those."""
+    folder = Path(tempfile.mkdtemp(prefix="ela-examples-"))
+    atexit.register(shutil.rmtree, folder, ignore_errors=True)
+    for path in (ROOT / "examples" / "logs").glob("Viper-Jet-*.csv"):
+        shutil.copy2(path, folder / path.name)
+    return folder
+
+
+EXAMPLES = _reference_examples()
 EXAMPLE_FILES = sorted(EXAMPLES.glob("*.csv"))
 
 
