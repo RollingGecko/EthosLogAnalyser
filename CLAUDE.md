@@ -16,11 +16,12 @@ Python/Tkinter desktop app (Windows EXE) that analyses FrSky Ethos flight logs (
 7. Releases only by the owner's tag `vX.Y.Z` (see `docs/releasing.md`).
 
 ## Kanban (tickets and packages)
-Board: https://claude.ai/artifact/Nm7aVSuC74UbT8TzV8BmBN – read and write with the ArtifactData tool; collections `tickets` (TW-nnn), `packages` (WP-nn), `messages`. When you are told "start WP-nn":
-1. Read `packages/WP-nn` and the tickets with that package. Set the package `status` to `delivered` (only if still `ready`) and the tickets from `ready` to `progress`. Pin every write with `if_version`.
+Board: GitHub project https://github.com/users/RollingGecko/projects/3, read and written with `gh project` (the token needs the `project` scope: `gh auth refresh -s project`). Tickets are draft items titled "TW-nnn: ..."; the card text holds the detail, "### Checks" and "### Kommentare". Fields: `Status` (InBox, Backlog, Ready, In progress, In review, Done), `Priority` (P0–P3), `Ticket`, `Ticket type`, `Area`, `Workstream`, `Package` (WP-nn). A package is the set of tickets with the same `Package` value; there are no package cards. The old claude.ai board (until 2026-11-07) is read-only history. When you are told "start WP-nn":
+1. List the items (`gh project item-list 3 --owner RollingGecko --format json --limit 500`) and read the tickets with that package. Move them from Ready to In progress (`gh project item-edit --project-id <project id> --id <item id> --field-id <Status field id> --single-select-option-id <option id>`; ids from `gh project view` / `gh project field-list`).
 2. Work as described above.
-3. When the PR is open: set the tickets to `review`, fill `checks` ("how" = steps for the owner with the test EXE, "where" = app) and add "Ergebnis: ..." to the ticket detail. Put the short report (what was done, PR number, what to check, questions with a recommendation, chat length) into the PR text and as a message to `hub` only if a decision is needed.
-4. When the owner says the PR is merged: tickets and package to `done`.
+3. When the PR is open: move the tickets to In review and update the card text (`gh project item-edit --id <draft issue id DI_...> --body ...`, keep the existing text): add the PR number, the steps for the owner with the test EXE under "### Checks" and "Ergebnis: ..." at the end. Put the short report (what was done, PR number, what to check, questions with a recommendation, chat length) into the PR text.
+4. When the owner says the PR is merged: tickets to Done.
+New tickets go in as draft items with the next free TW number, status InBox and the fields filled in.
 
 ## Code style
 - Readable, maintainable code: meaningful names (no `df2`, `res`, `p`), a docstring for every module, class and public function, comments explain why, small functions, no file over about 500 lines. Code language is English. Bring old code into this style when you touch it.
