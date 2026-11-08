@@ -51,9 +51,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04   # ubuntu-latest (26.04) has no Python 3.9
             python: "3.9"      # oldest supported version, pandas 2.x
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             python: "3.12"     # current version, pandas 3.x
           - os: windows-latest
             python: "3.12"     # target platform of the EXE
