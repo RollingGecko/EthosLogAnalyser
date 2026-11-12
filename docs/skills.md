@@ -32,7 +32,7 @@ Further skills may be used when they fit (e.g. `debugging-and-error-recovery`, `
 - `/test` and `/review` are fine.
 
 ## Own commands next to the plugin
-`/story` creates the story, then the planning skill splits it into steps. `/ux-review`, `/release`, `/handoff` have no
+`/start` begins a new session (counterpart of `/handoff`). `/story` creates the story, then the planning skill splits it into steps. `/ux-review`, `/release`, `/handoff` have no
 equivalent in the plugin. Own commands take priority.
 
 ## Context use

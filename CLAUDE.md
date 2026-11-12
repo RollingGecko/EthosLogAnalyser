@@ -69,7 +69,7 @@ Plugin `agent-skills` (installed for this project). Details and the list: `docs/
 - Not used: the web skills (browser testing, frontend UI engineering, web performance) and the commands `/ship` and `/build auto`.
 
 ## Own commands and agents
-`/story`, `/ux-review`, `/release`, `/handoff` (`.claude/commands/`) and the agents `product-owner` and `ux-designer`
+`/start` (new session), `/story`, `/ux-review`, `/release`, `/handoff` (`.claude/commands/`) and the agents `product-owner` and `ux-designer`
 (`.claude/agents/`). They take priority over similar skill commands.
 
 ## Docs
