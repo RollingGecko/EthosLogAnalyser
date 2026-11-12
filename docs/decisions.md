@@ -18,6 +18,10 @@ board and the history; "reason unknown" where it was not recorded.
 
 ## Product
 
+### Stories and tickets in German (2026-11-12)
+- **Decision:** Board items and `docs/stories/` are written in German, everything else in the repo in English.
+  **Reason:** The owner's wish; the existing cards are German.
+
 ### Rebuild around a flight database (2026-10-25)
 - **Decision:** The earlier state was a proof of concept; the app was rebuilt (concept of 2026-10-25, board item TW-034,
   implemented by TW-035 to TW-039).
@@ -33,8 +37,8 @@ board and the history; "reason unknown" where it was not recorded.
   "possible duplicate". **Reason:** reason unknown.
 
 ### One flight = one log file (2026-10-25)
-- **Decision:** Each log file is one flight; logs that are not flights are imported and marked, switchable by click.
-  **Reason:** reason unknown.
+- **Decision:** Each log file is one flight (confirmed by the owner 2026-11-12); logs that are not flights are imported and
+  marked, switchable by click. **Reason:** reason unknown.
 
 ### Different sensors per aircraft (2026-10-25)
 - **Decision:** Not every model has motor or flight battery data; flight detection uses the best available sensor and

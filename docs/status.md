@@ -20,6 +20,5 @@ https://github.com/users/RollingGecko/projects/3
 
 ## Open questions
 - Is the sign of roll and pitch in the flight recorder correct for all manoeuvres (TW-053)?
-- Does every log file contain exactly one flight? (Assumed; not guaranteed by the code.)
 - Where is the concept of 2026-10-25 kept? It exists only as board item TW-034 (its source file `hub/v2-neubau.md` is not in the repo).
 - Battery settings still live in the settings file of the computer, not in the database (TW-050).

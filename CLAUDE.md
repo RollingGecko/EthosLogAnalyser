@@ -18,7 +18,7 @@ single-flight view build on it. Details: `docs/vision.md`.
 ## Rules
 - Think step by step on complex problems.
 - Talk to the owner in German (short and clear; questions always with a recommendation). Everything in the repo and on
-  GitHub is English: commit messages, README, docs, board entries, issues, PR texts, code comments, docstrings, test names.
+  GitHub is English: commit messages, README, docs, issues, PR texts, code comments, docstrings, test names.
   UI texts are German in the code (`tr()` / `N_()` / `Msg()` in `i18n.py`) with translations in `locales/en.py` and `locales/es.py`.
 - Only pull requests, never push to `main`. The owner approves and merges every PR. Releases only by the owner's tag
   `vX.Y.Z` (`docs/releasing.md`); Claude never tags, releases or merges.
@@ -35,7 +35,8 @@ single-flight view build on it. Details: `docs/vision.md`.
 - Stories are board items (draft items), **not** GitHub issues. Longer story details (acceptance criteria, sketches) go to
   `docs/stories/<TW-nnn>.md`; the board item links to the file. Do not mirror the board in the repo.
 - GitHub issues are only for input from outside (bug reports, feedback, requests of other users).
-- The older cards are in German and stay as they are; new board entries are English.
+- **Stories and tickets (board items and `docs/stories/`) are written in German** ("Als ... möchte ich ... damit ...",
+  acceptance criteria as Gegeben/Wenn/Dann), like the existing cards. This is the one exception to the English rule.
 - Status changes on the board only when the owner wants them or a command provides them and the owner confirmed.
 
 ## Conventions
